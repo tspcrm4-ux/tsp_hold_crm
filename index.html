@@ -2157,10 +2157,7 @@ function showExportImport(sh, title){
 
 
 function closeEiModal(){/* no longer needed but kept for compat */}
-function doExport(){
-  showAlert('Exporting...','info');
-  doExport();
-}
+// doExport: see Firebase version above
 
 function doImport(){
   var fileEl=document.getElementById('csvFileInput');
@@ -2736,6 +2733,7 @@ function doBulkUpload(){
   };
   reader.readAsText(fileEl.files[0]);
 }
+
 
 </script>
 </body>
