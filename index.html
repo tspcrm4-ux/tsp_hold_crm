@@ -411,7 +411,7 @@ function fbDeleteUser(uid,cb){fbDelete('users/u_'+uid,function(err){cb(err?{succ
 function fbAddTicket(data,cb){var now=new Date(),mmdd=(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0');var seq=1;if(_store.tickets&&_store.tickets.rows){var p='TSP-TKT-'+mmdd+'-';_store.tickets.rows.forEach(function(r){if((r[0]||'').indexOf(p)===0)seq++;});}var tktId='TSP-TKT-'+mmdd+'-'+String(seq).padStart(3,'0');var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();var rec={TICKET_ID:tktId,DATE:ds,CUSTOMER_NUMBER:(data['CUSTOMER NUMBER']||'').trim(),ISSUE:(data['ISSUE']||'').trim(),REMARK:(data['REMARK']||'').trim(),STATUS:'PENDING',SUBMITTED_BY:_user.username||'',RESOLVED_BY:'',RESOLVE_DATE:'',ADMIN_NOTE:''};var key=tktId.replace(/[.#$[\]\/]/g,'_');fbSet('tickets/'+key,rec,function(err){if(err){cb({success:false,error:err.message});return;}if(_store.tickets){var row=H.TKT.map(function(h){return rec[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=key;_store.tickets.rows.push(row);}cb({success:true,ticketId:tktId});});}
 function fbUpdateTicketStatus(tktId,newStatus,adminNote,cb){if(!_store.tickets){cb({success:false,error:'No data'});return;}var tIdx=H.TKT.indexOf('TICKET ID');for(var i=0;i<_store.tickets.rows.length;i++){if((_store.tickets.rows[i][tIdx]||'').trim()===tktId.trim()){var fk=_store.tickets.rows[i]._fbKey,now=new Date();var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();fbPatch('tickets/'+fk,{STATUS:newStatus,RESOLVED_BY:_user.username||'',RESOLVE_DATE:ds,ADMIN_NOTE:adminNote||''},function(err){cb(err?{success:false,error:err.message}:{success:true});});return;}}cb({success:false,error:'Not found'});}
 function startHoldLiveSync(){if(_rt)clearInterval(_rt);_rt=setInterval(function(){if(document.hidden||_searchActive)return;fbGet('hold',function(err,data){if(err||!data)return;var rows=fbObjToRows(data,H.HOLD);var changed=!_store.hold||rows.length!==_store.hold.rows.length;if(changed){var prev=_store.hold?_store.hold.rows.length:0;_store.hold={headers:H.HOLD,rows:rows};saveStoreToLocal();var diff=rows.length-prev;if(prev>0)showAlert(diff>0?'🔴 '+diff+' new HOLD!':'🔄 HOLD updated','info');if(_pg==='hold-main')loadHoldMain();else if(_pg==='hold-done')loadHoldDone();else if(_pg==='hold-req')loadHoldReq();updateBadges();}});},5000);}
-function getHoldMainFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldMainFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='PENDING'||as==='');});if(R()==='CALLING AGENT'){var un=(_user.agentDisplayName||_user.agentName||_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[hbIdx]||'').toUpperCase()===un;});}var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
+function getHoldMainFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldMainFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='PENDING'||as==='');});if(R()==='CALLING AGENT'){var un=(_user.agentDisplayName||_user.agentName||_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[hbIdx]||'').toUpperCase()===un;});}var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1,allRows:_store.hold?_store.hold.rows:rows});}
 function getHoldDoneFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldDoneFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');});var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
 function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
   var errorPend=0;
@@ -1200,7 +1200,36 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   var attIdx=sHdrs.indexOf('ATTEND BY');
   var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
 
-  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  
+  // ── Filter bar for Hold tabs ──
+  var holdFilterCols=['HOLD BY','ATTEND BY','FINAL BY','STATUS','AmtStatus','key manager status'];
+  var hdrsH=r.headers||H.HOLD;
+  var allHoldRows=r.allRows||r.rows||[];
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px;align-items:center">';
+  html+='<span style="font-size:11px;color:var(--text3);font-weight:600">FILTER:</span>';
+  var nameColsH={'HOLD BY':1,'ATTEND BY':1,'FINAL BY':1};
+  var agMapH={};(_agents||[]).forEach(function(a){if(a)agMapH[a.toUpperCase()]=a;});
+  holdFilterCols.forEach(function(col){
+    var ci=hdrsH.indexOf(col);if(ci<0)return;
+    var valsH={};
+    allHoldRows.forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)valsH[v]=1;});
+    var optsH=Object.keys(valsH).sort();
+    if(!optsH.length)return;
+    html+='<div style="display:flex;align-items:center;gap:4px">';
+    html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
+    var curFilter=(_colFilters[viewKey]&&_colFilters[viewKey][col])||'';
+    html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" data-vk="'+viewKey+'" data-col="'+col+'" onchange="applyHoldFilter(this.dataset.vk,this.dataset.col,this.value)">';
+    html+='<option value="">All</option>';
+    optsH.forEach(function(v){
+      var disp=nameColsH[col]?(agMapH[v.toUpperCase()]||v):v;
+      html+='<option value="'+esc(v)+'"'+(v===curFilter?' selected':'')+'>'+esc(disp)+'</option>';
+    });
+    html+='</select></div>';
+  });
+  html+='<button class="btn btn-s btn-xs" data-vk="'+viewKey+'" onclick="clearHoldFilters(this.dataset.vk)" title="Clear filters" style="margin-left:auto">✕ Clear</button>';
+  html+='</div>';
+
+html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
 
@@ -1722,7 +1751,12 @@ function renderSh(sh,title,icon,r){
   html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px">';
   html+='<span style="font-size:11px;color:var(--text3);align-self:center;font-weight:600">FILTER:</span>';
   // Filterable columns for each sheet
-  var filterCols={hold:['STATUS','AmtStatus','HOLD BY','AGENT NUMBER'],errorpayments:['STATUS','AmtStatus','SUBMITTED BY'],recharge:['Payment status','Submitted by'],disable:['ACTION','TYPE','DISABLED BY']};
+  var filterCols={
+    hold:['STATUS','AmtStatus','HOLD BY','ATTEND BY','FINAL BY','key manager status'],
+    errorpayments:['STATUS','AmtStatus','SUBMITTED BY','Rel To -'],
+    recharge:['Payment status','Submitted by'],
+    disable:['ACTION','TYPE','DISABLED BY','ENABLED BY']
+  };
   var cols=filterCols[sh]||hdrs.slice(0,6);
   cols.forEach(function(col){
     // Get unique values for this column
@@ -1731,12 +1765,20 @@ function renderSh(sh,title,icon,r){
     var vals={};
     (r.allRows||r.rows||[]).forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)vals[v]=1;});
     var options=Object.keys(vals).sort();
+    // For name-based columns, enrich with agent display names
+    var nameColsMap={};
+    (_agents||[]).forEach(function(a){if(a)nameColsMap[a.toUpperCase()]=a;});
     if(!options.length)return;
     html+='<div style="display:flex;align-items:center;gap:4px">';
     html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
     html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" onchange="applyColFilter(\''+sh+'\',\''+col+'\',this.value)" data-col="'+esc(col)+'">';
     html+='<option value="">All</option>';
-    options.forEach(function(v){html+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+    var nameCols=['HOLD BY','ATTEND BY','FINAL BY','DISABLED BY','ENABLED BY','SUBMITTED BY','Submitted by','PAYMENT BY'];
+    var isNameCol=nameCols.indexOf(col)>=0;
+    options.forEach(function(v){
+      var disp=isNameCol?(nameColsMap[v.toUpperCase()]||v):v;
+      html+='<option value="'+esc(v)+'">'+esc(disp)+'</option>';
+    });
     html+='</select></div>';
   });
   html+='<button class="btn btn-s btn-xs" style="margin-left:auto" onclick="clearColFilters(\''+sh+'\')" title="Clear filters">✕ Clear</button>';
@@ -1827,7 +1869,12 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px">';
   html+='<span style="font-size:11px;color:var(--text3);align-self:center;font-weight:600">FILTER:</span>';
   // Filterable columns for each sheet
-  var filterCols={hold:['STATUS','AmtStatus','HOLD BY','AGENT NUMBER'],errorpayments:['STATUS','AmtStatus','SUBMITTED BY'],recharge:['Payment status','Submitted by'],disable:['ACTION','TYPE','DISABLED BY']};
+  var filterCols={
+    hold:['STATUS','AmtStatus','HOLD BY','ATTEND BY','FINAL BY','key manager status'],
+    errorpayments:['STATUS','AmtStatus','SUBMITTED BY','Rel To -'],
+    recharge:['Payment status','Submitted by'],
+    disable:['ACTION','TYPE','DISABLED BY','ENABLED BY']
+  };
   var cols=filterCols[sh]||hdrs.slice(0,6);
   cols.forEach(function(col){
     // Get unique values for this column
@@ -1836,12 +1883,20 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
     var vals={};
     (r.allRows||r.rows||[]).forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)vals[v]=1;});
     var options=Object.keys(vals).sort();
+    // For name-based columns, enrich with agent display names
+    var nameColsMap={};
+    (_agents||[]).forEach(function(a){if(a)nameColsMap[a.toUpperCase()]=a;});
     if(!options.length)return;
     html+='<div style="display:flex;align-items:center;gap:4px">';
     html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
     html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" onchange="applyColFilter(\''+sh+'\',\''+col+'\',this.value)" data-col="'+esc(col)+'">';
     html+='<option value="">All</option>';
-    options.forEach(function(v){html+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+    var nameCols=['HOLD BY','ATTEND BY','FINAL BY','DISABLED BY','ENABLED BY','SUBMITTED BY','Submitted by','PAYMENT BY'];
+    var isNameCol=nameCols.indexOf(col)>=0;
+    options.forEach(function(v){
+      var disp=isNameCol?(nameColsMap[v.toUpperCase()]||v):v;
+      html+='<option value="'+esc(v)+'">'+esc(disp)+'</option>';
+    });
     html+='</select></div>';
   });
   html+='<button class="btn btn-s btn-xs" style="margin-left:auto" onclick="clearColFilters(\''+sh+'\')" title="Clear filters">✕ Clear</button>';
@@ -3112,6 +3167,22 @@ function updateBulkVals(sh){
   };
   var choices=opts[f]||['PENDING','OK','DONE','ENABLED','DISABLED'];
   valEl.innerHTML=choices.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+}
+
+
+
+function applyHoldFilter(viewKey, col, val){
+  if(!_colFilters[viewKey]) _colFilters[viewKey]={};
+  if(val) _colFilters[viewKey][col]=val;
+  else delete _colFilters[viewKey][col];
+  if(viewKey==='hold-main') loadHoldMain();
+  else loadHoldDone();
+}
+
+function clearHoldFilters(viewKey){
+  _colFilters[viewKey]={};
+  if(viewKey==='hold-main') loadHoldMain();
+  else loadHoldDone();
 }
 
 </script>
