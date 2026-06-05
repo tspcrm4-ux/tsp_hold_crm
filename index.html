@@ -1748,18 +1748,16 @@ function renderSh(sh,title,icon,r){
     html+='<span style="font-size:12px;font-weight:600;color:var(--gold)">✏️ Bulk Edit:</span>';
     html+='<span id="bulkCount_'+sh+'" style="font-size:11px;color:var(--text3)">0 selected</span>';
     // AmtStatus quick change
-    html+='<select id="bulkField_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
-    html+='<option value="AmtStatus">AmtStatus</option>';
-    html+='<option value="STATUS">STATUS</option>';
-    html+='<option value="key manager status">key manager status</option>';
+    // Dynamic field selector based on sheet
+    var bulkFields={hold:['AmtStatus','STATUS','key manager status','Rel To:-','PAYMENT BY','ATTEND BY'],errorpayments:['AmtStatus','STATUS','Rel To -'],recharge:['Payment status'],disable:['ACTION']};
+    var bFields=bulkFields[sh]||['AmtStatus','STATUS'];
+    html+='<select id="bulkField_'+sh+'" data-sh="'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)" onchange="updateBulkVals(this.dataset.sh)">';
+    bFields.forEach(function(f){html+='<option value="'+f+'">'+f+'</option>';});
     html+='</select>';
     html+='<select id="bulkVal_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
-    html+='<option value="PENDING">PENDING</option>';
-    html+='<option value="OK">OK</option>';
-    html+='<option value="DONE">DONE</option>';
-    html+='<option value="HOLD">HOLD</option>';
-    html+='<option value="CBD">CBD</option>';
+    html+='<option value="PENDING">PENDING</option><option value="OK">OK</option><option value="DONE">DONE</option><option value="HOLD">HOLD</option><option value="CBD">CBD</option><option value="ENABLED">ENABLED</option><option value="DISABLED">DISABLED</option>';
     html+='</select>';
+    html+='<input id="bulkCustomVal_'+sh+'" type="text" placeholder="Or type custom value..." style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text);width:150px">';
     html+='<button class="btn btn-p btn-xs" onclick="doBulkEdit(\''+sh+'\')">Apply to Selected</button>';
     html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
     html+='</div>';
@@ -1780,11 +1778,10 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
     var _cbKey=String(r.rows[i]._fbKey||i);
     html+='<td style="width:30px;text-align:center"><input type="checkbox" class="row-cb-'+sh+'" data-fbkey="'+_cbKey+'" data-sh="'+sh+'" onchange="toggleBulkRow(this.dataset.sh,this.dataset.fbkey,this)"></td>';
-      for(var c=0;c<cols.length;c++){
-        var ci=sHdrs.indexOf(cols[c]);
-        var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
-        var cv=rCell(cols[c],val);
-        if(cols[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
+      for(var c=0;c<sHdrs.length;c++){
+        var val=row[c]!==null&&row[c]!==undefined?row[c]:'';
+        var cv=rCell(sHdrs[c],val);
+        if(sHdrs[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
         html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
       }
       html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\''+sh+'\',\''+re+'\')">Edit</button> ';
@@ -1856,18 +1853,16 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
     html+='<span style="font-size:12px;font-weight:600;color:var(--gold)">✏️ Bulk Edit:</span>';
     html+='<span id="bulkCount_'+sh+'" style="font-size:11px;color:var(--text3)">0 selected</span>';
     // AmtStatus quick change
-    html+='<select id="bulkField_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
-    html+='<option value="AmtStatus">AmtStatus</option>';
-    html+='<option value="STATUS">STATUS</option>';
-    html+='<option value="key manager status">key manager status</option>';
+    // Dynamic field selector based on sheet
+    var bulkFields={hold:['AmtStatus','STATUS','key manager status','Rel To:-','PAYMENT BY','ATTEND BY'],errorpayments:['AmtStatus','STATUS','Rel To -'],recharge:['Payment status'],disable:['ACTION']};
+    var bFields=bulkFields[sh]||['AmtStatus','STATUS'];
+    html+='<select id="bulkField_'+sh+'" data-sh="'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)" onchange="updateBulkVals(this.dataset.sh)">';
+    bFields.forEach(function(f){html+='<option value="'+f+'">'+f+'</option>';});
     html+='</select>';
     html+='<select id="bulkVal_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
-    html+='<option value="PENDING">PENDING</option>';
-    html+='<option value="OK">OK</option>';
-    html+='<option value="DONE">DONE</option>';
-    html+='<option value="HOLD">HOLD</option>';
-    html+='<option value="CBD">CBD</option>';
+    html+='<option value="PENDING">PENDING</option><option value="OK">OK</option><option value="DONE">DONE</option><option value="HOLD">HOLD</option><option value="CBD">CBD</option><option value="ENABLED">ENABLED</option><option value="DISABLED">DISABLED</option>';
     html+='</select>';
+    html+='<input id="bulkCustomVal_'+sh+'" type="text" placeholder="Or type custom value..." style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text);width:150px">';
     html+='<button class="btn btn-p btn-xs" onclick="doBulkEdit(\''+sh+'\')">Apply to Selected</button>';
     html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
     html+='</div>';
@@ -1886,11 +1881,10 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
       var re=rowId.replace(/'/g,"'");
       html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
-      for(var c=0;c<cols.length;c++){
-        var ci=sHdrs.indexOf(cols[c]);
-        var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
-        var cv=rCell(cols[c],val);
-        if(cols[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
+      for(var c=0;c<sHdrs.length;c++){
+        var val=row[c]!==null&&row[c]!==undefined?row[c]:'';
+        var cv=rCell(sHdrs[c],val);
+        if(sHdrs[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
         html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
       }
       html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\''+sh+'\',\''+re+'\')">Edit</button> ';
@@ -2177,8 +2171,8 @@ function fi(label,name,val,type,extra){
   var v=String(val===null||val===undefined?'':val);
   var h='<div class="fr"><label class="fl">'+label+req+'</label>';
   if(type==='agent'){
-    // Show as text input pre-filled with current user - not a dropdown
-    return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(v||(_user&&_user.username)||'')+'" placeholder="Enter name or agent"></div>';
+    var agVal=v||(_user&&(_user.agentName||_user.username))||'';
+    return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(agVal)+'" placeholder="Enter name"></div>';
   }
   if(type==='textarea') return h+'<textarea class="fta" name="'+name+'">'+esc(v)+'</textarea></div>';
   if(type==='date') return h+'<input class="fi2" type="date" name="'+name+'" value="'+esc(v?v.substring(0,10):'')+'"></div>';
@@ -3064,7 +3058,8 @@ function doBulkEdit(sh){
   var fieldEl=document.getElementById('bulkField_'+sh);
   var valEl=document.getElementById('bulkVal_'+sh);
   if(!fieldEl||!valEl) return;
-  var field=fieldEl.value, newVal=valEl.value;
+  var customEl=document.getElementById('bulkCustomVal_'+sh);
+  var field=fieldEl.value, newVal=(customEl&&customEl.value.trim())||valEl.value;
   if(!field||!newVal){showAlert('Select field and value','error');return;}
   if(!confirm('Set '+field+' = '+newVal+' for '+keys.length+' selected row(s)?'))return;
   showAlert('Updating '+keys.length+' rows...','info');
@@ -3099,6 +3094,25 @@ function doBulkEdit(sh){
 var _pg_title='', _pg_icon='';
 
 
+
+
+
+function updateBulkVals(sh){
+  var fieldEl=document.getElementById('bulkField_'+sh);
+  var valEl=document.getElementById('bulkVal_'+sh);
+  if(!fieldEl||!valEl)return;
+  var f=fieldEl.value;
+  var opts={
+    'AmtStatus':['PENDING','OK','DONE'],
+    'STATUS':['HOLD','CBD','CANCELLED','COMPLETED'],
+    'key manager status':['AGENT SE RESPONCE NAHI MILA','DRIVER SE RESPONCE NAHI MILA','BOTH SE RESPONCE NAHI MILA','HOLD CONFIRMED','CBD CONFIRMED'],
+    'Payment status':['PENDING','OK','DONE'],
+    'ACTION':['ENABLED','DISABLED','DISABLE KARNA HAI','ENABLE KARNA HAI'],
+    'Rel To:-':[],'Rel To -':[],'PAYMENT BY':[],'ATTEND BY':[]
+  };
+  var choices=opts[f]||['PENDING','OK','DONE','ENABLED','DISABLED'];
+  valEl.innerHTML=choices.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+}
 
 </script>
 </body>
