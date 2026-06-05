@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxi Sanchalak CRM</title>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
+  --border:#e2e5ea;--border2:#d0d4db;
+  --text:#1a1d23;--text2:#4b5563;--text3:#9ca3af;
+  --gold:#b8860b;--gold-bg:#fef9e7;--gold-border:#f0d060;
+  --blue:#1e40af;--green:#15803d;--red:#dc2626;--red-bg:#fef2f2;
+  --orange:#c2410c;--purple:#7c3aed;
+  --sidebar:#1a2035;--sidebar2:#222b45;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}#splash{position:fixed;inset:0;background:linear-gradient(135deg,#1a2035,#2d3748);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:9999;transition:opacity .3s}.sp-ic{font-size:52px;animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:.8}}.sp-t{color:#D4AF37;font-size:18px;font-weight:700;letter-spacing:1px}.sp-s{color:rgba(255,255,255,.4);font-size:12px;margin-top:4px}.sp-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#D4AF37;animation:spd .8s ease-in-out infinite}.sp-dot:nth-child(2){animation-delay:.15s}.sp-dot:nth-child(3){animation-delay:.3s}@keyframes spd{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-6px);opacity:1}}
+
+/* LOGIN */
+#loginPage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a2035 0%,#2d3748 60%,#1a1a2e 100%);padding:20px}
+.login-brand{text-align:center;margin-bottom:28px}
+.login-brand-icon{font-size:52px;display:block;margin-bottom:10px}
+.login-brand-name{color:#fff;font-size:24px;font-weight:800;letter-spacing:1px}
+.login-brand-official{color:#D4AF37;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.login-brand-company{color:rgba(255,255,255,.4);font-size:11px;margin-top:3px}
+/* Department cards */
+.dept-cards{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:28px;max-width:600px}
+.dept-card{background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 20px;min-width:100px;text-align:center;cursor:pointer;transition:all .2s;user-select:none}
+.dept-card:hover{background:rgba(212,175,55,.12);border-color:rgba(212,175,55,.4);transform:translateY(-2px)}
+.dept-card.active{background:rgba(212,175,55,.18);border-color:#D4AF37;box-shadow:0 0 20px rgba(212,175,55,.2)}
+.dept-card-icon{font-size:22px;margin-bottom:6px}
+.dept-card-label{font-size:12px;font-weight:600;color:rgba(255,255,255,.85);letter-spacing:.5px}
+/* Login box */
+.lcard{background:#fff;border-radius:18px;padding:32px 36px 28px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.lcard-title{font-size:14px;font-weight:700;color:#1a2035;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.lcard-dept-badge{background:var(--gold-bg,#fef9e7);border:1px solid var(--gold-border,#f0d060);border-radius:20px;padding:3px 12px;font-size:12px;color:#92400e;font-weight:600}
+.lfield{margin-bottom:14px}
+.llabel{display:block;font-size:10.5px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:600}
+.lsel,.linp{width:100%;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:8px;color:#1a1d23;font-size:14px;padding:11px 13px;outline:none;font-family:inherit;transition:all .2s}
+.lsel:focus,.linp:focus{border-color:#b8860b;box-shadow:0 0 0 3px rgba(184,134,11,.1);background:#fff}
+.lrem{display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:13px;color:#6b7280;cursor:pointer}
+.lbtn{width:100%;background:linear-gradient(135deg,#b8860b,#d4a017);border:none;border-radius:9px;color:#fff;font-size:14px;font-weight:700;padding:13px;cursor:pointer;font-family:inherit;transition:all .2s}
+.lbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(184,134,11,.3)}
+.lbtn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.lerr{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#dc2626;font-size:12.5px;padding:9px 13px;margin-bottom:12px;display:none}
+.login-footer{text-align:center;margin-top:20px;font-size:11px;color:rgba(255,255,255,.3);line-height:1.8}
+.login-footer strong{color:rgba(255,255,255,.5)}
+/* APP */
+/* APP */
+#app{display:none}
+.topbar{background:var(--sidebar);height:52px;display:flex;align-items:center;padding:0 16px;gap:12px;position:sticky;top:0;z-index:100}
+.tb-brand{color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tb-brand em{color:#D4AF37;font-style:normal}
+.tb-sw{position:relative;flex:1;max-width:380px}
+.tb-si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.35);font-size:13px;pointer-events:none}
+.tb-search{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:13px;padding:7px 12px 7px 32px;outline:none;font-family:inherit;transition:all .2s}
+.tb-search:focus{border-color:rgba(212,175,55,.5);background:rgba(255,255,255,.1)}
+.tb-search::placeholder{color:rgba(255,255,255,.3)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px;position:relative}
+.live{display:flex;align-items:center;gap:4px;font-size:10.5px;color:#4ade80;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:14px;padding:3px 9px}
+.ld{width:6px;height:6px;background:#4ade80;border-radius:50%;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.65);padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.tb-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.tb-user{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:4px 12px 4px 5px;cursor:pointer}
+.tb-av{width:28px;height:28px;background:linear-gradient(135deg,#D4AF37,#b8860b);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000}
+.tb-un{font-size:12px;color:#fff;font-weight:500}
+.tb-rl{font-size:10px;color:rgba(255,255,255,.4)}
+.udd{position:absolute;top:46px;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px;min-width:200px;z-index:300;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+.udd-h{padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.udd-n{font-size:13px;font-weight:700;color:var(--text)}
+.udd-r{font-size:11px;color:var(--text3);margin-top:2px}
+.udd-lo{width:100%;margin-top:4px;background:var(--red-bg);border:1px solid #fecaca;color:var(--red);border-radius:6px;padding:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500}
+
+/* LAYOUT */
+.app-body{display:flex;height:calc(100vh - 52px)}
+.sidebar{width:196px;background:var(--sidebar);padding:8px 0;flex-shrink:0;overflow-y:auto}
+.sb-s{font-size:9.5px;color:rgba(148,163,184,.45);text-transform:uppercase;letter-spacing:1.2px;padding:12px 14px 3px;font-weight:600}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 12px;font-size:12.5px;color:#94a3b8;cursor:pointer;border-left:3px solid transparent;border-radius:0 6px 6px 0;margin:1px 5px 1px 0;transition:all .15s;user-select:none}
+.ni:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
+.ni.active{color:#fff;border-left-color:#D4AF37;background:rgba(212,175,55,.14);font-weight:600}
+.ni-ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.ni-section-icon{padding:10px 14px 2px;font-size:18px;color:rgba(255,255,255,.5);user-select:none}
+.rbadge{background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:auto}
+
+.main{flex:1;padding:18px 20px;overflow-y:auto;background:var(--bg)}
+
+/* BUTTONS */
+.btn{border:none;border-radius:6px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.btn-p{background:linear-gradient(135deg,#b8860b,#d4a017);color:#fff}
+.btn-p:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(184,134,11,.3)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-s{background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2)}
+.btn-s:hover{border-color:var(--gold);color:var(--gold)}
+.btn-d{background:var(--red-bg);color:var(--red);border:1px solid #fecaca}
+.btn-d:hover{background:#fee2e2}
+.btn-g{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.btn-g:hover{background:#dcfce7}
+.btn-pu{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+.btn-sm{padding:4px 9px;font-size:11.5px}
+.btn-xs{padding:2px 7px;font-size:11px}
+
+.pg-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.pg-t{font-size:18px;font-weight:700;color:var(--text)}
+.pg-t .hl{color:var(--gold)}
+
+/* AGENT DASH CARDS */
+.adc-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.adc{background:var(--sidebar);border-radius:12px;padding:18px;color:#fff;position:relative;overflow:hidden}
+.adc::after{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:rgba(255,255,255,.04);border-radius:50%}
+.adc-l{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px}
+.adc-v{font-size:36px;font-weight:800;line-height:1}
+.adc-s{font-size:11px;color:rgba(255,255,255,.35);margin-top:5px}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,#b8860b);border-radius:10px 10px 0 0}
+.sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:8px}
+.sv{font-size:28px;font-weight:800;color:var(--text)}
+.ss{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* REQUEST CARDS */
+.req-list{display:flex;flex-direction:column;gap:10px}
+.req-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:14px;transition:box-shadow .2s}
+.req-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.req-card.hold-req{border-left:4px solid #b8860b}
+.req-card.dis-req{border-left:4px solid #ef4444}
+.req-card.en-req{border-left:4px solid #15803d}
+.req-ic{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.req-inf{flex:1;min-width:0}
+.req-bid{font-size:13px;font-weight:700;color:var(--gold);font-family:monospace}
+.req-m{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.req-m2{font-size:12px;color:var(--text2);margin-top:4px;font-weight:500}
+.req-act{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;flex-wrap:wrap}
+.req-empty{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+
+/* FBAR */
+.fbar{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.fi,.fs{background:var(--bg3);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 9px;outline:none;font-family:inherit;transition:border-color .2s}
+.fi:focus,.fs:focus{border-color:var(--gold);background:#fff}
+.fi-m{flex:1;min-width:200px;padding-left:30px}
+.fsw{position:relative;flex:1;min-width:200px}
+.fsi{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
+.f-m{margin-left:auto;font-size:11px;color:var(--text3);font-weight:500}
+
+/* TABLE */
+.tcard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead{position:sticky;top:0;z-index:2}
+th{background:var(--sidebar);color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:10px 14px;border-bottom:2px solid rgba(212,175,55,.2);white-space:nowrap;cursor:pointer;user-select:none;font-weight:700;text-align:left}
+th:hover{color:#D4AF37}
+td{padding:9px 14px;border-bottom:1px solid var(--bg3);color:var(--text2);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;text-align:left}
+tr:hover td{background:var(--gold-bg)}
+tr:last-child td{border-bottom:none}
+tr.ka-row td{background:#fefce8!important}
+tr.ka-row:hover td{background:#fef9c3!important}
+.ka-ic{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;border:1px solid #fde68a;border-radius:3px;padding:1px 5px;font-size:9.5px;color:#92400e;font-weight:700;margin-left:4px;vertical-align:middle}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600}
+.b-hold{background:#fef9e7;color:#92400e;border:1px solid #fde68a}
+.b-cbd{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.b-senior{background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe}
+.b-ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.b-pending{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.b-done{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.b-company{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.b-error{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.b-failed{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.b-reversed{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+.b-resolved{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.b-dis{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.b-en{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.b-verified{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.b-unverified{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
+
+/* PAGER */
+.pager{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border-top:1px solid var(--border);font-size:11.5px;color:var(--text3);flex-wrap:wrap;gap:6px}
+.pbtns{display:flex;gap:3px}
+.pb{background:#fff;border:1.5px solid var(--border);border-radius:5px;color:var(--text2);padding:4px 10px;font-size:11.5px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.pb:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.pb.cur{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:700}
+.pb:disabled{opacity:.35;cursor:not-allowed}
+
+/* PANEL */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;backdrop-filter:blur(2px)}
+.panel{position:fixed;top:0;right:-500px;width:480px;height:100%;background:#fff;border-left:1px solid var(--border);z-index:201;transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.1)}
+.panel.open{right:0}
+.ph{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3)}
+.ph-t{font-size:15px;font-weight:700;color:var(--text)}
+.ph-x{background:none;border:1.5px solid var(--border2);border-radius:5px;color:var(--text3);padding:3px 9px;cursor:pointer;font-size:16px;line-height:1}
+.pb2{flex:1;overflow-y:auto;padding:16px 18px}
+.pft{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--bg3)}
+.fr{margin-bottom:13px}
+.fl{display:block;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;font-weight:600}
+.freq{color:var(--red);margin-left:2px;font-size:10px}
+.fi2,.fse,.fta{width:100%;background:var(--bg3);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 11px;outline:none;font-family:inherit;transition:all .2s}
+.fi2:focus,.fse:focus,.fta:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,134,11,.08);background:#fff}
+.fse option{background:#fff}
+.fta{resize:vertical;min-height:70px;line-height:1.5}
+.fsect{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:12px}
+
+/* MODAL */
+.mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center}
+.mov.show{display:flex}
+.mbox{background:#fff;border-radius:12px;padding:26px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.mt{font-size:15px;font-weight:700;color:var(--red);margin-bottom:10px}
+.mb2{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.mf{display:flex;gap:8px;justify-content:flex-end}
+
+/* ALERT */
+.alb{position:fixed;top:52px;left:0;right:0;z-index:400;padding:11px 20px;font-size:13px;display:none;align-items:center;gap:10px;font-weight:500;animation:slideIn .2s ease}
+.alb.show{display:flex}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.a-s{background:#f0fdf4;border-bottom:2px solid #86efac;color:#15803d}
+.a-e{background:#fef2f2;border-bottom:2px solid #fca5a5;color:#dc2626}
+.al-x{margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;font-size:16px;opacity:.6}
+
+.ldr{text-align:center;padding:50px;color:var(--text3);font-size:13px;font-weight:500}
+.sp{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spp .7s linear infinite;vertical-align:middle;margin-right:7px}
+@keyframes spp{to{transform:rotate(360deg)}}
+.divider{height:1px;background:var(--border);margin:16px 0}
+.btn-wa-green{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#25D366;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:inherit;white-space:nowrap}
+.btn-wa-green:hover{background:#1DA851;transform:scale(1.04)}
+
+</style>
+</head>
+<body>
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-ic">🚖</div>
+  <div class="sp-t">TAXI SANCHALAK</div>
+  <div class="sp-s">TSP Technologies Pvt. Ltd.</div>
+  <div style="display:flex;gap:5px;margin-top:4px">
+    <span class="sp-dot"></span><span class="sp-dot"></span><span class="sp-dot"></span>
+  </div>
+</div>
+
+
+<!-- LOGIN -->
+<div id="loginPage" style="display:none">
+
+  <!-- Brand -->
+  <div class="login-brand">
+    <span class="login-brand-icon">🚖</span>
+    <div class="login-brand-name">TAXI SANCHALAK</div>
+    <div class="login-brand-official">Official CRM Portal</div>
+    <div class="login-brand-company">TSP Technologies Pvt. Ltd.</div>
+  </div>
+
+  <!-- Department Cards -->
+  <div class="dept-cards" id="deptCards">
+    <div class="dept-card" onclick="selectDept('ADMIN','👑')" id="dept-ADMIN">
+      <div class="dept-card-icon">👑</div>
+      <div class="dept-card-label">ADMIN</div>
+    </div>
+    <div class="dept-card" onclick="selectDept('MANAGER','📊')" id="dept-MANAGER">
+      <div class="dept-card-icon">📊</div>
+      <div class="dept-card-label">MANAGER</div>
+    </div>
+    <div class="dept-card" onclick="selectDept('ACCOUNTANT','💰')" id="dept-ACCOUNTANT">
+      <div class="dept-card-icon">💰</div>
+      <div class="dept-card-label">ACCOUNTANT</div>
+    </div>
+    <div class="dept-card" onclick="selectDept('KEY ACCOUNT','🔑')" id="dept-KEY ACCOUNT">
+      <div class="dept-card-icon">🔑</div>
+      <div class="dept-card-label">KEY ACCOUNT</div>
+    </div>
+    <div class="dept-card" onclick="selectDept('CALLING AGENT','📞')" id="dept-CALLING AGENT">
+      <div class="dept-card-icon">📞</div>
+      <div class="dept-card-label">CALLING AGENT</div>
+    </div>
+  </div>
+
+  <!-- Login Box -->
+  <div class="lcard" id="loginBox" style="display:none">
+    <div class="lcard-title">
+      <span id="loginDeptIcon">🚖</span>
+      Login as &nbsp;<span class="lcard-dept-badge" id="loginDeptLabel">—</span>
+    </div>
+    <div class="lerr" id="lErr"><span id="lErrMsg"></span></div>
+    <div class="lfield">
+      <label class="llabel">Select User</label>
+      <select class="lsel" id="selUser"><option value="">Loading...</option></select>
+    </div>
+    <div class="lfield">
+      <label class="llabel">Password</label>
+      <input class="linp" type="password" id="inpPass" placeholder="Enter password">
+    </div>
+    <label class="lrem"><input type="checkbox" id="chkRem"> Remember me for 8 hours</label>
+    <button class="lbtn" id="btnLogin" onclick="doLogin()">LOGIN →</button>
+    <div style="text-align:center;margin-top:12px">
+      <span style="font-size:11px;color:#9ca3af;cursor:pointer" onclick="resetDeptSelect()">← Back to department select</span>
+    </div>
+  </div>
+
+  <div class="login-footer">
+    &copy; 2024 <strong>TSP Technologies Pvt. Ltd.</strong><br>
+    Developed by <strong>Mayank Bahukhandi</strong>
+  </div>
+</div>
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tb-brand">🚖 TAXI <em>SANCHALAK</em></div>
+    <div class="tb-sw">
+      <span class="tb-si">🔍</span>
+      <input class="tb-search" id="gSrch" placeholder="Filter rows instantly..." oninput="onSrch(this.value)">
+    </div>
+    <div class="tb-right">
+      <div class="live"><span class="ld"></span>LIVE</div>
+      <button class="tb-btn" onclick="manualRefresh()" title="Refresh">↻</button>
+      <div class="tb-user" onclick="toggleDD()">
+        <div class="tb-av" id="tbAv">A</div>
+        <div><div class="tb-un" id="tbUn">—</div><div class="tb-rl" id="tbRl">—</div></div>
+      </div>
+      <div class="udd" id="uDD" style="display:none">
+        <div class="udd-h"><div class="udd-n" id="ddN">—</div><div class="udd-r" id="ddR">—</div></div>
+        <button class="udd-lo" onclick="doLogout()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="alb" id="alb"><span id="alMsg"></span><button class="al-x" onclick="hideAlert()">✕</button></div>
+  <div class="app-body">
+    <div class="sidebar">
+      <div class="sb-s">Main</div>
+      <div class="ni active" id="nav-dashboard" onclick="nav('dashboard')"><span class="ni-ic">📊</span>Dashboard</div>
+      <div class="sb-s">Sheets</div>
+      <div class="ni-section-icon">📌</div>
+      <div class="ni" id="nav-hold-main" onclick="nav('hold-main')"><span class="ni-ic">🔴</span>Pending Hold</div>
+      <div class="ni" id="nav-hold-done" onclick="nav('hold-done')"><span class="ni-ic">✅</span>Done Hold</div>
+      <div class="ni" id="nav-errorpayments" onclick="nav('errorpayments')"><span class="ni-ic">⚠️</span>Error Payments</div>
+      <div class="ni" id="nav-recharge" onclick="nav('recharge')"><span class="ni-ic">📱</span>Recharge</div>
+      <div class="ni" id="nav-disable" onclick="nav('disable')"><span class="ni-ic">🚫</span>Disable List</div>
+      <div class="sb-s">Requests</div>
+      <div class="ni" id="nav-hold-req" onclick="nav('hold-req')" style="display:none">
+        <span class="ni-ic">📋</span>Hold Requests
+        <span class="rbadge" id="hReqBadge" style="display:none">0</span>
+      </div>
+      <div class="ni" id="nav-dis-req" onclick="nav('dis-req')" style="display:none">
+        <span class="ni-ic">🔴</span>Disable Req
+        <span class="rbadge" id="dReqBadge" style="display:none">0</span>
+      </div>
+      <div class="ni" id="nav-en-req" onclick="nav('en-req')" style="display:none">
+        <span class="ni-ic">🟢</span>Enable Req
+        <span class="rbadge" id="eReqBadge" style="display:none">0</span>
+      </div>
+      <div id="kaNav" style="display:none">
+        <div class="sb-s">My Agents</div>
+        <div class="ni" id="nav-top-agents" onclick="nav('top-agents')"><span class="ni-ic">⭐</span>Top Agents</div>
+      </div>
+      <div id="tktNav" style="display:none">
+        <div class="sb-s">Support</div>
+        <div class="ni" id="nav-tickets" onclick="nav('tickets')"><span class="ni-ic">🎫</span>Tickets
+          <span class="rbadge" id="tktBadge" style="display:none">0</span>
+        </div>
+      </div>
+      <div id="adminNav" style="display:none">
+        <div class="sb-s">Admin</div>
+        <div class="ni" id="nav-users" onclick="nav('users')"><span class="ni-ic">👥</span>Users</div>
+      </div>
+    </div>
+    <div class="main" id="mc"><div class="ldr"><span class="sp"></span>Loading...</div></div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="ov" id="ov" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="ph"><span class="ph-t" id="pTitle">Record</span><button class="ph-x" onclick="closePanel()">✕</button></div>
+  <div class="pb2" id="pBody"></div>
+  <div class="pft">
+    <button class="btn btn-s" onclick="closePanel()">Cancel</button>
+    <button class="btn btn-p" id="saveBtn">Save Record</button>
+  </div>
+</div>
+
+<!-- DEL MODAL -->
+<div class="mov" id="delMov">
+  <div class="mbox">
+    <div class="mt">🗑 Confirm Delete</div>
+    <div class="mb2">Permanently delete this record?</div>
+    <div class="mf">
+      <button class="btn btn-s" onclick="closeDel()">Cancel</button>
+      <button class="btn btn-d" id="delBtn">Delete</button>
+    </div>
+  </div>
+</div>
+<script>
+
+/* ═══════════════════════════════════════════════════════════
+   TAXI SANCHALAK CRM — FIREBASE EDITION
+   All data operations via Firebase Realtime Database
+   ═══════════════════════════════════════════════════════════ */
+
+var FB_URL = "https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+// ── Firebase helpers ──────────────────────────────────────
+function fbGet(path, cb) {
+  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''))
+    .then(function(r){ return r.json(); })
+    .then(function(d){ cb(null, d); })
+    .catch(function(e){ cb(e, null); });
+}
+
+function fbSet(path, data, cb) {
+  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  }).then(function(r){ return r.json(); })
+    .then(function(d){ if(cb) cb(null, d); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+function fbPatch(path, data, cb) {
+  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  }).then(function(r){ return r.json(); })
+    .then(function(d){ if(cb) cb(null, d); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+function fbDelete(path, cb) {
+  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {method:'DELETE'})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(cb) cb(null, d); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+// ── Real-time listener with polling (60s for store, 5s for HOLD) ──
+var _listeners = {};
+function fbListen(path, cb) {
+  if (_listeners[path]) clearInterval(_listeners[path]);
+  cb(path); // immediate first call
+  _listeners[path] = setInterval(function(){ cb(path); }, 5000);
+}
+function fbUnlisten(path) {
+  if (_listeners[path]) { clearInterval(_listeners[path]); delete _listeners[path]; }
+}
+
+// ── Convert Firebase object to rows array ──
+function fbObjToRows(obj, headers) {
+  if (!obj) return [];
+  var rows = [];
+  Object.keys(obj).forEach(function(k) {
+    var rec = obj[k];
+    if (!rec) return;
+    var row = headers.map(function(h) {
+      var safeKey = h.replace(/[.#$\[\]\/]/g, '_');
+      return rec[safeKey] !== undefined ? rec[safeKey] : (rec[h] !== undefined ? rec[h] : '');
+    });
+    row._fbKey = k;
+    rows.push(row);
+  });
+  return rows;
+}
+
+// ── Headers config (matches migration) ──
+var H = {
+  HOLD: ['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','Rel To:-','DESCRIPTION','0ther','PAYMENT BY','FINAL BY','payment date','MESSAGE','ATTEND BY','key manager status'],
+  ERR:  ['id','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','Driver Details','T AMT','AMT T B REL','STATUS','0ther','AmtStatus','Rel To -','Message','UTR','Payment_date'],
+  RECH: ['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Submitted by','Payment status','Utr Number','Message From Payment dep.','Payment date'],
+  DIS:  ['id','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','DISABLE COUNT','ACTION'],
+  TKT:  ['TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','STATUS','SUBMITTED BY','RESOLVED BY','RESOLVE DATE','ADMIN NOTE'],
+  USR:  ['USER_ID','USERNAME','PASSWORD','ROLE','DEPARTMENT','CREATED_BY','Agent_Name']
+};
+
+// ── Auth state ──
+var _fbToken = null; // Firebase uses open rules — token not needed in test mode
+
+// ── Login via Firebase ──
+function doLogin(){
+  var u=document.getElementById('selUser').value;
+  var p=document.getElementById('inpPass').value;
+  var rem=document.getElementById('chkRem').checked;
+  if(!u){lErr('Select username.');return;}
+  if(!p){lErr('Enter password.');return;}
+  var btn=document.getElementById('btnLogin');
+  btn.disabled=true; btn.textContent='Authenticating...'; hideLErr();
+
+  // Read users from Firebase
+  fbGet('users', function(err, data) {
+    btn.disabled=false; btn.textContent='LOGIN TO CRM';
+    if (err || !data) { lErr('Connection error. Check internet.'); return; }
+    // Find matching user
+    var found = null;
+    Object.keys(data).forEach(function(k) {
+      var usr = data[k];
+      if (!usr) return;
+      var uname = (usr.USERNAME||'').toString().trim().toUpperCase();
+      var pass  = (usr.PASSWORD||'').toString().trim();
+      if (uname === u.toString().trim().toUpperCase() && pass === p) {
+        found = usr;
+      }
+    });
+    if (!found) { lErr('Invalid username or password.'); return; }
+
+    // Build session
+    var token = 'fb_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+    var st = rem ? localStorage : sessionStorage;
+    st.setItem('crm_t',  token);
+    st.setItem('crm_un', found.USERNAME||'');
+    st.setItem('crm_ro', found.ROLE||'');
+    st.setItem('crm_dp', found.DEPARTMENT||'');
+    st.setItem('crm_id', String(found.USER_ID||''));
+    st.setItem('crm_an', found.Agent_Name||'');
+    if(rem) localStorage.setItem('crm_u', u);
+    else localStorage.removeItem('crm_u');
+
+    _tok  = token;
+    _user = {
+      username:   found.USERNAME||'',
+      role:       found.ROLE||'',
+      department: found.DEPARTMENT||'',
+      userId:     found.USER_ID||'',
+      agentName:  found.Agent_Name||''
+    };
+    bootApp();
+  });
+}
+
+// ── Logout ──
+function doLogout(){
+  ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an'].forEach(function(k){
+    localStorage.removeItem(k); sessionStorage.removeItem(k);
+  });
+  _tok=null; _user=null; _store={};
+  Object.keys(_listeners).forEach(fbUnlisten);
+  if(_rt) clearInterval(_rt);
+  if(_rt2) clearInterval(_rt2);
+  if(_storeRt) clearInterval(_storeRt);
+  hide('app'); show('loginPage');
+  document.getElementById('inpPass').value='';
+}
+
+// ── Load all sheet data into _store ──
+function preloadStore(){
+  var sheets = [
+    {path:'hold',          key:'hold',          hdrs:H.HOLD},
+    {path:'errorpayments', key:'errorpayments',  hdrs:H.ERR},
+    {path:'recharge',      key:'recharge',       hdrs:H.RECH},
+    {path:'disable',       key:'disable',        hdrs:H.DIS},
+    {path:'tickets',       key:'tickets',        hdrs:H.TKT}
+  ];
+  var loaded = 0;
+  var total  = sheets.length;
+  sheets.forEach(function(s) {
+    fbGet(s.path, function(err, data) {
+      if (!err && data) {
+        var rows = fbObjToRows(data, s.hdrs);
+        _store[s.key] = {headers: s.hdrs, rows: rows};
+      }
+      loaded++;
+      if (loaded === total) {
+        saveStoreToLocal();
+        if (_pg && _pg !== 'dashboard') loadPg(_pg);
+      }
+    });
+  });
+}
+
+// ── HOLD specific functions ──
+function getHoldMain(params, cb) {
+  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
+  var r = filterHoldViewFB('main', params);
+  cb({success:true, headers:H.HOLD, rows:r.rows, total:r.total,
+      page:r.page, pageSize:r.pageSize, totalPages:r.totalPages});
+}
+
+function getHoldDone(params, cb) {
+  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
+  var r = filterHoldViewFB('done', params);
+  cb({success:true, headers:H.HOLD, rows:r.rows, total:r.total,
+      page:r.page, pageSize:r.pageSize, totalPages:r.totalPages});
+}
+
+function filterHoldViewFB(mode, st) {
+  var data = _store.hold;
+  if (!data) return {rows:[],total:0,page:1,pageSize:100,totalPages:1};
+  var headers = H.HOLD;
+  var sIdx  = headers.indexOf('STATUS');
+  var asIdx = headers.indexOf('AmtStatus');
+  var rows  = data.rows.filter(function(r) {
+    var st2 = (r[sIdx]||'').toString().toUpperCase().trim();
+    var as  = (r[asIdx]||'').toString().toUpperCase().trim();
+    if (mode === 'main') {
+      return (st2==='HOLD'||st2==='CBD')&&(as==='PENDING'||as==='');
+    } else {
+      return (st2==='HOLD'||st2==='CBD')&&(as==='OK'||as==='DONE');
+    }
+  });
+  // Role filter for calling agent
+  var role = R();
+  if (role === 'CALLING AGENT') {
+    var hbIdx = headers.indexOf('HOLD BY');
+    var uname = (_user&&(_user.agentName||_user.username)||'').toUpperCase();
+    rows = rows.filter(function(r){ return (r[hbIdx]||'').toString().toUpperCase()===uname; });
+  }
+  var page = parseInt(st&&st.page)||1;
+  var ps   = parseInt(st&&st.pageSize)||100;
+  var total = rows.length;
+  var start = (page-1)*ps;
+  return {rows:rows.slice(start,start+ps), total:total, page:page,
+          pageSize:ps, totalPages:Math.ceil(total/ps)||1};
+}
+
+// ── Add/Update/Delete HOLD row ──
+function fbAddHoldRow(data, cb) {
+  var ts = Date.now();
+  var key = (data['BOOKING ID']||'').toString().replace(/[.#$\[\]\/]/g,'_')||'bk_'+ts;
+  fbSet('hold/'+key, data, function(err) {
+    if (err) { cb({success:false,error:err.message}); return; }
+    // Update local store
+    if (_store.hold) {
+      var row = H.HOLD.map(function(h){ return data[h.replace(/[.#$\[\]\/]/g,'_')]||data[h]||''; });
+      row._fbKey = key;
+      _store.hold.rows.push(row);
+    }
+    cb({success:true});
+  });
+}
+
+function fbUpdateHoldRow(fbKey, data, cb) {
+  fbPatch('hold/'+fbKey, data, function(err) {
+    if (err) { cb({success:false,error:err.message}); return; }
+    // Update local store
+    if (_store.hold) {
+      for (var i=0; i<_store.hold.rows.length; i++) {
+        if (_store.hold.rows[i]._fbKey === fbKey) {
+          H.HOLD.forEach(function(h,idx) {
+            var sk = h.replace(/[.#$\[\]\/]/g,'_');
+            if (data[sk]!==undefined) _store.hold.rows[i][idx]=data[sk];
+            else if (data[h]!==undefined) _store.hold.rows[i][idx]=data[h];
+          });
+          break;
+        }
+      }
+    }
+    cb({success:true});
+  });
+}
+
+function fbDeleteHoldRow(fbKey, cb) {
+  fbDelete('hold/'+fbKey, function(err) {
+    if (err) { cb({success:false,error:err.message}); return; }
+    if (_store.hold) {
+      _store.hold.rows = _store.hold.rows.filter(function(r){ return r._fbKey !== fbKey; });
+    }
+    cb({success:true});
+  });
+}
+
+// ── Quick HOLD action (STATUS change) ──
+function quickHoldFB(bid) {
+  if(!confirm('Set STATUS = HOLD for Booking ID: '+bid+'?')) return;
+  showAlert('Updating...','info');
+  // Find the row
+  if (!_store.hold) { showAlert('Data not loaded','error'); return; }
+  var bidIdx = H.HOLD.indexOf('BOOKING ID');
+  var sIdx   = H.HOLD.indexOf('STATUS');
+  for (var i=0; i<_store.hold.rows.length; i++) {
+    if ((_store.hold.rows[i][bidIdx]||'').toString().trim()===bid.toString().trim()) {
+      var fbKey = _store.hold.rows[i]._fbKey;
+      var updates = {}; updates['STATUS'] = 'HOLD';
+      fbPatch('hold/'+fbKey, updates, function(err) {
+        if (err) { showAlert('Failed: '+err.message,'error'); return; }
+        _store.hold.rows[i][sIdx] = 'HOLD';
+        showAlert('STATUS changed to HOLD ✓','success');
+        loadHoldReq();
+      });
+      return;
+    }
+  }
+  showAlert('Booking ID not found','error');
+}
+
+// ── Quick Disable action ──
+function quickDisableFB(rid, newAction, type) {
+  var msg = newAction==='ENABLED'?'Mark as ENABLED?':'Mark as DISABLED?';
+  if(!confirm(msg)) return;
+  showAlert('Updating...','info');
+  if (!_store.disable) { showAlert('Data not loaded','error'); return; }
+  var idIdx  = H.DIS.indexOf('id');
+  var actIdx = H.DIS.indexOf('ACTION');
+  var enByIdx= H.DIS.indexOf('ENABLED BY');
+  for (var i=0; i<_store.disable.rows.length; i++) {
+    if ((_store.disable.rows[i][idIdx]||'').toString().trim()===rid.toString().trim()) {
+      var fbKey = _store.disable.rows[i]._fbKey;
+      var updates = {ACTION: newAction};
+      if (newAction==='ENABLED') updates['ENABLED_BY']=_user.username||'';
+      fbPatch('disable/'+fbKey, updates, function(err) {
+        if (err) { showAlert('Failed: '+err.message,'error'); return; }
+        _store.disable.rows[i][actIdx] = newAction;
+        if (newAction==='ENABLED'&&enByIdx>=0) _store.disable.rows[i][enByIdx]=_user.username||'';
+        var msg2 = newAction==='ENABLED'?'ENABLED ✓ | BY: '+(_user.username||''):'DISABLED ✓';
+        showAlert(msg2,'success');
+        if(type==='enable') loadEnReq(); else loadDisReq();
+      });
+      return;
+    }
+  }
+  showAlert('Row not found','error');
+}
+
+// ── Ticket functions ──
+function fbAddTicket(data, cb) {
+  var now    = new Date();
+  var mmdd   = (now.getMonth()+1).toString().padStart(2,'0') + now.getDate().toString().padStart(2,'0');
+  // Count today's tickets for sequence
+  var seq    = 1;
+  if (_store.tickets && _store.tickets.rows) {
+    var prefix = 'TSP-TKT-'+mmdd+'-';
+    _store.tickets.rows.forEach(function(r){ if((r[0]||'').indexOf(prefix)===0) seq++; });
+  }
+  var tktId  = 'TSP-TKT-'+mmdd+'-'+String(seq).padStart(3,'0');
+  var dateStr= now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
+  var record = {
+    'TICKET_ID':       tktId,
+    'DATE':            dateStr,
+    'CUSTOMER_NUMBER': (data['CUSTOMER NUMBER']||'').toString().trim(),
+    'ISSUE':           (data['ISSUE']||'').toString().trim(),
+    'REMARK':          (data['REMARK']||'').toString().trim(),
+    'STATUS':          'PENDING',
+    'SUBMITTED_BY':    _user.username||'',
+    'RESOLVED_BY':     '',
+    'RESOLVE_DATE':    '',
+    'ADMIN_NOTE':      ''
+  };
+  var fbKey = tktId.replace(/[.#$\[\]\/]/g,'_');
+  fbSet('tickets/'+fbKey, record, function(err) {
+    if (err) { cb({success:false,error:err.message}); return; }
+    // Update local store
+    if (_store.tickets) {
+      var row = H.TKT.map(function(h){ return record[h.replace(/[.#$\[\]\/]/g,'_')]||''; });
+      row._fbKey = fbKey;
+      _store.tickets.rows.push(row);
+    }
+    cb({success:true, ticketId:tktId});
+  });
+}
+
+function fbUpdateTicketStatus(tktId, newStatus, adminNote, cb) {
+  var role = R();
+  if (role!=='ADMIN'&&role!=='MANAGER'&&role!=='ACCOUNTANT') {
+    cb({success:false,error:'Access denied'}); return;
+  }
+  if (!_store.tickets) { cb({success:false,error:'Data not loaded'}); return; }
+  var tIdx = H.TKT.indexOf('TICKET ID');
+  for (var i=0; i<_store.tickets.rows.length; i++) {
+    var row = _store.tickets.rows[i];
+    if ((row[tIdx]||'').toString().trim()===tktId.toString().trim()) {
+      var fbKey = row._fbKey;
+      var now = new Date();
+      var dateStr = now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
+      var updates = {
+        STATUS:       newStatus,
+        RESOLVED_BY:  _user.username||'',
+        RESOLVE_DATE: dateStr,
+        ADMIN_NOTE:   adminNote||''
+      };
+      fbPatch('tickets/'+fbKey, updates, function(err) {
+        if (err) { cb({success:false,error:err.message}); return; }
+        var stIdx = H.TKT.indexOf('STATUS');
+        var rbIdx = H.TKT.indexOf('RESOLVED BY');
+        var rdIdx = H.TKT.indexOf('RESOLVE DATE');
+        var anIdx = H.TKT.indexOf('ADMIN NOTE');
+        _store.tickets.rows[i][stIdx] = newStatus;
+        _store.tickets.rows[i][rbIdx] = _user.username||'';
+        _store.tickets.rows[i][rdIdx] = dateStr;
+        _store.tickets.rows[i][anIdx] = adminNote||'';
+        cb({success:true});
+      });
+      return;
+    }
+  }
+  cb({success:false, error:'Ticket not found: '+tktId});
+}
+
+// ── User management ──
+function fbGetUsers(cb) {
+  fbGet('users', function(err, data) {
+    if (err||!data) { cb({success:false,error:'Failed to load users'}); return; }
+    var users = Object.keys(data).map(function(k){
+      var u = data[k]; u._fbKey = k; return u;
+    }).filter(Boolean);
+    cb({success:true, data:users});
+  });
+}
+
+function fbSaveUser(userData, isNew, cb) {
+  var uid  = (userData.USER_ID||'').toString().trim();
+  var key  = 'u_'+uid;
+  var record = {};
+  H.USR.forEach(function(h){ record[h]=userData[h]||''; });
+  fbSet('users/'+key, record, function(err){
+    if(err){cb({success:false,error:err.message});return;}
+    cb({success:true});
+  });
+}
+
+function fbDeleteUser(userId, cb) {
+  fbDelete('users/u_'+userId, function(err){
+    if(err){cb({success:false,error:err.message});return;}
+    cb({success:true});
+  });
+}
+
+// ── Live HOLD sync (5s polling) ──
+var _holdPollCount = 0;
+function startHoldLiveSync() {
+  if (_rt) clearInterval(_rt);
+  _rt = setInterval(function() {
+    if (document.hidden || _searchActive) return;
+    // Poll Firebase for HOLD changes
+    fbGet('hold', function(err, data) {
+      if (err || !data) return;
+      var rows = fbObjToRows(data, H.HOLD);
+      var changed = !_store.hold || rows.length !== _store.hold.rows.length;
+      if (!changed && _store.hold) {
+        // Check last row difference
+        var newLast = JSON.stringify(rows[rows.length-1]);
+        var oldLast = JSON.stringify(_store.hold.rows[_store.hold.rows.length-1]);
+        changed = newLast !== oldLast;
+      }
+      if (changed) {
+        var prevLen = _store.hold ? _store.hold.rows.length : 0;
+        _store.hold = {headers:H.HOLD, rows:rows};
+        saveStoreToLocal();
+        var diff = rows.length - prevLen;
+        if (prevLen > 0) {
+          if (diff > 0) showAlert('🔴 '+diff+' new HOLD record'+(diff>1?'s':'')+'!','info');
+          else showAlert('🔄 HOLD data updated','info');
+        }
+        if (_pg==='hold-main') loadHoldMain();
+        else if (_pg==='hold-done') loadHoldDone();
+        else if (_pg==='hold-req') loadHoldReq();
+        updateBadges();
+      }
+    });
+  }, 5000);
+}
+
+// ── Export CSV ──
+function doExport() {
+  var sheetMap = {
+    hold:'hold', errorpayments:'errorpayments',
+    recharge:'recharge', disable:'disable'
+  };
+  var hdrMap = {hold:H.HOLD, errorpayments:H.ERR, recharge:H.RECH, disable:H.DIS};
+  var sh = _eiSh;
+  var data = _store[sh];
+  if (!data) { showAlert('Data not loaded yet','error'); return; }
+  var rows = [data.headers].concat(data.rows.map(function(r){
+    return data.headers.map(function(_,i){ return r[i]||''; });
+  }));
+  var csv = rows.map(function(row){
+    return row.map(function(c){
+      var s = String(c);
+      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)
+        s='"'+s.replace(/"/g,'""')+'"';
+      return s;
+    }).join(',');
+  }).join('\r\n');
+  var blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href   = url;
+  a.download = (_eiTitle||'export').replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showAlert('Exported '+data.rows.length+' rows ✓','success');
+  var es = document.getElementById('exportStatus');
+  if(es) es.textContent='✅ '+data.rows.length+' rows exported';
+}
+
+// ── Dashboard stats (computed from _store) ──
+function getDashboardStatsFB(dateFrom, dateTo, cb) {
+  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
+  var h = H.HOLD;
+  var sIdx  = h.indexOf('STATUS');
+  var asIdx = h.indexOf('AmtStatus');
+  var hbIdx = h.indexOf('HOLD BY');
+  var atIdx = h.indexOf('ATTEND BY');
+  var dIdx  = h.indexOf('DATE');
+  var fbIdx = h.indexOf('FINAL BY');
+  var rows  = _store.hold.rows;
+
+  // Date filter
+  if (dateFrom || dateTo) {
+    rows = rows.filter(function(r) {
+      var d = r[dIdx] ? new Date(r[dIdx].split('/').reverse().join('-')) : null;
+      if (!d || isNaN(d.getTime())) return true;
+      if (dateFrom && d < new Date(dateFrom)) return false;
+      if (dateTo   && d > new Date(dateTo))   return false;
+      return true;
+    });
+  }
+
+  var holdPend=0, cbdPend=0, solved=0;
+  var agentMap={}, kaMap={};
+  rows.forEach(function(r) {
+    var st = (r[sIdx]||'').toUpperCase().trim();
+    var as = (r[asIdx]||'').toUpperCase().trim();
+    var hb = (r[hbIdx]||'').trim();
+    var at = (r[atIdx]||'').trim();
+    var fb = (r[fbIdx]||'').trim();
+    if (st==='HOLD'&&(as==='PENDING'||as==='')) holdPend++;
+    if (st==='CBD' &&(as==='PENDING'||as==='')) cbdPend++;
+    if (as==='OK'||as==='DONE') solved++;
+    if (hb) { agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0}; }
+    if (st==='HOLD') agentMap[hb]&&agentMap[hb].hold++;
+    if (st==='CBD')  agentMap[hb]&&agentMap[hb].cbd++;
+    if (fb&&(as==='OK'||as==='DONE')) { agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0}; agentMap[fb].solved++; }
+    if (at) { kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0}; kaMap[at].attempts++; }
+  });
+
+  // Recharge, Disable from store
+  var rechPend=0, disCnt=0, disReq=0, enReq=0;
+  if (_store.recharge) {
+    var psIdx = H.RECH.indexOf('Payment status');
+    _store.recharge.rows.forEach(function(r){ if((r[psIdx]||'').toUpperCase().trim()==='PENDING') rechPend++; });
+  }
+  if (_store.disable) {
+    var actIdx = H.DIS.indexOf('ACTION');
+    _store.disable.rows.forEach(function(r){
+      var act = (r[actIdx]||'').toUpperCase().trim();
+      if(act==='DISABLED') disCnt++;
+      if(act==='DISABLE KARNA HAI') disReq++;
+      if(act==='ENABLE KARNA HAI') enReq++;
+    });
+  }
+
+  cb({
+    success:true,
+    holdPending: holdPend, cbdPending: cbdPend, solved: solved,
+    rechargePending: rechPend,
+    totalDisabled: disCnt, disableReq: disReq, enableReq: enReq,
+    agentReport: Object.values(agentMap),
+    kaReport:    Object.values(kaMap)
+  });
+}
+
+// ── KA Agents ──
+function fbGetKAAgents(cb) {
+  fbGet('agents', function(err, data) {
+    if (err||!data) { cb({success:false,data:[]}); return; }
+    var agents = [];
+    var myName = (_user&&(_user.agentName||_user.username)||'').toUpperCase();
+    Object.keys(data).forEach(function(k){
+      var a = data[k];
+      if (!a) return;
+      if (!myName || (a.assigned||'').toUpperCase()===myName) agents.push(a);
+    });
+    cb({success:true, data:agents});
+  });
+}
+
+function fbGetAgentNames(cb) {
+  fbGet('agents', function(err, data) {
+    if (err||!data) { cb({success:true,data:[]}); return; }
+    var names = [];
+    Object.keys(data).forEach(function(k){ if(data[k]&&data[k].name) names.push(data[k].name); });
+    cb({success:true, data:names});
+  });
+}
+
+
+function savePanel(){
+  var sh=_ps,rowId=_pid,mode=_pm;
+  var btn=document.getElementById('saveBtn');
+  btn.removeAttribute('onclick');btn.disabled=true;btn.textContent='Saving...';
+  var inputs=document.querySelectorAll('#pBody [name]');
+  var d={};for(var i=0;i<inputs.length;i++) d[inputs[i].name]=inputs[i].value;
+  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
+  var path=pathMap[sh];
+  if(!path){showAlert('Unknown sheet: '+sh,'error');btn.disabled=false;btn.textContent='Save Record';return;}
+  var hdrs=hdrMap[sh],keyCol=keyMap[sh];
+  var record={};
+  hdrs.forEach(function(h){record[h.replace(/[.#$\[\]\/]/g,'_')]=d[h]||'';});
+  if(mode==='add'){
+    var keyVal=(d[keyCol]||'').toString().replace(/[.#$\[\]\/]/g,'_')||'r_'+Date.now();
+    fbSet(path+'/'+keyVal,record,function(err){
+      btn.disabled=false;btn.textContent='Save Record';
+      if(err){showAlert('ERR_HOLD_ADD: '+err.message,'error');return;}
+      if(_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$\[\]\/]/g,'_')]||'';});row._fbKey=keyVal;_store[sh].rows.push(row);}
+      showAlert('Saved!','success');closePanel();
+      if(sh==='hold'){_holdRowCount=0;_holdTs='0';}
+      loadPg(sh);updateBadges();
+    });
+  }else{
+    var fbKey=rowId;
+    if(_store[sh]){var kIdx=hdrs.indexOf(keyCol);for(var i2=0;i2<_store[sh].rows.length;i2++){if((_store[sh].rows[i2][kIdx]||'').toString().trim()===rowId.toString().trim()){fbKey=_store[sh].rows[i2]._fbKey||rowId;break;}}}
+    fbPatch(path+'/'+fbKey,record,function(err){
+      btn.disabled=false;btn.textContent='Save Record';
+      if(err){showAlert('ERR_HOLD_UPD: '+err.message,'error');return;}
+      if(_store[sh]){var kIdx2=hdrs.indexOf(keyCol);for(var i3=0;i3<_store[sh].rows.length;i3++){if((_store[sh].rows[i3][kIdx2]||'').toString().trim()===rowId.toString().trim()){hdrs.forEach(function(h,idx2){_store[sh].rows[i3][idx2]=record[h.replace(/[.#$\[\]\/]/g,'_')]||'';});break;}}}
+      showAlert('Saved!','success');closePanel();
+      if(sh==='hold'){_holdRowCount=0;_holdTs='0';}
+      loadPg(sh);updateBadges();
+    });
+  }
+}
+function deleteRow(sh,rowId){
+  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
+  var path=pathMap[sh];
+  if(!path){showAlert('Unknown sheet','error');return;}
+  if(!confirm('Delete this record?'))return;
+  var hdrs=hdrMap[sh],kIdx=hdrs.indexOf(keyMap[sh]);
+  var fbKey=rowId;
+  if(_store[sh]){for(var i=0;i<_store[sh].rows.length;i++){if((_store[sh].rows[i][kIdx]||'').toString().trim()===rowId.toString().trim()){fbKey=_store[sh].rows[i]._fbKey||rowId;break;}}}
+  fbDelete(path+'/'+fbKey,function(err){
+    if(err){showAlert('Delete failed: '+err.message,'error');return;}
+    if(_store[sh]){_store[sh].rows=_store[sh].rows.filter(function(r){return r._fbKey!==fbKey;});}
+    showAlert('Deleted','success');loadPg(sh);updateBadges();
+  });
+}
+function fbLoadAllSheets(){
+  var sheets=[{path:'hold',key:'hold',hdrs:H.HOLD},{path:'errorpayments',key:'errorpayments',hdrs:H.ERR},{path:'recharge',key:'recharge',hdrs:H.RECH},{path:'disable',key:'disable',hdrs:H.DIS},{path:'tickets',key:'tickets',hdrs:H.TKT}];
+  var loaded=0;
+  sheets.forEach(function(s){
+    fbGet(s.path,function(err,data){
+      if(!err&&data){var rows=fbObjToRows(data,s.hdrs);_store[s.key]={headers:s.hdrs,rows:rows};}
+      loaded++;
+      if(loaded===sheets.length){saveStoreToLocal();updateBadges();if(_pg&&_pg!=='dashboard')loadPg(_pg);}
+    });
+  });
+}
+function tryRestoreSession(){
+  var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');
+  if(!t)return false;
+  _tok=t;
+  _user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};
+  return !!_user.username;
+}
+
+function bootApp(){
+  // Hide splash FIRST before anything else can fail
+  try{var s=document.getElementById('splash');if(s){s.style.display='none';}}catch(e){}
+  hide('loginPage');show('app');
+  document.getElementById('tbAv').textContent=(_user.username||'U')[0].toUpperCase();
+  document.getElementById('tbUn').textContent=_user.username||'—';
+  document.getElementById('tbRl').textContent=_user.role||'—';
+  document.getElementById('ddN').textContent=_user.username||'—';
+  document.getElementById('ddR').textContent=(_user.role||'')+(_user.department?' · '+_user.department:'');
+  var role=R();
+  if(role==='ADMIN'||role==='MANAGER') document.getElementById('adminNav').style.display='block';
+  // Show request tabs
+  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT'){
+    document.getElementById('nav-hold-req').style.display='flex';
+    document.getElementById('nav-dis-req').style.display='flex';
+    document.getElementById('nav-en-req').style.display='flex';
+  }
+  // Tickets tab visible for ALL roles
+  document.getElementById('tktNav').style.display='block';
+  // Hide Dashboard nav for Calling Agent — they go straight to Pending Hold
+  if(role==='CALLING AGENT'){
+    var dashNav=document.getElementById('nav-dashboard');
+    if(dashNav) dashNav.style.display='none';
+    var mainLbl=document.getElementById('mainNavLabel');
+    if(mainLbl) mainLbl.style.display='none';
+  }
+  if(role==='KEY ACCOUNT'){
+    document.getElementById('kaNav').style.display='block';
+  }
+  // Load agent lists + store current user's display name
+  fbGetAgentNames(function(r){if(r&&r.success){_agents=r.data;if(R()==="CALLING AGENT"){var uname=(_user.agentName||_user.username||"").toUpperCase();for(var ai=0;ai<_agents.length;ai++){if(_agents[ai].toUpperCase()===uname){_user.agentDisplayName=_agents[ai];break;}}if(!_user.agentDisplayName)_user.agentDisplayName=_user.agentName||_user.username||"";}}});
+  fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});
+  // ── FIX A: Load localStorage BEFORE nav so first click is instant ──
+  var hadLocal = loadStoreFromLocal();
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){if(_rt){clearInterval(_rt);_rt=null;}if(_rt2){clearInterval(_rt2);_rt2=null;}}
+    else{if(!_rt)startRT();}
+  });
+  startRT();
+  var _bootRole=R();
+  if(hadLocal){
+    // Store loaded from localStorage — navigate instantly
+    if(_bootRole==='CALLING AGENT') nav('hold-main');
+    else nav('dashboard');
+    // Sync from server silently in background
+    preloadStore();
+  } else {
+    // No local cache — navigate immediately, load data in background
+    if(_bootRole==='CALLING AGENT') nav('hold-main');
+    else nav('dashboard');
+    // startRT() already called above — don't call twice
+    preloadStore();
+  }
+}
+
+var _holdRowCount=0, _holdTs='0';
+
+
+// Hard fallback: if splash still showing after 5s, force show login
+setTimeout(function(){
+  var s=document.getElementById('splash');
+  var l=document.getElementById('loginPage');
+  var a=document.getElementById('app');
+  if(s&&s.style.display!=='none'){
+    s.style.display='none';
+    if(a&&a.style.display!=='none') return; // app already showing
+    if(l) l.style.display='flex'; // show login as fallback
+  }
+},5000);
+
+
+/* ═══ STATE ═══ */
+var _tok=null,_user=null,_pg='dashboard',_rt=null;
+var _pm=null,_ps=null,_pid=null,_del=null;
+var _ts={},_agents=[],_kaAgents=[],_rc={};
+var _searchActive=false,_searchResumeTimer=null,_storeRt=null,_rt2=null;
+var _store={}; // client-side data store — all sheet data loaded once
+
+/* ═══ DESC OPTIONS ═══ */
+var DOPTS={
+  'CBD':['Dono Se Confirm Ho Gya Hai','Agent Se Confirm Ho Gya Hai','एजेंट से पुष्टि हो गई है।','It has been confirmed with the driver','ड्राइवर से पुष्टि हो गई है।','NO RESPONCE FROM AGENT SIDE','AFTER TC','एजेंट से कोई प्रतिक्रिया नहीं मिली।','The driver is currently on duty','चालक वर्तमान में ड्यूटी पर है।','The driver is not answering the phone','चालक फोन का जवाब नहीं दे रहा।','The driver mistakenly accepted the booking','चालक ने गलती से बुकिंग स्वीकार की।','The driver picked up the wrong booking','चालक ने गलत बुकिंग उठाई।','I will not be able to take this duty','मैं यह ड्यूटी नहीं कर पाऊँगा।'],
+  'HOLD':['Dono Se Confirm Ho Gya Hai','The driver reached late for the pickup, so the customer left with another vehicle','चालक देर से पहुँचा, इसलिए ग्राहक दूसरी गाड़ी से चला गया।','The driver received a lower amount for the booking','चालक को बुकिंग के लिए कम राशि मिली।','Agent Se Confirm Ho Gya Hai','एजेंट से पुष्टि हो गई है।','NO RESPONCE FROM AGENT SIDE','एजेंट से कोई प्रतिक्रिया नहीं मिली।','AFTER TC','It has been confirmed with the driver','ड्राइवर से पुष्टि हो गई है।','The driver mistakenly accepted the booking','चालक ने गलती से बुकिंग स्वीकार की।','The agent did not provide any details, ended the booking, and is not answering the phone','एजेंट ने कोई विवरण नहीं दिया, बुकिंग समाप्त कर दी और फोन का जवाब भी नहीं दे रहा।','The driver informed that the customer refused, agent asked for live location but driver did not share','चालक ने बताया कि ग्राहक ने मना कर दिया, एजेंट ने लाइव लोकेशन मांगी लेकिन चालक ने साझा नहीं की।','The vehicle met with an accident, driver cannot do pickup','गाड़ी का एक्सीडेंट हो गया, चालक पिकअप नहीं कर सकता।','Driver says he drove extra kilometers, got less money, and could not contact agent','चालक ने कहा कि उसने अतिरिक्त किलोमीटर चलाया, कम पैसे मिले।','There were two pickup points but booking did not mention it','बुकिंग में दो पिकअप पॉइंट थे लेकिन यह उल्लेखित नहीं था।','Agent said he would pay for extra kilometers but now not answering the phone','Driver says waiting charges were promised but not received yet','The driver had reached the location, but the agent/customer is not answering the call','ड्राइवर लोकेशन पर पहुँच गया था, लेकिन एजेंट/कस्टमर कॉल नहीं उठा रहे हैं।','Customer was more passengers, extra amount discussed but agent not answering the phone'],
+  'TO BE HOLD BY SENIOR':['Dono Se Confirm Ho Gya Hai','The driver reached late for the pickup, so the customer left with another vehicle','चालक देर से पहुँचा, इसलिए ग्राहक दूसरी गाड़ी से चला गया।','The driver received a lower amount for the booking','चालक को बुकिंग के लिए कम राशि मिली।','Agent Se Confirm Ho Gya Hai','एजेंट से पुष्टि हो गई है।','NO RESPONCE FROM AGENT SIDE','AFTER TC','It has been confirmed with the driver','ड्राइवर से पुष्टि हो गई है।','The driver mistakenly accepted the booking','The agent did not provide any details, ended the booking, and is not answering the phone','एजेंट ने कोई विवरण नहीं दिया, बुकिंग समाप्त कर दी और फोन का जवाब भी नहीं दे रहा।','The driver informed that the customer refused, agent asked for live location but driver did not share','The driver had reached the location, but the agent/customer is not answering the call','Customer was more passengers, extra amount discussed but agent not answering the phone']
+};
+
+/* ═══ INIT ═══ */
+// ── Tab deduplication: warn if another tab is already running ──
+(function(){
+  try {
+    if(typeof BroadcastChannel !== 'undefined'){
+      var _bc = new BroadcastChannel('crm_tab');
+      var _tabId = Date.now().toString();
+      _bc.onmessage = function(e){
+        if(e.data && e.data.type==='ping' && e.data.id !== _tabId){
+          _bc.postMessage({type:'pong', id:_tabId});
+        }
+        if(e.data && e.data.type==='pong' && e.data.id !== _tabId){
+          // Another tab is active
+          var banner = document.getElementById('multiTabBanner');
+          if(banner) banner.style.display='flex';
+        }
+      };
+      // Ping other tabs on load
+      setTimeout(function(){ _bc.postMessage({type:'ping', id:_tabId}); }, 500);
+    }
+  } catch(e) {}
+})();
+
+// Department selection — load all usernames initially in background
+var _allUsernames = [];
+
+// bootApp is defined by Firebase version (fb_js)
+
+
+var _holdRowCount=0, _holdTs='0';
+
+function startRT(){ startHoldLiveSync(); _rt2=setInterval(function(){if(!document.hidden)updateBadges();},8000); _storeRt=setInterval(function(){if(!document.hidden&&!_searchActive)fbLoadAllSheets();},60000); }
+
+function fastHoldSync(){ /* Firebase polling via startHoldLiveSync */ }
+
+function preloadStore(){ fbLoadAllSheets(); }
+
+function silentStoreRefresh(){
+  if(_searchActive) return;
+  /* FB: getAllSheetData from _store */
+}
+
+function saveStoreToLocal(){
+  try{
+    var snap={
+      ts: Date.now(),
+      username: _user&&_user.username,
+      hold:          _store.hold         ?{headers:_store.hold.headers,         rows:_store.hold.rows}         :null,
+      errorpayments: _store.errorpayments?{headers:_store.errorpayments.headers,rows:_store.errorpayments.rows}:null,
+      recharge:      _store.recharge     ?{headers:_store.recharge.headers,      rows:_store.recharge.rows}     :null,
+      disable:       _store.disable      ?{headers:_store.disable.headers,       rows:_store.disable.rows}      :null
+    };
+    var str = JSON.stringify(snap);
+    // Only save if reasonable size (< 4MB localStorage limit)
+    if(str.length < 3800000){
+      localStorage.setItem('crm_store_snap', str);
+    }
+  } catch(e){}
+}
+
+function loadStoreFromLocal(){
+  // Load store from localStorage for instant display while server syncs
+  try{
+    var raw = localStorage.getItem('crm_store_snap');
+    if(!raw) return false;
+    var snap = JSON.parse(raw);
+    // Only use if same user and less than 10 minutes old
+    var age = Date.now() - (snap.ts||0);
+    if(age > 600000) return false; // 10 min expiry
+    if(snap.username !== (_user&&_user.username)) return false;
+    if(snap.hold)          _store.hold          = snap.hold;
+    if(snap.errorpayments) _store.errorpayments = snap.errorpayments;
+    if(snap.recharge)      _store.recharge      = snap.recharge;
+    if(snap.disable)       _store.disable       = snap.disable;
+    return true;
+  } catch(e){ return false; }
+}
+
+function updateBadges(){
+  /* FB: getHoldRequests from _store */
+  /* FB: getDisableRequests from _store */
+  /* FB: getEnableRequests from _store */
+  // Ticket pending badge (for current user's pending tickets)
+  /* FB: getTickets from _store */
+}
+
+function hideSplash(){
+  var s=document.getElementById('splash');
+  if(!s) return;
+  s.style.opacity='0';
+  s.style.pointerEvents='none';
+  setTimeout(function(){
+    if(s) s.style.display='none';
+  },300);
+}
+
+/* ═══ LOGOUT ═══ */
+// doLogout: see Firebase version
+function toggleDD(){var d=document.getElementById('uDD');d.style.display=d.style.display==='none'?'block':'none';}
+
+/* ═══ NAV ═══ */
+function nav(pg){
+  _pg=pg;
+  document.querySelectorAll('.ni').forEach(function(el){el.classList.remove('active');});
+  var n=document.getElementById('nav-'+pg);if(n)n.classList.add('active');
+  document.getElementById('gSrch').value='';
+  loadPg(pg);
+}
+function loadPg(pg){
+  switch(pg){
+    case 'dashboard':   loadDash();break;
+    // 'hold' tab removed — use hold-main or hold-done instead
+    case 'hold-main':   loadHoldMain();break;
+    case 'hold-done':   loadHoldDone();break;
+    case 'errorpayments':loadSh('errorpayments','Error Payments','⚠️');break;
+    case 'recharge':    loadSh('recharge','Recharge Data','📱');break;
+    case 'disable':     loadSh('disable','Disable List','🚫');break;
+    case 'hold-req':    loadHoldReq();break;
+    case 'top-agents':  loadTopAgents();break;
+    case 'tickets':     loadTickets();break;
+    case 'dis-req':     loadDisReq();break;
+    case 'en-req':      loadEnReq();break;
+    case 'users':       loadUsers();break;
+  }
+}
+function manualRefresh(){loadPg(_pg);}
+
+/* INSTANT CLIENT-SIDE SEARCH */
+var _srchTimer=null;
+function onSrch(v){
+  // Pause refresh
+  _searchActive=!!v.trim();
+  if(_searchResumeTimer) clearTimeout(_searchResumeTimer);
+  if(_searchActive){
+    _searchResumeTimer=setTimeout(function(){_searchActive=false;},30000);
+  }
+  // 150ms debounce — wait for typing pause
+  if(_srchTimer) clearTimeout(_srchTimer);
+  _srchTimer=setTimeout(function(){
+    var t=v.toLowerCase().trim();
+    // Fast: hide/show DOM rows (works with rendered table)
+    var rows=document.querySelectorAll('#mc table tbody tr');
+    var n=0;
+    for(var i=0;i<rows.length;i++){
+      var show=!t||rows[i].textContent.toLowerCase().indexOf(t)>=0;
+      rows[i].style.display=show?'':'none';
+      if(show) n++;
+    }
+    var m=document.querySelector('#mc .f-m');
+    if(m)m.textContent=n+' records'+(t?' (filtered)':'');
+  },150);
+}
+
+/* ═══ SILENT REFRESH ═══ */
+function sRefresh(pg){
+  if(pg==='dashboard') return;
+  // Pause refresh if user is actively searching
+  if(_searchActive) return;
+  var fns={'hold-main':'getHoldMain','hold-done':'getHoldDone','errorpayments':'getErrorPaymentsData','recharge':'getRechargeData','disable':'getDisableListData','hold-req':'getHoldRequests','dis-req':'getDisableRequests','en-req':'getEnableRequests','tickets':'getTickets'};
+  var fn=fns[pg];if(!fn)return;
+  var st=_ts[pg]||{page:1,pageSize:50};
+  /* FB: getDashboardStats from _store */
+}
+function clearDashFilter(){
+  var f=document.getElementById('dashFrom'),t=document.getElementById('dashTo');
+  if(f)f.value='';if(t)t.value='';
+  window._dashFilter={from:'',to:''};loadDash();
+}
+function switchDashTab(tab){
+  window._dashTab=tab;
+  document.querySelectorAll('.dash-tab-btn').forEach(function(b){
+    var active=b.getAttribute('data-tab')===tab;
+    b.style.background=active?'var(--sidebar)':'var(--bg3)';
+    b.style.color=active?'#D4AF37':'var(--text2)';
+    b.style.fontWeight=active?'700':'500';
+  });
+  var wrap=document.getElementById('dashTabContent');
+  if(wrap) renderDashContent(tab,wrap);
+}
+function renderDashShell(fv,tv){
+  var role=R(),isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
+  var isAgent=role==='CALLING AGENT',isKA=role==='KEY ACCOUNT';
+  var d=window._dashData;
+  if(!isMgr){renderPersonalDash(d,isAgent,isKA);return;}
+  var html='<div class="pg-head"><div>';
+  html+='<div class="pg-t">Welcome, <span class="hl">'+esc(_user.username||'')+'</span></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'}))+'</div>';
+  html+='</div></div>';
+  html+='<div class="fbar" style="margin-bottom:0;border-radius:8px 8px 0 0">';
+  html+='<span style="font-size:12px;font-weight:600">📅 Date Range:</span>';
+  html+='<input type="date" class="fi" id="dashFrom" value="'+fv+'" style="width:138px">';
+  html+='<span style="color:var(--text3);font-size:12px">to</span>';
+  html+='<input type="date" class="fi" id="dashTo" value="'+tv+'" style="width:138px">';
+  html+='<button class="btn btn-p btn-sm" onclick="loadDash()">▶ Apply</button>';
+  if(fv||tv){
+    html+='<button class="btn btn-s btn-sm" onclick="clearDashFilter()">✕ Clear</button>';
+    html+='<span style="font-size:11px;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:5px;padding:3px 10px;color:#92400e;font-weight:600">⚠ '+(fv||'All')+' → '+(tv||'Today')+'</span>';
+  }else{
+    html+='<span style="font-size:11px;color:var(--text3)">All-time data</span>';
+  }
+  html+='</div>';
+  html+='<div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden;border-top:none">';
+  var tabs=[['overview','📊 Overview'],['agents','👤 Agent Report'],['keyaccount','🔑 KA Report']];
+  tabs.forEach(function(t){
+    var active=window._dashTab===t[0];
+    html+='<button class="dash-tab-btn" data-tab="'+t[0]+'" onclick="switchDashTab(\''+t[0]+'\')" style="flex:1;padding:10px;border:none;border-right:1px solid var(--border);background:'+(active?'var(--sidebar)':'var(--bg3)')+';color:'+(active?'#D4AF37':'var(--text2)')+';font-size:13px;font-weight:'+(active?'700':'500')+';cursor:pointer;font-family:inherit">'+t[1]+'</button>';
+  });
+  html+='</div>';
+  html+='<div id="dashTabContent"></div>';
+  setC(html);
+  var wrap=document.getElementById('dashTabContent');
+  if(wrap) renderDashContent(window._dashTab,wrap);
+}
+function renderDashContent(tab,container){
+  var d=window._dashData;
+  var fv=(window._dashFilter&&window._dashFilter.from)||'';
+  var tv=(window._dashFilter&&window._dashFilter.to)||'';
+  if(tab==='overview')       renderOverviewTab(d,fv,tv,container);
+  else if(tab==='agents')    renderAgentTab(d,fv,tv,container);
+  else if(tab==='keyaccount')renderKATab(d,fv,tv,container);
+}
+function renderOverviewTab(d,fv,tv,container){
+  var fl=fv||tv?' <span style="font-size:10px;font-weight:normal;color:var(--gold)">('+( fv||'All')+' → '+(tv||'Today')+')</span>':'';
+  var html='<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Key Metrics'+fl+'</div>';
+  html+='<div class="stats-row">';
+  html+=sc('HOLD Pending',     d.holdPend||0,          'STATUS=HOLD · AmtStatus=PENDING',       '#b8860b');
+  html+=sc('CBD Pending',      d.cbdPend||0,           'STATUS=CBD · AmtStatus=PENDING',        '#1e40af');
+  html+=sc('Recharge Pending', d.rechargePending||0,   'Payment status=PENDING',                '#c2410c');
+  html+=sc('Disable Requests', d.disableReqPending||0, 'ACTION=DISABLE KARNA HAI',              '#dc2626');
+  html+=sc('Enable Requests',  d.enableReqPending||0,  'ACTION=ENABLE KARNA HAI',               '#15803d');
+  html+=sc('Total Disabled',   d.totalDisabled||0,     'APP STATUS=DISABLED or ACTION=DISABLED','#6b7280');
+  html+='</div>';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:4px">Resolved & Totals'+fl+'</div>';
+  html+='<div class="stats-row">';
+  html+=sc('HOLD Solved',       d.holdSolved||0,       'STATUS=HOLD · AmtStatus=OK/DONE', '#15803d');
+  html+=sc('CBD Solved',        d.cbdSolved||0,        'STATUS=CBD · AmtStatus=OK/DONE',  '#0369a1');
+  html+=sc('Error Pending',     d.errorPending||0,     'AmtStatus=PENDING',                '#7c3aed');
+  html+=sc('Total HOLD',        d.holdTotal||0,        'All HOLD sheet records',           '#6b7280');
+  html+='</div>';
+  html+='<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px">';
+  html+='<div class="tcard" style="padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📈 Daily Trend (Pending vs Solved)'+fl+'</div><canvas id="dailyChart" style="width:100%;height:200px"></canvas></div>';
+  html+='<div class="tcard" style="padding:16px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🍩 HOLD vs CBD</div><canvas id="splitChart" style="width:100%;height:200px"></canvas></div>';
+  html+='</div>';
+  html+='<div class="tcard" style="padding:16px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🏆 Top Agents by Pending'+fl+'</div><canvas id="topChart" style="width:100%;height:160px"></canvas></div>';
+  container.innerHTML=html;
+  setTimeout(function(){drawCharts(d);},60);
+}
+function drawCharts(d){
+  var dc=document.getElementById('dailyChart');
+  if(dc&&d.dailyTrend){
+    var days=Object.keys(d.dailyTrend).sort();
+    if(days.length>30) days=days.slice(days.length-30); // last 30 days
+    drawBar(dc,days.map(function(k){return k.slice(5);}),
+      [{label:'Pending',data:days.map(function(k){return d.dailyTrend[k].pending;}),color:'#b8860b'},
+       {label:'Solved', data:days.map(function(k){return d.dailyTrend[k].solved;}), color:'#15803d'}]);
+  }
+  var pc=document.getElementById('splitChart');
+  if(pc) drawPie(pc,['HOLD','CBD'],
+    [(d.holdPend||0)+(d.holdSolved||0),(d.cbdPend||0)+(d.cbdSolved||0)],
+    ['#b8860b','#1e40af']);
+  var tc=document.getElementById('topChart');
+  if(tc&&d.agentReport){
+    var ags=[];
+    for(var k in d.agentReport){var a=d.agentReport[k];ags.push({n:a.name,v:(a.holdPend||0)+(a.cbdPend||0)});}
+    ags.sort(function(a,b){return b.v-a.v;});ags=ags.slice(0,8);
+    drawBar(tc,ags.map(function(a){return a.n;}),
+      [{label:'Pending',data:ags.map(function(a){return a.v;}),color:'#b8860b'}]);
+  }
+}
+function drawBar(canvas,labels,datasets){
+  var W=canvas.offsetWidth||600;
+  canvas.width=W;canvas.height=parseInt(canvas.style.height)||220;
+  var H=canvas.height;
+  var ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  var pad={t:16,r:16,b:48,l:42};
+  var cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  var n=labels.length;
+  if(!n){ctx.fillStyle='#9ca3af';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText('No data',W/2,H/2);return;}
+  var maxV=0;
+  datasets.forEach(function(ds){ds.data.forEach(function(v){if(v>maxV)maxV=v;});});
+  maxV=Math.max(maxV,1);
+  var bGW=cW/n,bW=Math.max(3,(bGW/datasets.length)-2);
+  ctx.strokeStyle='#e2e5ea';ctx.lineWidth=1;
+  for(var yi=0;yi<=4;yi++){
+    var yp=pad.t+cH-cH*yi/4;
+    ctx.beginPath();ctx.moveTo(pad.l,yp);ctx.lineTo(pad.l+cW,yp);ctx.stroke();
+    ctx.fillStyle='#9ca3af';ctx.font='10px Arial';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxV*yi/4),pad.l-3,yp+3);
+  }
+  datasets.forEach(function(ds,di){
+    ctx.fillStyle=ds.color;
+    for(var i=0;i<n;i++){
+      var bx=pad.l+i*bGW+di*(bW+1);
+      var bh=cH*(ds.data[i]||0)/maxV;
+      ctx.fillRect(bx,pad.t+cH-bh,bW,bh);
+    }
+  });
+  ctx.fillStyle='#4b5563';ctx.font='10px Arial';ctx.textAlign='center';
+  for(var i=0;i<n;i++){
+    var lbl=labels[i].length>8?labels[i].substring(0,8)+'..':labels[i];
+    ctx.fillText(lbl,pad.l+i*bGW+bGW/2,H-pad.b+12);
+  }
+  var lx=pad.l;
+  datasets.forEach(function(ds){
+    ctx.fillStyle=ds.color;ctx.fillRect(lx,H-10,10,8);
+    ctx.fillStyle='#4b5563';ctx.font='10px Arial';ctx.textAlign='left';
+    ctx.fillText(ds.label,lx+13,H-3);lx+=ds.label.length*7+20;
+  });
+}
+function drawPie(canvas,labels,vals,colors){
+  var W=canvas.offsetWidth||280;
+  canvas.width=W;canvas.height=parseInt(canvas.style.height)||200;
+  var H=canvas.height;
+  var ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  var total=vals.reduce(function(a,b){return a+b;},0);
+  if(!total){ctx.fillStyle='#9ca3af';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText('No data',W/2,H/2);return;}
+  var cx=W*0.35,cy=H/2,r=Math.min(cx,cy)-16;
+  var angle=-Math.PI/2;
+  vals.forEach(function(v,i){
+    var sl=2*Math.PI*v/total;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+sl);
+    ctx.closePath();ctx.fillStyle=colors[i];ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    angle+=sl;
+  });
+  var ly=H/2-vals.length*14;
+  vals.forEach(function(v,i){
+    ctx.fillStyle=colors[i];ctx.fillRect(W*0.72,ly+i*26,12,12);
+    ctx.fillStyle='#1a1d23';ctx.font='12px Arial';ctx.textAlign='left';
+    ctx.fillText(labels[i]+': '+v+' ('+(total>0?Math.round(v/total*100):0)+'%)',W*0.72+16,ly+i*26+10);
+  });
+}
+function renderAgentTab(d,fv,tv,container){
+  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')'  :'(all-time)';
+  var agents=[];
+  for(var k in d.agentReport){var a=d.agentReport[k];agents.push({name:a.name,hp:a.holdPend||0,cp:a.cbdPend||0,s:a.solved||0});}
+  agents.sort(function(a,b){return b.hp-a.hp||b.cp-a.cp;});
+  var html='<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">👤 Agent Report '+fl+'</div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Pending grouped by HOLD BY &nbsp;·&nbsp; Solved grouped by FINAL BY</div>';
+  html+='<div class="fbar" style="margin-bottom:10px"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" id="agSrch" placeholder="Filter agents..." oninput="filterAgTab(this.value)"></div><span class="f-meta" id="agCnt">'+agents.length+' agents</span></div>';
+  html+='<div id="agWrap">'+buildAgTable(agents)+'</div>';
+  container.innerHTML=html;
+  window._agTabData=agents;
+}
+function buildAgTable(agents){
+  if(!agents||!agents.length) return '<div class="tcard"><div class="req-empty">No data for selected range</div></div>';
+  var tH=0,tC=0,tS=0;
+  var h='<div class="tcard"><div class="tscroll"><table><thead><tr><th>#</th><th>AGENT NAME</th><th style="color:#b8860b">HOLD PENDING</th><th style="color:#1e40af">CBD PENDING</th><th style="color:#15803d">SOLVED (FINAL BY)</th><th>TOTAL</th></tr></thead><tbody>';
+  for(var i=0;i<agents.length;i++){
+    var a=agents[i],tot=(a.hp||0)+(a.cp||0)+(a.s||0);
+    tH+=a.hp||0;tC+=a.cp||0;tS+=a.s||0;
+    h+='<tr><td style="color:var(--text3)">'+(i+1)+'</td><td style="font-weight:600;color:var(--text)">'+esc(a.name||'—')+'</td>';
+    h+='<td><span class="badge b-hold">'+(a.hp||0)+'</span></td><td><span class="badge b-cbd">'+(a.cp||0)+'</span></td>';
+    h+='<td><span class="badge b-ok">'+(a.s||0)+'</span></td><td style="font-weight:700;color:var(--text)">'+tot+'</td></tr>';
+  }
+  h+='<tr style="background:var(--gold-bg);font-weight:700"><td></td><td style="color:var(--gold)">TOTAL</td>';
+  h+='<td><span class="badge b-hold">'+tH+'</span></td><td><span class="badge b-cbd">'+tC+'</span></td>';
+  h+='<td><span class="badge b-ok">'+tS+'</span></td><td style="color:var(--text)">'+(tH+tC+tS)+'</td></tr>';
+  h+='</tbody></table></div></div>';
+  return h;
+}
+function filterAgTab(q){
+  var all=window._agTabData||[],t=q.toLowerCase().trim();
+  var f=t?all.filter(function(a){return (a.name||'').toLowerCase().indexOf(t)>=0;}):all;
+  var w=document.getElementById('agWrap'),c=document.getElementById('agCnt');
+  if(w)w.innerHTML=buildAgTable(f);
+  if(c)c.textContent=f.length+(t?' of '+all.length:'')+' agents';
+}
+function renderKATab(d,fv,tv,container){
+  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')':'(all-time)';
+  var kal=[];
+  for(var k in d.kaReport){var a=d.kaReport[k];kal.push({name:a.name,att:a.attempts||0,pend:a.pending||0,solv:a.solved||0});}
+  kal.sort(function(a,b){return b.att-a.att;});
+  var html='<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🔑 Key Account Report '+fl+'</div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Based on ATTEND BY column in HOLD sheet</div>';
+  if(!kal.length){html+='<div class="tcard"><div class="req-empty">No KA data — fill ATTEND BY column in HOLD sheet</div></div>';container.innerHTML=html;return;}
+  var tA=0,tP=0,tS=0;
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr><th>#</th><th>KEY ACCOUNT NAME</th><th style="color:#7c3aed">TOTAL ATTEMPTS</th><th style="color:#b8860b">HOLD PENDING</th><th style="color:#15803d">TOTAL SOLVED</th><th>SUCCESS RATE</th></tr></thead><tbody>';
+  for(var i=0;i<kal.length;i++){
+    var ka=kal[i],rate=ka.att>0?Math.round((ka.solv/ka.att)*100):0;
+    tA+=ka.att;tP+=ka.pend;tS+=ka.solv;
+    html+='<tr><td style="color:var(--text3)">'+(i+1)+'</td>';
+    html+='<td style="font-weight:600;color:var(--text)">'+esc(ka.name||'—')+'</td>';
+    html+='<td><span class="badge b-senior">'+ka.att+'</span></td>';
+    html+='<td><span class="badge b-pending">'+ka.pend+'</span></td>';
+    html+='<td><span class="badge b-ok">'+ka.solv+'</span></td>';
+    html+='<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;background:var(--bg3);border-radius:4px;height:8px"><div style="background:#15803d;width:'+rate+'%;height:8px;border-radius:4px;transition:width .3s"></div></div><span style="font-size:11px;font-weight:600;min-width:32px">'+rate+'%</span></div></td>';
+    html+='</tr>';
+  }
+  var tr=tA>0?Math.round((tS/tA)*100):0;
+  html+='<tr style="background:var(--gold-bg);font-weight:700"><td></td><td style="color:var(--gold)">TOTAL</td>';
+  html+='<td><span class="badge b-senior">'+tA+'</span></td><td><span class="badge b-pending">'+tP+'</span></td>';
+  html+='<td><span class="badge b-ok">'+tS+'</span></td><td style="color:var(--text);font-weight:700">'+tr+'% avg</td></tr>';
+  html+='</tbody></table></div></div>';
+  container.innerHTML=html;
+}
+function renderPersonalDash(d,isAgent,isKA){
+  var html='<div class="pg-head"><div><div class="pg-t">Welcome, <span class="hl">'+esc(_user.username||'')+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:3px">'+(new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'}))+'</div></div></div>';
+  if(isAgent&&d.agentStats){
+    var as=d.agentStats;
+    html+='<div class="adc-row">';
+    html+='<div class="adc" style="border-top:4px solid #b8860b"><div class="adc-l">My HOLD Pending</div><div class="adc-v" style="color:#D4AF37">'+(as.holdPending||0)+'</div><div class="adc-s">STATUS=HOLD · AmtStatus=PENDING</div></div>';
+    html+='<div class="adc" style="border-top:4px solid #1e40af"><div class="adc-l">My CBD Pending</div><div class="adc-v" style="color:#60a5fa">'+(as.cbdPending||0)+'</div><div class="adc-s">STATUS=CBD · AmtStatus=PENDING</div></div>';
+    html+='<div class="adc" style="border-top:4px solid #374151"><div class="adc-l">My Total</div><div class="adc-v" style="color:#94a3b8">'+(as.total||0)+'</div><div class="adc-s">All my HOLD records</div></div>';
+    html+='</div><div class="divider"></div>';
+  }
+  if(isKA&&d.kaStats){
+    var ks=d.kaStats;
+    html+='<div class="adc-row">';
+    html+='<div class="adc" style="border-top:4px solid #7c3aed"><div class="adc-l">Senior Hold Pending</div><div class="adc-v" style="color:#a78bfa">'+(ks.seniorPending||0)+'</div><div class="adc-s">TO BE HOLD BY SENIOR · PENDING</div></div>';
+    html+='<div class="adc" style="border-top:4px solid #374151"><div class="adc-l">Total Senior Hold</div><div class="adc-v" style="color:#94a3b8">'+(ks.seniorTotal||0)+'</div><div class="adc-s">All TO BE HOLD BY SENIOR</div></div>';
+    html+='</div><div class="divider"></div>';
+  }
+  html+='<div class="tcard" style="padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">Quick Access</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html+='<button class="btn btn-p btn-sm" onclick="nav(\'hold-main\')">🔴 HOLD Pending</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="nav(\'hold-done\')">✅ HOLD Done</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="nav(\'errorpayments\')">⚠️ Error Payments</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="nav(\'recharge\')">📱 Recharge</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="nav(\'disable\')">🚫 Disable</button>';
+  if(isKA){html+='<button class="btn btn-pu btn-sm" onclick="nav(\'hold-req\')">📋 Hold Requests</button>';}
+  html+='</div></div>';
+  setC(html);
+}
+
+
+function sc(l,v,s,c){return '<div class="scard" style="--c:'+c+'"><div class="sl">'+l+'</div><div class="sv">'+v+'</div><div class="ss">'+s+'</div></div>';}
+function barC(t,d,total,c){
+  var h='<div class="tcard" style="padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">'+t+'</div>';
+  for(var k in d){var pct=total>0?Math.round(d[k]/total*100):0;h+='<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2);font-weight:500">'+esc(k)+'</span><span style="color:'+c+';font-weight:700">'+d[k]+'</span></div><div style="background:var(--bg3);border-radius:3px;height:5px"><div style="background:'+c+';width:'+pct+'%;height:5px;border-radius:3px"></div></div></div>';}
+  return h+'</div>';
+}
+
+/* ═══ HOLD MAIN & HOLD DONE ═══ */
+function loadHoldMain(){
+  var st=_ts['hold-main']=_ts['hold-main']||{page:1,pageSize:100,search:''};
+  if(_store.hold&&_store.hold.rows){
+    var r=filterHoldView('main',st);
+    renderHoldFiltered('hold-main','HOLD Main (Pending)','🔴',r,st);
+    // If stale, sync in background silently
+    if(_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }
+    return;
+  }
+  setC(skeletonTable('Pending Hold'));
+  /* FB: getHoldMain from _store */
+}
+function loadHoldDone(){
+  var st=_ts['hold-done']=_ts['hold-done']||{page:1,pageSize:100,search:'',dateFrom:'',dateTo:''};
+  if(_store.hold&&_store.hold.rows){
+    var r=filterHoldView('done',st);
+    renderHoldFiltered('hold-done','Done Hold','✅',r,st);
+    if(_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }
+    return;
+  }
+  setC(skeletonTable('Done Hold'));
+  /* FB: getHoldDone from _store */
+}
+
+function filterHoldView(view, st){
+  var data=_store.hold;
+  if(!data) return null;
+  var headers=data.headers, rows=data.rows;
+  var sidx=headers.indexOf('STATUS'), aidx=headers.indexOf('AmtStatus');
+  var bidx=headers.indexOf('BOOKING ID');
+  var search=(st.search||'').toString().toLowerCase().trim();
+  var filtered=[];
+  for(var i=0;i<rows.length;i++){
+    var sv=(rows[i][sidx]||'').toString().trim().toUpperCase();
+    var av=(rows[i][aidx]||'').toString().trim().toUpperCase();
+    var bid=(rows[i][bidx]||'').toString().toLowerCase();
+    // Booking ID search overrides all filters
+    if(search&&bid.indexOf(search)>=0){filtered.push(rows[i]);continue;}
+    if(search) continue; // searching but no BID match
+    if(sv!=='HOLD'&&sv!=='CBD') continue;
+    if(view==='main'&&av!=='PENDING') continue;
+    if(view==='done'&&av!=='OK'&&av!=='DONE') continue;
+    // Date filter
+    if(st.dateFrom||st.dateTo){
+      var didx=headers.indexOf('DATE');
+      var d=rows[i][didx]?new Date(rows[i][didx]):null;
+      if(d&&!isNaN(d.getTime())){
+        if(st.dateFrom&&d<new Date(st.dateFrom)) continue;
+        if(st.dateTo&&d>new Date(st.dateTo)) continue;
+      }
+    }
+    filtered.push(rows[i]);
+  }
+  var page=parseInt(st.page)||1, pageSize=parseInt(st.pageSize)||100;
+  var total=filtered.length, start=(page-1)*pageSize;
+  return {
+    success:true, headers:headers,
+    rows:filtered.slice(start,start+pageSize),
+    total:total, page:page, pageSize:pageSize,
+    totalPages:Math.ceil(total/pageSize)||1
+  };
+}
+function renderHoldFiltered(viewKey,title,icon,r,st){
+  var isAdmin=R()==='ADMIN';
+  var isDone=viewKey==='hold-done';
+  var html='<div class="pg-head"><div>';
+  html+='<div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
+  if(!isDone){
+    html+='<div style="font-size:11px;margin-top:3px"><span class="badge b-pending" style="font-size:11px">STATUS = HOLD / CBD</span> &nbsp; <span class="badge b-pending" style="font-size:11px">AmtStatus = PENDING</span></div>';
+  } else {
+    html+='<div style="font-size:11px;margin-top:3px"><span class="badge b-ok" style="font-size:11px">STATUS = HOLD / CBD</span> &nbsp; <span class="badge b-ok" style="font-size:11px">AmtStatus = OK / DONE</span></div>';
+  }
+  html+='</div>';
+  html+='<div style="display:flex;gap:7px">';
+  html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\'hold\',null)">+ Add</button>';
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
+  html+='</div></div>';
+
+  // Search bar with booking ID search note
+  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span>';
+  html+='<input class="fi fi-m" id="bidSearch" placeholder="Search Booking ID (searches both Pending & Done)..." oninput="universalHoldSearch(this.value,\''+viewKey+'\')" onkeydown="if(event.key===\'Enter\')universalHoldSearch(this.value,\''+viewKey+'\')">';
+  html+='</div>';
+  if(isDone){
+    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateFrom||'')+'" onchange="_ts[\'hold-done\'].dateFrom=this.value;_ts[\'hold-done\'].page=1;loadHoldDone()">';
+    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateTo||'')+'" onchange="_ts[\'hold-done\'].dateTo=this.value;_ts[\'hold-done\'].page=1;loadHoldDone()">';
+  }
+  var pgSzHtml='<select class="fs" style="width:75px" onchange="chgPgSz(\''+sh+'\',\''+title+'\',\''+icon+'\',this.value)">';
+  [50,100,200,500].forEach(function(n){pgSzHtml+='<option value="'+n+'"'+(parseInt(st.pageSize)===n?' selected':'')+'>'+n+'/pg</option>';});
+  pgSzHtml+='</select>';
+  html+=pgSzHtml;
+  html+='<span class="f-m">'+(r&&r.success?r.total:0)+' records</span></div>';
+
+  if(!r||!r.success){setC(html+'<div class="ldr">'+( r?r.error:'Failed')+'</div>');return;}
+
+  var hdrs=HDRS.hold,cols=COLS.hold,sHdrs=r.headers;
+  var idKey='BOOKING ID',startN=(st.page-1)*st.pageSize+1;
+  var attIdx=sHdrs.indexOf('ATTEND BY');
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+  html+='</tr></thead><tbody>';
+
+  if(!r.rows.length){
+    html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">';
+    html+=isDone?'No completed records found':'No pending records — all clear! ✅';
+    html+='</td></tr>';
+  } else {
+    for(var i=0;i<r.rows.length;i++){
+      var row=r.rows[i];
+      var attVal=attIdx>=0?(row[attIdx]||''):'';
+      var isKARow=attVal&&kaSet[String(attVal).toLowerCase()];
+      var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
+      _rc['hold::'+rowId]={row:row,hdrs:sHdrs};
+      var re=rowId.replace(/'/g,"'");
+      html+='<tr'+(isKARow?' class="ka-row"':'')+'>';
+      html+='<td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
+      for(var c=0;c<cols.length;c++){
+        var ci=sHdrs.indexOf(cols[c]);
+        var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
+        var cv=rCell(cols[c],val);
+        if(cols[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
+        html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
+      }
+      html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\'\'+re+\'\')">Edit</button></td>';
+      html+='</tr>';
+    }
+  }
+  html+='</tbody></table></div>';
+  var tp=r.totalPages||1;
+  html+='<div class="pager"><span>Showing '+(r.rows.length>0?(startN)+'–'+(startN+r.rows.length-1):0)+' of '+r.total+'</span>';
+  html+='<div class="pbtns">';
+  html+='<button class="pb" '+(st.page<=1?'disabled':'')+' onclick="_ts[\'\'+viewKey+\'\'].page=\'+(st.page-1)+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">‹</button>';
+  var pf2=Math.max(1,st.page-2),pt3=Math.min(tp,st.page+2);
+  for(var p=pf2;p<=pt3;p++) html+='<button class="pb '+(p===st.page?'cur':'')+'" onclick="_ts[\'\'+viewKey+\'\'].page=\'+p+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">'+p+'</button>';
+  html+='<button class="pb" '+(st.page>=tp?'disabled':'')+' onclick="_ts[\'\'+viewKey+\'\'].page=\'+(st.page+1)+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">›</button>';
+  html+='</div></div></div>';
+  setC(html);
+}
+
+// Booking ID search in filtered views — exact BID shows all, else local filter
+var _bidSearchTimer=null;
+
+// Universal HOLD search — searches ALL rows in BOTH Pending and Done
+function universalHoldSearch(v, viewKey){
+  if(_bidSearchTimer) clearTimeout(_bidSearchTimer);
+  var t=v.trim();
+  // Pause auto-refresh
+  _searchActive=!!t;
+  if(_searchResumeTimer) clearTimeout(_searchResumeTimer);
+  if(t){_searchResumeTimer=setTimeout(function(){_searchActive=false;},30000);}
+  // Instant local filter first
+  onSrch(v);
+  // If 3+ chars — do server search across ALL hold rows (both pending and done)
+  if(t.length>=3){
+    _bidSearchTimer=setTimeout(function(){
+      setC('<div class="ldr"><span class="sp"></span>Searching all HOLD records for: <strong>'+t+'</strong>...</div>');
+      /* FB: searchHoldAll from _store */
+    }, 400);
+  } else if(!t){
+    _searchActive=false;
+    if(viewKey==='hold-main') loadHoldMain();
+    else loadHoldDone();
+  }
+}
+
+function renderUniversalResults(r, query){
+  var hdrs=r.headers, rows=r.rows;
+  var cols=['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','DESCRIPTION','PAYMENT BY','MESSAGE'];
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var attIdx=hdrs.indexOf('ATTEND BY');
+
+  var html='<div class="pg-head"><div>';
+  html+='<div class="pg-t">🔍 Search: <span class="hl">'+esc(query)+'</span></div>';
+  html+='<div style="font-size:12px;color:var(--text3);margin-top:3px">Found '+rows.length+' record(s) across all HOLD data</div>';
+  html+='</div>';
+  html+='<div style="display:flex;gap:8px">';
+  html+='<button class="btn btn-s btn-sm" onclick="_searchActive=false;loadHoldMain()">← Pending</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="_searchActive=false;loadHoldDone()">← Done</button>';
+  html+='</div></div>';
+
+  // Search box stays active
+  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span>';
+  html+='<input class="fi fi-m" value="'+esc(query)+'" placeholder="Search Booking ID..." oninput="universalHoldSearch(this.value,\'hold-main\')">';
+  html+='</div><span class="f-m">'+rows.length+' results</span></div>';
+
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr><th>#</th>';
+  var dispCols=['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AmtStatus','DESCRIPTION','Actions'];
+  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
+  html+='</tr></thead><tbody>';
+
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i];
+    var attVal=attIdx>=0?(row[attIdx]||''):'';
+    var isKARow=attVal&&kaSet[String(attVal).toLowerCase()];
+    var idIdx=hdrs.indexOf('BOOKING ID');
+    var rowId=idIdx>=0?String(row[idIdx]):'';
+    _rc['hold::'+rowId]={row:row,hdrs:hdrs};
+    var re2=rowId.replace(/'/g,"'");
+    html+='<tr'+(isKARow?' class="ka-row"':'')+'>';
+    html+='<td style="color:var(--text3)">'+(i+1)+'</td>';
+    for(var c2=0;c2<dispCols.length-1;c2++){
+      var col=dispCols[c2];
+      var ci=hdrs.indexOf(col);
+      var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
+      html+='<td title="'+esc(String(val))+'">'+rCell(col,val)+'</td>';
+    }
+    html+='<td><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\''+re2+'\')">Edit</button></td>';
+    html+='</tr>';
+  }
+  html+='</tbody></table></div></div>';
+  setC(html);
+}
+
+function onBidSearch(v,viewKey){
+  if(_bidSearchTimer) clearTimeout(_bidSearchTimer);
+  var t=v.trim();
+  // Pause refresh during search
+  _searchActive=!!t;
+  if(_searchResumeTimer) clearTimeout(_searchResumeTimer);
+  if(t){_searchResumeTimer=setTimeout(function(){_searchActive=false;},30000);}
+  // First do instant local filter
+  onSrch(v);
+  // If looks like exact booking ID, do server search after short delay
+  if(t.length>=4){
+    _bidSearchTimer=setTimeout(function(){
+      var st=_ts[viewKey]||{};
+      st.search=t;st.page=1;_ts[viewKey]=st;
+      if(viewKey==='hold-main') loadHoldMain();
+      else loadHoldDone();
+    },600);
+  } else if(!t){
+    // Clear search and reload
+    if(_ts[viewKey]) _ts[viewKey].search='';
+    if(viewKey==='hold-main') loadHoldMain();
+    else loadHoldDone();
+  }
+}
+
+/* ═══ HOLD REQUESTS ═══ */
+function loadHoldReq(){
+  // Check store first
+  if(_store.hold&&_store.hold.rows){
+    var hdrs=_store.hold.headers;
+    var sidx=hdrs.indexOf('STATUS');
+    var rows=_store.hold.rows.filter(function(r){
+      return (r[sidx]||'').toString().trim().toUpperCase()==='TO BE HOLD BY SENIOR';
+    });
+    renderHoldReq({success:true,headers:hdrs,rows:rows,total:rows.length});
+    
+    if(_store.hold&&_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }return;
+  }
+  setC(skeletonTable('Hold Requests'));
+  // Hold req from _store
+}
+function renderHoldReq(r){
+  var role=R(),isKA=role==='KEY ACCOUNT';
+  var html='<div class="pg-head"><div class="pg-t">📋 <span class="hl">Hold Requests</span></div>'
+    +'<div style="font-size:12px;color:var(--text3)">STATUS = TO BE HOLD BY SENIOR · <strong style="color:var(--purple)">'+(r&&r.total||0)+' pending</strong></div></div>';
+  if(!r||!r.success||!r.rows||!r.rows.length){
+    html+='<div class="tcard"><div class="req-empty">✅ No pending hold requests</div></div>';
+    setC(html);return;
+  }
+  var hdrs=r.headers;
+  var bidI=hdrs.indexOf('BOOKING ID'),holdByI=hdrs.indexOf('HOLD BY'),agI=hdrs.indexOf('AGENT NUMBER');
+  var drvI=hdrs.indexOf('DRIVER'),amtI=hdrs.indexOf('T AMT'),amtSI=hdrs.indexOf('AmtStatus');
+  var descI=hdrs.indexOf('DESCRIPTION'),attI=hdrs.indexOf('ATTEND BY'),dateI=hdrs.indexOf('DATE');
+  var msgI=hdrs.indexOf('MESSAGE'),relI=hdrs.indexOf('Rel To:-');
+
+  // KEY ACCOUNT STATUS options in hold req: HOLD / PENDING
+  // Show as full table WITH edit button AND quick "→ HOLD" action button
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  var cols=['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','T AMT','AmtStatus','DESCRIPTION','ATTEND BY','Actions'];
+  for(var h=0;h<cols.length;h++) html+='<th>'+cols[h]+'</th>';
+  html+='</tr></thead><tbody>';
+
+  for(var i=0;i<r.rows.length;i++){
+    var row=r.rows[i];
+    var bid=row[bidI]||'';
+    var bidEsc=String(bid).replace(/'/g,"'");
+    _rc['hold::'+bid]={row:row,hdrs:hdrs};
+    html+='<tr>';
+    html+='<td>'+esc(String(row[dateI]||'').substring(0,10))+'</td>';
+    html+='<td><strong style="color:var(--gold);font-family:monospace">'+esc(String(bid))+'</strong></td>';
+    html+='<td style="color:var(--text2);font-weight:500">'+esc(String(row[holdByI]||''))+'</td>';
+    html+='<td>'+esc(String(row[agI]||''))+'</td>';
+    html+='<td>'+esc(String(row[drvI]||''))+'</td>';
+    html+='<td style="color:var(--green);font-weight:600">₹'+esc(String(row[amtI]||''))+'</td>';
+    html+='<td>'+rCell('AmtStatus',row[amtSI]||'')+'</td>';
+    html+='<td title="'+esc(String(row[descI]||''))+'">'+esc(String(row[descI]||'').substring(0,30))+'</td>';
+    html+='<td>'+(row[attI]?'<span class="ka-ic">🔑 '+esc(String(row[attI]))+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>';
+    html+='<td style="white-space:nowrap;display:flex;gap:5px;flex-wrap:wrap">';
+    html+='<button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\''+bidEsc+'\')">Edit</button>';
+    // Quick HOLD action — KEY ACCOUNT can mark as HOLD directly
+    if(isKA||role==='ADMIN'||role==='MANAGER'){
+      html+='<button class="btn btn-p btn-xs" onclick="quickHold(\''+bidEsc+'\')" title="Set STATUS=HOLD">→ HOLD</button>';
+    }
+    html+='</td></tr>';
+  }
+  html+='</tbody></table></div>';
+  html+='<div class="pager"><span>'+r.rows.length+' requests</span></div></div>';
+  setC(html);
+}
+function quickHold(bid){ quickHoldFB(bid); }
+
+/* ═══ DISABLE REQUESTS ═══ */
+function loadDisReq(){
+  if(_store.disable&&_store.disable.rows){
+    var hdrs=_store.disable.headers;
+    var aidx=hdrs.indexOf('ACTION');
+    var rows=_store.disable.rows.filter(function(r){
+      return (r[aidx]||'').toString().trim().toUpperCase()==='DISABLE KARNA HAI';
+    });
+    renderDisEnReq({success:true,headers:hdrs,rows:rows,total:rows.length},'disable');
+    
+    if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
+  }
+  setC(skeletonTable('Disable Requests'));
+  /* FB: getDisableRequests from _store */
+}
+function renderDisReq(r){
+  var html='<div class="pg-head"><div class="pg-t">🔒 <span class="hl">Disable Requests</span></div>'
+    +'<div style="font-size:12px;color:var(--text3)">ACTION = DISABLE/ENABLE KARNA HAI · <strong style="color:var(--red)">'+(r&&r.total||0)+' pending</strong></div></div>';
+  if(!r||!r.success||!r.rows||!r.rows.length){
+    html+='<div class="tcard"><div class="req-empty">✅ No pending disable requests</div></div>';
+    setC(html);return;
+  }
+  var hdrs=r.headers;
+  var idI=hdrs.indexOf('id'),numI=hdrs.indexOf('NUMBER'),nameI=hdrs.indexOf('NAME');
+  var typeI=hdrs.indexOf('TYPE'),appI=hdrs.indexOf('APP STATUS'),actI=hdrs.indexOf('ACTION');
+  var disI=hdrs.indexOf('DISABLED BY'),issI=hdrs.indexOf('ISSUE'),dateI=hdrs.indexOf('DATE');
+
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  var cols=['DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','ACTION','Actions'];
+  for(var h=0;h<cols.length;h++) html+='<th>'+cols[h]+'</th>';
+  html+='</tr></thead><tbody>';
+  for(var i=0;i<r.rows.length;i++){
+    var row=r.rows[i];
+    var rid=row[idI]||'';
+    var act=(row[actI]||'').toString().toUpperCase();
+    var ridEsc=String(rid).replace(/'/g,"'");
+    _rc['disable::'+rid]={row:row,hdrs:hdrs};
+    var rowCls=act.indexOf('DISABLE')>=0?'dis-req':'en-req';
+    html+='<tr>';
+    html+='<td>'+esc(String(row[dateI]||'').substring(0,10))+'</td>';
+    html+='<td style="font-weight:600;color:var(--text)">'+esc(String(row[numI]||''))+'</td>';
+    html+='<td>'+esc(String(row[nameI]||''))+'</td>';
+    html+='<td>'+esc(String(row[typeI]||''))+'</td>';
+    html+='<td>'+rCell('APP STATUS',row[appI]||'')+'</td>';
+    html+='<td>'+esc(String(row[disI]||''))+'</td>';
+    html+='<td title="'+esc(String(row[issI]||''))+'">'+esc(String(row[issI]||'').substring(0,30))+'</td>';
+    html+='<td>';
+    if(act.indexOf('DISABLE')>=0) html+='<span class="badge b-dis">DISABLE REQ</span>';
+    else html+='<span class="badge b-en">ENABLE REQ</span>';
+    html+='</td>';
+    html+='<td style="display:flex;gap:4px">';
+    html+='<button class="btn btn-s btn-xs" onclick="openDisEdit(\''+ridEsc+'\')">Edit</button>';
+    html+='<button class="btn '+(isEnable?'btn-g':'btn-d')+' btn-xs" onclick="doQuickDisable(\''+ridEsc+'\',\''+quickBtnAction+'\',\''+type+'\')">'+quickBtnLabel+'</button>';
+    html+='</td>';
+    html+='</tr>';
+  }
+  html+='</tbody></table></div>';
+  html+='<div class="pager"><span>'+r.rows.length+' requests</span></div></div>';
+  setC(html);
+}
+
+function loadEnReq(){
+  if(_store.disable&&_store.disable.rows){
+    var hdrs=_store.disable.headers;
+    var aidx=hdrs.indexOf('ACTION');
+    var rows=_store.disable.rows.filter(function(r){
+      return (r[aidx]||'').toString().trim().toUpperCase()==='ENABLE KARNA HAI';
+    });
+    renderDisEnReq({success:true,headers:hdrs,rows:rows,total:rows.length},'enable');
+    
+    if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
+  }
+  setC(skeletonTable('Enable Requests'));
+  /* FB: getEnableRequests from _store */
+}
+
+function renderDisEnReq(r, type){
+  var isEnable = type === 'enable';
+  var color    = isEnable ? 'var(--green)' : 'var(--red)';
+  var icon     = isEnable ? '🟢' : '🔴';
+  var label    = isEnable ? 'Enable Requests' : 'Disable Requests';
+  var actionLbl= isEnable ? 'ENABLE KARNA HAI' : 'DISABLE KARNA HAI';
+  var quickBtnLabel = isEnable ? 'ENABLED' : 'DISABLED';
+  var quickBtnAction= isEnable ? 'ENABLED'  : 'DISABLED';
+
+  var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+label+'</span></div>'
+    +'<div style="font-size:12px;color:var(--text3)">ACTION = '+actionLbl+' · <strong style="color:'+color+'">'+(r&&r.total||0)+' pending</strong></div></div>';
+
+  // Toggle buttons
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px">';
+  html+='<button class="btn '+(isEnable?'btn-s':'btn-d')+' btn-sm" onclick="nav(\'dis-req\')">🔴 Disable Requests'+(r&&!isEnable?' ('+r.total+')':'')+'</button>';
+  html+='<button class="btn '+(isEnable?'btn-g':'btn-s')+' btn-sm" onclick="nav(\'en-req\')">🟢 Enable Requests'+(r&&isEnable?' ('+r.total+')':'')+'</button>';
+  html+='</div>';
+
+  if(!r||!r.success||!r.rows||!r.rows.length){
+    html+='<div class="tcard"><div class="req-empty">✅ No pending '+label.toLowerCase()+'</div></div>';
+    setC(html);return;
+  }
+
+  var hdrs=r.headers;
+  var idI=hdrs.indexOf('id'),numI=hdrs.indexOf('NUMBER'),nameI=hdrs.indexOf('NAME');
+  var typeI=hdrs.indexOf('TYPE'),appI=hdrs.indexOf('APP STATUS'),actI=hdrs.indexOf('ACTION');
+  var disI=hdrs.indexOf('DISABLED BY'),issI=hdrs.indexOf('ISSUE'),dateI=hdrs.indexOf('DATE');
+
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  ['DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','ACTION','Actions'].forEach(function(h){html+='<th>'+h+'</th>';});
+  html+='</tr></thead><tbody>';
+
+  for(var i=0;i<r.rows.length;i++){
+    var row=r.rows[i];
+    var rid=row[idI]||'';
+    var ridEsc=String(rid).replace(/'/g,"'");
+    _rc['disable::'+rid]={row:row,hdrs:hdrs};
+    var act2=(row[actI]||'').toString().toUpperCase();
+    html+='<tr>';
+    html+='<td style="font-size:11px;color:var(--text3)">'+esc(String(row[dateI]||'').substring(0,10))+'</td>';
+    html+='<td style="font-weight:600;color:var(--text)">'+esc(String(row[numI]||''))+'</td>';
+    html+='<td>'+esc(String(row[nameI]||''))+'</td>';
+    html+='<td>'+esc(String(row[typeI]||''))+'</td>';
+    html+='<td>'+rCell('APP STATUS',row[appI]||'')+'</td>';
+    html+='<td>'+esc(String(row[disI]||''))+'</td>';
+    html+='<td title="'+esc(String(row[issI]||''))+'">'+esc(String(row[issI]||'').substring(0,35))+'</td>';
+    html+='<td>'+(isEnable?'<span class="badge b-en">ENABLE REQ</span>':'<span class="badge b-dis">DISABLE REQ</span>')+'</td>';
+    html+='<td style="display:flex;gap:4px">';
+    html+='<button class="btn btn-s btn-xs" onclick="openDisEdit(\''+ridEsc+'\')">Edit</button>';
+    html+='<button class="btn '+(isEnable?'btn-g':'btn-d')+' btn-xs" onclick="doQuickDisable(\''+ridEsc+'\',\''+quickBtnAction+'\',\''+type+'\')">'+quickBtnLabel+'</button>';
+    html+='</td>';
+    html+='</tr>';
+  }
+  html+='</tbody></table></div>';
+  html+='<div class="pager"><span>'+r.rows.length+' requests</span></div></div>';
+  setC(html);
+}
+
+/* ═══ SHEETS ═══ */
+var HDRS={
+  hold:['#','DATE','BOOKING ID','HOLD BY','AGENT NO.','DRIVER','STATUS','T AMT','AMT REL.','Amt Status','DESCRIPTION','PAYMENT BY','MSG','Actions'],
+  errorpayments:['#','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','T AMT','REL TO','STATUS','Amt Status','Message','UTR','Actions'],
+  recharge:['#','Complaint Id','Mobile','Customer','Issue','Total Amt','Refund Amt','Payment Status','Message','Actions'],
+  disable:['#','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DAYS','ENABLED BY','ACTION','Actions']
+};
+var COLS={
+  hold:['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','DESCRIPTION','PAYMENT BY','MESSAGE'],
+  errorpayments:['DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','T AMT','Rel To -','STATUS','AmtStatus','Message','UTR'],
+  recharge:['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Payment status','Message From Payment dep.'],
+  disable:['DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','ACTION']
+};
+
+function loadSh(sh,title,icon){
+  var st=_ts[sh]=_ts[sh]||{page:1,pageSize:100,search:''};
+  // ── INSTANT: use _store if available and not stale ──
+  if(_store[sh]&&_store[sh].rows&&!_store[sh]._stale){
+    var r=filterStore(sh,st);
+    renderSh(sh,title,icon,r);
+    return;
+  }
+  // ── Show skeleton while loading ──
+  setC(skeletonTable(title));
+  var fns={
+    hold:          'getHoldData',
+    errorpayments: 'getErrorPaymentsData',
+    recharge:      'getRechargeData',
+    disable:       'getDisableListData'
+  };
+  /* FB: quickDisableAction from _store */
+}
+
+function openDisEdit(rid){
+  // Open edit panel for disable list row
+  // Try cache first (row should be in _rc from renderDisEnReq)
+  var ck='disable::'+rid;
+  if(_rc[ck]){
+    openPanel('edit','disable',rid);
+    return;
+  }
+  // Not in cache — search _store
+  if(_store.disable&&_store.disable.rows){
+    var hdrs=_store.disable.headers;
+    var idIdx=hdrs.indexOf('id');
+    for(var i=0;i<_store.disable.rows.length;i++){
+      var rowId=(_store.disable.rows[i][idIdx]||'').toString().trim();
+      if(rowId===rid.toString().trim()){
+        _rc[ck]={row:_store.disable.rows[i],hdrs:hdrs};
+        openPanel('edit','disable',rid);
+        return;
+      }
+    }
+  }
+  // Fallback: open panel which will fetch from server
+  openPanel('edit','disable',rid);
+}
+
+function openPanel(mode,sh,rowId){
+  _pm=mode;_ps=sh;_pid=rowId;
+  document.getElementById('pTitle').textContent=(mode==='add'?'Add':'Edit')+' Record';
+  document.getElementById('ov').style.display='block';
+  document.getElementById('panel').classList.add('open');
+  var spBtn=document.getElementById('saveBtn');
+  spBtn.removeAttribute('onclick');
+  spBtn.disabled=false;
+  spBtn.textContent='Save Record';
+  spBtn.onclick=savePanel;
+  if(mode==='edit'&&rowId){
+    var ck=sh+'::'+rowId;
+    if(_rc[ck]){var cd=_rc[ck],d={};for(var j=0;j<cd.hdrs.length;j++)d[cd.hdrs[j]]=cd.row[j];buildForm(sh,d);return;}
+    document.getElementById('pBody').innerHTML='<div class="ldr"><span class="sp"></span>Loading...</div>';
+    var fns={hold:'getHoldData',errorpayments:'getErrorPaymentsData',recharge:'getRechargeData',disable:'getDisableListData'};
+    var idKey=sh==='hold'?'BOOKING ID':sh==='recharge'?'Complaint Id':'id';
+    // Check all stores first before server call
+    var storeKey=sh; 
+    if(_store[storeKey]&&_store[storeKey].rows){
+      var shdrs=_store[storeKey].headers;
+      var sidxs=shdrs.indexOf(idKey);
+      for(var si=0;si<_store[storeKey].rows.length;si++){
+        if(String(_store[storeKey].rows[si][sidxs])===String(rowId)){
+          var sd={};for(var sj=0;sj<shdrs.length;sj++)sd[shdrs[sj]]=_store[storeKey].rows[si][sj];
+          buildForm(sh,sd);return;
+        }
+      }
+    }
+    document.getElementById('pBody').innerHTML='<div class="ldr"><span class="sp"></span>Loading...</div>';
+    /* FB: getUsers from _store */
+}
+function openUserPanel(u){
+  document.getElementById('pTitle').textContent=u?'Edit User':'Add User';
+  var rO=['CALLING AGENT','KEY ACCOUNT','ACCOUNTANT','MANAGER','ADMIN'];
+  var html='';
+  if(!u){html+=fi('USERNAME','username','','text','req');html+=fi('PASSWORD','password','','text','req');}
+  else{html+='<div class="fr"><label class="fl">USERNAME</label><input class="fi2" value="'+esc(u.USERNAME||'')+'" readonly style="opacity:.5"></div>';html+=fi('NEW PASSWORD (blank=keep)','password','','text');}
+  html+=fi('AGENT NAME (Display Name)','agentName',u?u.Agent_Name||'':'','text');
+  html+=fiS('ROLE','role',u?u.ROLE||'':'',rO,'req');
+  html+=fi('DEPARTMENT','department',u?u.DEPARTMENT||'':'','text');
+  document.getElementById('pBody').innerHTML=html;
+  document.getElementById('ov').style.display='block';document.getElementById('panel').classList.add('open');
+  var btn=document.getElementById('saveBtn');btn.disabled=false;btn.textContent='Save User';
+  btn.onclick=function(){
+    var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
+    btn.disabled=true;btn.textContent='Saving...';
+    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.success){showAlert('Saved!','success');closePanel();loadUsers();/* FB: getAgentNames from _store *//* FB: getKeyAccountAgents from _store */}else showAlert(r?r.error:'Failed.','error');};
+    var fail=function(e){btn.disabled=false;btn.textContent='Save User';showAlert(e.message,'error');};
+    if(!u){ fbSaveUser(d,true,ok); }
+    else{d.userId=u.USER_ID; fbSaveUser(d,false,ok); }
+  };
+}
+function delUser(uid){if(!confirm('Delete?'))return;fbDeleteUser(uid,function(r){if(r&&r.success){showAlert('Deleted','success');loadUsers();}else showAlert(r?r.error:'Failed','error');});}
+
+/* ═══ EXPORT ═══ */
+function exportCSV(sh){
+  var m={hold:'HOLD',errorpayments:'ErrorPayments',recharge:'RECHARGE_DATA',disable:'dISABLE_LIST'};
+  /* FB: exportSheetCSV from _store */
+}
+
+/* ═══ ALERTS ═══ */
+var _at=null;
+function showAlert(msg,type){
+  // Error code lookup
+  var ERR={
+    'ERR_TKT_ADD':'Ticket submit failed — TICKETS sheet missing?',
+    'ERR_TKT_GET':'Tickets load failed',
+    'ERR_TKT_UPD':'Ticket update failed',
+    'ERR_ALL_DATA':'Data load failed — check Script Properties > SPREADSHEET_ID',
+    'ERR_HOLD_ADD':'HOLD add failed — duplicate Booking ID?',
+    'ERR_IMPORT':'CSV import failed — check column headers',
+    'ERR_EXPORT':'CSV export failed'
+  };
+  var disp=msg;
+  for(var code in ERR){if(msg&&msg.indexOf(code)>=0){disp='['+code+'] '+ERR[code];break;}}
+  var b=document.getElementById('alb');
+  document.getElementById('alMsg').textContent=disp;
+  b.className='alb show a-'+(type||'success');
+  if(_at)clearTimeout(_at);
+  _at=setTimeout(hideAlert,(type==='error'||type==='err')?8000:4000);
+}
+function hideAlert(){document.getElementById('alb').className='alb';}
+
+
+/* ═══ EXPORT / IMPORT ═══ */
+var _eiSh='', _eiTitle='';
+
+function showExportImport(sh, title){
+  var role=R();
+  var canExport=role==='ADMIN'||role==='ACCOUNTANT'||role==='MANAGER';
+  var canImport=role==='ADMIN'||role==='ACCOUNTANT';
+  if(!canExport){showAlert('Access denied','error');return;}
+  _eiSh=sh; _eiTitle=title;
+
+  // Sheet info for user guidance
+  var sheetInfo={
+    hold:         {sheet:'HOLD',          key:'BOOKING ID',   icon:'📌'},
+    errorpayments:{sheet:'ErrorPayments', key:'id',           icon:'⚠️'},
+    recharge:     {sheet:'RECHARGE_DATA', key:'Complaint Id', icon:'📱'},
+    disable:      {sheet:'dISABLE_LIST',  key:'id',           icon:'🚫'}
+  };
+  var info=sheetInfo[sh]||{sheet:title,key:'id',icon:'📄'};
+
+  var html='<div class="pg-head">';
+  html+='<div><div class="pg-t">'+info.icon+' Export / Import — <span class="hl">'+esc(title)+'</span></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">Sheet: <strong>'+info.sheet+'</strong></div>';
+  html+='</div>';
+  html+='<button class="btn btn-s btn-sm" onclick="loadPg(\''+sh+'\')" >← Back to '+esc(title)+'</button>';
+  html+='</div>';
+
+  // How-to guide
+  html+='<div class="tcard" style="padding:16px;margin-bottom:14px">';
+  html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">📋 How it works</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">';
+  html+='<strong style="color:var(--text2)">📤 Export:</strong><br>';
+  html+='Downloads the entire <strong>'+info.sheet+'</strong> sheet as a CSV file.<br>';
+  html+='Open in Excel/Google Sheets to edit.<br>';
+  html+='Dates are in DD/MM/YYYY format.';
+  html+='</div>';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">';
+  html+='<strong style="color:var(--text2)">📥 Import:</strong><br>';
+  html+='Upload a CSV to update data in <strong>'+info.sheet+'</strong>.<br>';
+  html+='Key column: <strong style="color:var(--gold)">'+info.key+'</strong><br>';
+  html+='• If key exists → updates that row (empty cells ignored)<br>';
+  html+='• If key is new → adds as a new row';
+  html+='</div>';
+  html+='</div>';
+  html+='</div>';
+
+  // Export section
+  if(canExport){
+    html+='<div class="tcard" style="padding:16px;margin-bottom:14px">';
+    html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">📤 Export '+esc(title)+' as CSV</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Downloads all rows from the <strong>'+info.sheet+'</strong> sheet. You can then edit in Excel and re-import.</div>';
+    html+='<button class="btn btn-p btn-sm" onclick="doExport()">⬇ Download '+esc(title)+' CSV</button>';
+    html+='<span id="exportStatus" style="font-size:12px;color:var(--text3);margin-left:12px"></span>';
+    html+='</div>';
+  }
+
+  // Import section
+  if(canImport){
+    html+='<div class="tcard" style="padding:16px">';
+    html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px">📥 Import CSV into '+esc(title)+'</div>';
+    html+='<div style="font-size:11px;color:var(--gold);background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px">';
+    html+='⚠ CSV must have the same column headers as the exported file.<br>';
+    html+='Matching is done by: <strong>'+info.key+'</strong>';
+    html+='</div>';
+    html+='<div style="margin-bottom:12px">';
+    html+='<label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">Select CSV File</label>';
+    html+='<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text)">';
+    html+='</div>';
+    html+='<button class="btn btn-s btn-sm" onclick="doImport()">⬆ Upload & Import</button>';
+    html+='<div id="importResult" style="margin-top:12px;font-size:12px"></div>';
+    html+='</div>';
+  }
+
+  setC(html);
+}
+
+function closeEiModal(){/* no longer needed but kept for compat */}
+function doExport(){
+  showAlert('Exporting...','info');
+  /* FB: exportSheetData from _store */
+}
+
+function doImport(){
+  var fileEl=document.getElementById('csvFileInput');
+  if(!fileEl||!fileEl.files||!fileEl.files[0]){showAlert('Select a CSV file first','error');return;}
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var csv=ev.target.result;
+    var res=document.getElementById('importResult');
+    if(res) res.textContent='Uploading...';
+    /* FB: importSheetData from _store */
+  };
+  reader.readAsText(fileEl.files[0]);
+}
+
+
+/* ═══ TICKETS ═══ */
+var _tktSearch='', _tktFilter='';
+
+function loadTickets(){
+  var role=R();
+  var isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
+  var username=_user&&_user.username||'';
+  // Use store if available
+  if(_store.tickets&&_store.tickets.rows){
+    var hdrs=_store.tickets.headers;
+    var subIdx=hdrs.indexOf('SUBMITTED BY');
+    var stIdx=hdrs.indexOf('STATUS');
+    var tIdx=hdrs.indexOf('TICKET ID');
+    var cIdx=hdrs.indexOf('CUSTOMER NUMBER');
+    var rows=_store.tickets.rows.filter(function(row){
+      // Role filter
+      if(!isMgr&&(row[subIdx]||'').toString().trim().toUpperCase()!==username.toUpperCase()) return false;
+      // Status filter
+      if(_tktFilter&&(row[stIdx]||'').toString().trim().toUpperCase()!==_tktFilter) return false;
+      // Search filter
+      if(_tktSearch){
+        var t=_tktSearch.toLowerCase();
+        var tid=(row[tIdx]||'').toString().toLowerCase();
+        var cust=(row[cIdx]||'').toString().toLowerCase();
+        if(tid.indexOf(t)<0&&cust.indexOf(t)<0&&row.join('|').toLowerCase().indexOf(t)<0) return false;
+      }
+      return true;
+    });
+    rows=rows.slice().reverse(); // newest first
+    renderTickets({success:true,headers:hdrs,rows:rows,total:rows.length},isMgr);
+    return;
+  }
+  setC(skeletonTable('Tickets'));
+  /* FB: getTickets from _store */
+}
+
+function renderTickets(r, isMgr){
+  var role=R();
+  if(!isMgr) isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
+  var html='<div class="pg-head">';
+  html+='<div><div class="pg-t">🎫 <span class="hl">'+(isMgr?'All Tickets':'My Tickets')+'</span></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(isMgr?'All agents tickets':'Your support tickets')+'</div>';
+  html+='</div>';
+  if(!isMgr) html+='<button class="btn btn-p btn-sm" onclick="openRaiseTicket()">+ Raise Ticket</button>';
+  html+='</div>';
+
+  // Search + filter bar
+  html+='<div class="fbar">';
+  html+='<div class="fsw"><span class="fsi">🔍</span>';
+  html+='<input class="fi fi-m" id="tktSrch" value="'+esc(_tktSearch)+'" placeholder="Search ticket ID or customer number..." oninput="onTktSearch(this.value)">';
+  html+='</div>';
+  html+='<select class="fs" id="tktStatus" onchange="onTktFilter(this.value)">';
+  html+='<option value=""'+(''===_tktFilter?' selected':'')+'>All Status</option>';
+  ['PENDING','OK','DONE'].forEach(function(s){
+    html+='<option value="'+s+'"'+(s===_tktFilter?' selected':'')+'>'+s+'</option>';
+  });
+  html+='</select>';
+  html+='<button class="btn btn-s btn-sm" onclick="loadTickets()">↻ Refresh</button>';
+  html+='<span class="f-m">'+(r&&r.total||0)+' tickets</span>';
+  html+='</div>';
+
+  if(!r||!r.success){setC(html+'<div class="ldr" style="color:var(--red)">'+(r?r.error:'Failed')+'</div>');return;}
+  if(!r.rows||!r.rows.length){
+    setC(html+'<div class="tcard"><div class="req-empty">'+(_tktSearch||_tktFilter?'No tickets match your search':'No tickets yet'+(isMgr?'':' — click + Raise Ticket to create one'))+'</div></div>');
+    return;
+  }
+
+  var hdrs=r.headers;
+  var tktI=hdrs.indexOf('TICKET ID'), dateI=hdrs.indexOf('DATE');
+  var custI=hdrs.indexOf('CUSTOMER NUMBER'), issI=hdrs.indexOf('ISSUE');
+  var remI=hdrs.indexOf('REMARK'), stI=hdrs.indexOf('STATUS');
+  var subI=hdrs.indexOf('SUBMITTED BY'), rbI=hdrs.indexOf('RESOLVED BY');
+  var rdI=hdrs.indexOf('RESOLVE DATE'), anI=hdrs.indexOf('ADMIN NOTE');
+
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  var cols=isMgr
+    ?['#','TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','SUBMITTED BY','STATUS','RESOLVED BY','ADMIN NOTE','Actions']
+    :['#','TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','STATUS','ADMIN NOTE'];
+  cols.forEach(function(h){html+='<th>'+h+'</th>';});
+  html+='</tr></thead><tbody>';
+
+  for(var i=0;i<r.rows.length;i++){
+    var row=r.rows[i];
+    var tktId=row[tktI]||'';
+    var st=(row[stI]||'').toString().toUpperCase();
+    var tktEsc=String(tktId).replace(/'/g,"'");
+    html+='<tr>';
+    html+='<td style="color:var(--text3)">'+(i+1)+'</td>';
+    html+='<td><strong style="color:var(--gold);font-family:monospace;font-size:11px">'+esc(String(tktId))+'</strong></td>';
+    html+='<td style="font-size:11px;color:var(--text3)">'+esc(String(row[dateI]||''))+'</td>';
+    html+='<td style="font-weight:600;color:var(--text)">'+esc(String(row[custI]||''))+'</td>';
+    html+='<td title="'+esc(String(row[issI]||''))+'">'+esc(String(row[issI]||'').substring(0,45))+'</td>';
+    if(isMgr){
+      html+='<td style="color:var(--text3)">'+esc(String(row[remI]||'').substring(0,30))+'</td>';
+      html+='<td style="font-weight:500">'+esc(String(row[subI]||''))+'</td>';
+    }
+    // Status badge
+    html+='<td>';
+    if(st==='PENDING') html+='<span class="badge b-pending">PENDING</span>';
+    else if(st==='OK') html+='<span class="badge b-ok">OK</span>';
+    else if(st==='DONE') html+='<span class="badge b-done">DONE</span>';
+    else html+='<span class="badge">'+esc(st)+'</span>';
+    html+='</td>';
+    if(isMgr){
+      html+='<td style="font-size:11px;color:var(--text3)">'+esc(String(row[rbI]||''))+'</td>';
+    }
+    html+='<td style="color:var(--text3);font-size:11px">'+esc(String(row[anI]||'').substring(0,40))+'</td>';
+    if(isMgr){
+      html+='<td style="white-space:nowrap">';
+      html+='<button class="btn btn-s btn-xs" onclick="openTktUpdate(\''+tktEsc+'\',\''+esc(st)+'\',\''+esc(String(row[anI]||'').replace(/'/g,"'"))+'\')">Update</button>';
+      html+='</td>';
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table></div></div>';
+  setC(html);
+}
+
+function onTktSearch(v){
+  _tktSearch=v.trim();
+  if(_tktTimer) clearTimeout(_tktTimer);
+  _tktTimer=setTimeout(loadTickets,300);
+}
+var _tktTimer=null;
+
+function onTktFilter(v){
+  _tktFilter=v;
+  loadTickets();
+}
+
+// ── Raise Ticket form (Agent) ──
+function openRaiseTicket(){
+  document.getElementById('pTitle').textContent='🎫 Raise Ticket';
+  var html='';
+  html+='<div class="fr"><label class="fl">CUSTOMER NUMBER <span class="freq">*</span></label>';
+  html+='<input class="fi2" type="text" name="CUSTOMER NUMBER" placeholder="Enter customer mobile number"></div>';
+  var issueOptions=[
+    '354 RECHARGE ACTIVATE NAHI HUA',
+    '999 RECHARGE ACTIVATE NAHI HUA',
+    '179 RECHARGE ACTIVATE NAHI HUA',
+    '299 RECHARGE ACTIVATE NAHI HUA',
+    '354 RECHARGE KIA HAI LIMIT OVER SHOW HO RAHA HAI',
+    '999 RECHARGE KA OPTION SHOW NAHI HO RAHA HAI',
+    'AUTOPAY FAIL HO RAHA HAI',
+    'LIMIT OVER AA RAHA HAI',
+    'NOTIFICATION NAHI AA RAHE HAI',
+    'RECHARGE KARNE ME ISSUE AA RAHA HAI',
+    'NAYA RECHARGE KIA HAI MAGAR LIMIT OVER AA RAHA HAI',
+    'FREE USER KARNA HAI'
+  ];
+  html+='<div class="fr"><label class="fl">ISSUE <span class="freq">*</span></label>';
+  html+='<select class="fse" name="ISSUE" required><option value="">-- Select Issue --</option>';
+  for(var ii=0;ii<issueOptions.length;ii++){
+    html+='<option value="'+esc(issueOptions[ii])+'">'+esc(issueOptions[ii])+'</option>';
+  }
+  html+='</select></div>';
+  html+='<div class="fr"><label class="fl">REMARK (Optional)</label>';
+  html+='<textarea class="fta" name="REMARK" placeholder="Write here if issue is different or add more details..."></textarea></div>';
+  html+='<div class="fr"><label class="fl">SUBMITTED BY</label>';
+  html+='<input class="fi2" type="text" value="'+esc(_user&&_user.username||'')+'" readonly style="opacity:.6;background:var(--bg3)">';
+  html+='</div>';
+  html+='<div style="background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:6px;padding:8px 12px;font-size:11px;color:#92400e;margin-top:4px">';
+  html+='Status will be set to <strong>PENDING</strong> automatically. Admin will update when resolved.';
+  html+='</div>';
+  document.getElementById('pBody').innerHTML=html;
+  document.getElementById('ov').style.display='block';
+  document.getElementById('panel').classList.add('open');
+  var btn=document.getElementById('saveBtn');
+  btn.removeAttribute('onclick');
+  btn.disabled=false; btn.textContent='Submit Ticket';
+  btn.onclick=function(){
+    var inp=document.querySelectorAll('#pBody [name]');
+    var d={};
+    for(var i=0;i<inp.length;i++) d[inp[i].name]=inp[i].value;
+    if(!d['CUSTOMER NUMBER']||!d['CUSTOMER NUMBER'].trim()){showAlert('Customer number required','error');return;}
+    if(!d['ISSUE']||!d['ISSUE'].trim()){showAlert('Issue description required','error');return;}
+    btn.disabled=true; btn.textContent='Submitting...';
+    /* FB: addTicket from _store */
+  };
+}
+
+
+function showTicketConfirm(tktId, custNumber){
+  var existing = document.getElementById('tktConfirmModal');
+  if(existing) existing.remove();
+
+  var div = document.createElement('div');
+  div.id  = 'tktConfirmModal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center';
+
+  var hasCust = custNumber && custNumber.trim();
+  var custBtn = hasCust
+    ? '<button id="waBtnSame" style="padding:10px;background:#25D366;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;width:100%">📲 Send to '+custNumber+' (Ticket Number)</button>'
+    : '';
+
+  div.innerHTML =
+    '<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:28px;width:420px;max-width:95vw;text-align:center">'+
+    '<div style="font-size:36px;margin-bottom:10px">🎫</div>'+
+    '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Ticket Raised Successfully!</div>'+
+    '<div style="font-size:13px;color:var(--text3);margin-bottom:16px">Your ticket has been submitted. Admin will update you soon.</div>'+
+    '<div style="background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:8px;padding:12px 18px;margin-bottom:20px">'+
+    '<div style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Ticket ID</div>'+
+    '<div style="font-size:22px;font-weight:800;color:#92400e;font-family:monospace;letter-spacing:1px">'+tktId+'</div>'+
+    '</div>'+
+    '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">📱 Send WhatsApp to Customer?</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'+
+    custBtn+
+    '<div style="display:flex;gap:8px">'+
+    '<input id="tktWaNum" type="text" placeholder="Type another number to send..." '+
+    'style="flex:1;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit">'+
+    '<button id="waBtnCustom" style="padding:9px 14px;background:#25D366;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Send</button>'+
+    '</div>'+
+    '</div>'+
+    '<button id="tktClosBtn" style="padding:9px 24px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">Close</button>'+
+    '</div>';
+
+  document.body.appendChild(div);
+
+  // Event listeners after DOM insertion
+  var samBtn = document.getElementById('waBtnSame');
+  if(samBtn){ samBtn.addEventListener('click', function(){ sendWAFromModal(tktId, custNumber); }); }
+  var cusBtn = document.getElementById('waBtnCustom');
+  if(cusBtn){ cusBtn.addEventListener('click', function(){ sendWACustom(tktId); }); }
+  var clsBtn = document.getElementById('tktClosBtn');
+  if(clsBtn){ clsBtn.addEventListener('click', function(){ var m=document.getElementById('tktConfirmModal');if(m)m.remove(); }); }
+
+  window._tktConfirmData = {tktId:tktId, custNumber:custNumber};
+}
+
+function sendWAFromModal(tktId, phone){
+  var uname = (_user&&_user.username)||'Agent';
+  var lines = [
+    '\u092a\u094d\u0930\u093f\u092f \u0917\u094d\u0930\u093e\u0939\u0915,',
+    '',
+    '\u0906\u092a\u0915\u0940 \u0936\u093f\u0915\u093e\u092f\u0924/\u091f\u093f\u0915\u091f \u0938\u092b\u0932\u0924\u093e\u092a\u0942\u0930\u094d\u0935\u0915 \u0926\u0930\u094d\u091c \u0915\u0930 \u0932\u0940 \u0917\u0908 \u0939\u0948\u0964',
+    '',
+    '\u0906\u092a\u0915\u0940 \u091f\u093f\u0915\u091f \u0906\u0908\u0921\u0940: *'+tktId+'*',
+    '',
+    '\u0915\u0943\u092a\u092f\u093e \u092d\u0935\u093f\u0937\u094d\u092f \u092e\u0947\u0902 \u091f\u094d\u0930\u0948\u0915\u093f\u0902\u0917 \u090f\u0935\u0902 \u0938\u0902\u0926\u0930\u094d\u092d \u0939\u0947\u0924\u0941 \u0907\u0938 \u091f\u093f\u0915\u091f \u0906\u0908\u0921\u0940 \u0915\u094b \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916\u0947\u0902\u0964',
+    '',
+    '\u0927\u0928\u094d\u092f\u0935\u093e\u0926\u0964',
+    uname,
+    'Taxi Sanchalak TSP Technologies'
+  ];
+  var msg    = lines.join('\n');
+  var digits = phone.replace(/[^0-9]/g,'');
+  if(digits.length===10) digits='91'+digits;
+  window.open('https://wa.me/'+digits+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function sendWACustom(tktId){
+  var inp = document.getElementById('tktWaNum');
+  if(!inp||!inp.value.trim()){showAlert('Please enter a phone number','error');return;}
+  sendWAFromModal(tktId, inp.value.trim());
+}
+
+
+// ── Update Ticket (Admin/Manager) ──
+function openTktUpdate(tktId, curStatus, curNote){
+  document.getElementById('pTitle').textContent='Update Ticket: '+tktId;
+  var html='<div class="fr"><label class="fl">TICKET ID</label>';
+  html+='<input class="fi2" value="'+esc(tktId)+'" readonly style="opacity:.6;background:var(--bg3)"></div>';
+  html+='<div class="fr"><label class="fl">STATUS <span class="freq">*</span></label>';
+  html+='<select class="fse" name="tktStatus">';
+  ['PENDING','OK','DONE'].forEach(function(s){
+    html+='<option value="'+s+'"'+(s===curStatus?' selected':'')+'>'+s+'</option>';
+  });
+  html+='</select></div>';
+  html+='<div class="fr"><label class="fl">ADMIN NOTE</label>';
+  html+='<textarea class="fta" name="tktNote" placeholder="Add a resolution note...">'+esc(curNote)+'</textarea></div>';
+  document.getElementById('pBody').innerHTML=html;
+  document.getElementById('ov').style.display='block';
+  document.getElementById('panel').classList.add('open');
+  var btn=document.getElementById('saveBtn');
+  btn.removeAttribute('onclick');
+  btn.disabled=false; btn.textContent='Update Ticket';
+  btn.onclick=function(){
+    var st=document.querySelector('#pBody [name="tktStatus"]').value;
+    var note=document.querySelector('#pBody [name="tktNote"]').value;
+    btn.disabled=true; btn.textContent='Updating...';
+    /* FB: updateTicketStatus from _store */
+  };
+}
+
+
+/* ═══ TOP AGENTS ═══ */
+var _topAgentsStore = null; // cached in memory — sheet rarely changes
+
+function buildWaMsg(kamName){
+  var h=new Date().getHours();
+  var g=h<12?'Good Morning':h<17?'Good Afternoon':'Good Evening';
+  return g+' Sir 🙏\n\nI am from *Taxi Sanchalak*\nSir, Main aap ka Key Account Manager *'+kamName+'* hoon 🚖\n\nHope you are doing fine...\n\nJust a reminder — koi bhi problem ho to, feel free to connect with me anytime!\n\nSir, mera working time *10 AM to 7 PM* hai ⏰\n\nREGARDS,\n*'+kamName+'*\n*TAXI SANCHALAK*\nTSP Technologies Pvt. Ltd.';
+}
+
+function waUrl(phone, kamName){
+  return 'https://wa.me/'+phone.replace(/[^\d]/g,'')+
+         '?text='+encodeURIComponent(buildWaMsg(kamName));
+}
+
+function loadTopAgents(){
+  // Use memory cache if available — instant
+  if(_topAgentsStore){
+    renderTopAgents(_topAgentsStore);
+    return;
+  }
+  setC('<div class="ldr"><span class="sp"></span>Loading your Top Agents...</div>');
+  /* FB: getMyTopAgents from _store */
+}
+
+function renderTopAgents(r){
+  var agents=r.agents||[];
+  var myName=r.myAgentName||(_user&&_user.username)||'KAM';
+  var html='<div class="pg-head">';
+  html+='<div><div class="pg-t">⭐ <span class="hl">Top Agents</span></div>';
+  html+='<div style="font-size:12px;color:var(--text3);margin-top:3px">Assigned to: <strong style="color:var(--gold)">'+esc(myName)+'</strong> &nbsp;·&nbsp; <strong style="color:var(--text)">'+agents.length+'</strong> agents</div></div>';
+  html+='<button class="btn btn-s btn-sm" onclick="refreshTopAgents()" id="taRefreshBtn">↻ Refresh</button>';
+  html+='</div>';
+
+  // Search bar
+  html+='<div class="fbar">';
+  html+='<div class="fsw"><span class="fsi">🔍</span>';
+  html+='<input class="fi fi-m" id="taSearch" placeholder="Search by name, company or number..." oninput="filterTopAgents(this.value)">';
+  html+='</div>';
+  html+='<span class="f-m" id="taCount">'+agents.length+' agents</span>';
+  html+='</div>';
+
+  if(!agents.length){
+    html+='<div class="tcard"><div style="text-align:center;padding:48px;color:var(--text3)">';
+    html+='<div style="font-size:40px;margin-bottom:12px">📋</div>';
+    html+='<div>No agents assigned to <strong>'+esc(myName)+'</strong></div>';
+    html+='<div style="font-size:11px;margin-top:8px">Check that ASSIGNED TO column in the sheet matches your Agent_Name exactly.</div>';
+    html+='</div></div>';
+    setC(html);
+    return;
+  }
+
+  html+='<div class="tcard" id="taTable">';
+  html+=renderTopAgentsTable(agents, '', myName);
+  html+='</div>';
+  setC(html);
+}
+
+function renderTopAgentsTable(agents, q, myName){
+  var html='<div class="tscroll"><table><thead><tr>';
+  html+='<th>#</th><th>AGENT NAME</th><th>COMPANY</th><th>MOBILE</th><th>WHATSAPP</th>';
+  html+='</tr></thead><tbody>';
+  if(!agents.length){
+    html+='<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">No results found</td></tr>';
+  } else {
+    for(var i=0;i<agents.length;i++){
+      var a=agents[i];
+      var link=waUrl(a.phone, myName);
+      var nameHl=hlText(a.name,q), coHl=hlText(a.company,q), numHl=hlText(a.number,q);
+      html+='<tr>';
+      html+='<td style="color:var(--text3);font-size:11px">'+(i+1)+'</td>';
+      html+='<td style="font-weight:600;color:var(--text)">'+nameHl+'</td>';
+      html+='<td style="color:var(--text2)">'+coHl+'</td>';
+      html+='<td style="font-family:monospace;color:var(--text2)">'+numHl+'</td>';
+      html+='<td>';
+      html+='<a href="'+link+'" target="_blank" rel="noopener" class="btn-wa-green">';
+      html+='📱 WhatsApp</a>';
+      html+='</td>';
+      html+='</tr>';
+    }
+  }
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function filterTopAgents(q){
+  if(!_topAgentsStore) return;
+  var t=q.toLowerCase().trim();
+  var agents=_topAgentsStore.agents;
+  var filtered=t?agents.filter(function(a){
+    return a.name.toLowerCase().indexOf(t)>=0||
+           a.company.toLowerCase().indexOf(t)>=0||
+           a.number.toLowerCase().indexOf(t)>=0;
+  }):agents;
+  var tbl=document.getElementById('taTable');
+  var cnt=document.getElementById('taCount');
+  var myName=_topAgentsStore.myAgentName||(_user&&_user.username)||'KAM';
+  if(tbl) tbl.innerHTML=renderTopAgentsTable(filtered,t,myName);
+  if(cnt) cnt.textContent=filtered.length+(t?' of '+agents.length:'')+' agents';
+}
+
+function refreshTopAgents(){
+  _topAgentsStore=null; // clear memory cache
+  var btn=document.getElementById('taRefreshBtn');
+  if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
+  // Also clear server cache
+  /* FB: invalidateTopAgentsCache from _store */
+}
+
+function hlText(text, q){
+  text=esc(String(text||''));
+  if(!q) return text;
+  var tl=text.toLowerCase(), ql=q.toLowerCase();
+  var i=tl.indexOf(ql);
+  if(i<0) return text;
+  return text.slice(0,i)+'<mark style="background:rgba(184,134,11,.25);border-radius:3px;padding:0 2px;color:inherit">'+text.slice(i,i+q.length)+'</mark>'+text.slice(i+q.length);
+}
+
+/* ═══ UTILS ═══ */
+function R(){return (_user&&_user.role||'').toUpperCase();}
+function setC(h){document.getElementById('mc').innerHTML=h;}
+function show(id){document.getElementById(id).style.display=id==='loginPage'?'flex':'block';}
+function hide(id){document.getElementById(id).style.display='none';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+}
+
+
+window.addEventListener('load',function(){
+  try{
+    var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{
+      if(sp)sp.style.display='none';
+      show('loginPage');
+      fbGet('users',function(err,data){
+        var sel=document.getElementById('selUser');
+        if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)
+            sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+        });
+      });
+    }
+  }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+</script>
+</body>
+</html>
