@@ -392,647 +392,36 @@ tr.ka-row:hover td{background:#fef9c3!important}
 </div>
 <script>
 
-/* ═══════════════════════════════════════════════════════════
-   TAXI SANCHALAK CRM — FIREBASE EDITION
-   All data operations via Firebase Realtime Database
-   ═══════════════════════════════════════════════════════════ */
-
-var FB_URL = "https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-// ── Firebase helpers ──────────────────────────────────────
-function fbGet(path, cb) {
-  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''))
-    .then(function(r){ return r.json(); })
-    .then(function(d){ cb(null, d); })
-    .catch(function(e){ cb(e, null); });
-}
-
-function fbSet(path, data, cb) {
-  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {
-    method: 'PUT',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(data)
-  }).then(function(r){ return r.json(); })
-    .then(function(d){ if(cb) cb(null, d); })
-    .catch(function(e){ if(cb) cb(e, null); });
-}
-
-function fbPatch(path, data, cb) {
-  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {
-    method: 'PATCH',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(data)
-  }).then(function(r){ return r.json(); })
-    .then(function(d){ if(cb) cb(null, d); })
-    .catch(function(e){ if(cb) cb(e, null); });
-}
-
-function fbDelete(path, cb) {
-  fetch(FB_URL + '/' + path + '.json?auth=' + (_fbToken||''), {method:'DELETE'})
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(cb) cb(null, d); })
-    .catch(function(e){ if(cb) cb(e, null); });
-}
-
-// ── Real-time listener with polling (60s for store, 5s for HOLD) ──
-var _listeners = {};
-function fbListen(path, cb) {
-  if (_listeners[path]) clearInterval(_listeners[path]);
-  cb(path); // immediate first call
-  _listeners[path] = setInterval(function(){ cb(path); }, 5000);
-}
-function fbUnlisten(path) {
-  if (_listeners[path]) { clearInterval(_listeners[path]); delete _listeners[path]; }
-}
-
-// ── Convert Firebase object to rows array ──
-function fbObjToRows(obj, headers) {
-  if (!obj) return [];
-  var rows = [];
-  Object.keys(obj).forEach(function(k) {
-    var rec = obj[k];
-    if (!rec) return;
-    var row = headers.map(function(h) {
-      var safeKey = h.replace(/[.#$\[\]\/]/g, '_');
-      return rec[safeKey] !== undefined ? rec[safeKey] : (rec[h] !== undefined ? rec[h] : '');
-    });
-    row._fbKey = k;
-    rows.push(row);
+/* ═══ FIREBASE BASE ═══ */
+var FB_URL="https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
+function fbGet(path,cb){fetch(FB_URL+'/'+path+'.json').then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});}
+function fbSet(path,data,cb){fetch(FB_URL+'/'+path+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function fbPatch(path,data,cb){fetch(FB_URL+'/'+path+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function fbDelete(path,cb){fetch(FB_URL+'/'+path+'.json',{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function fbObjToRows(obj,headers){
+  if(!obj)return [];var rows=[];
+  Object.keys(obj).forEach(function(k){
+    var rec=obj[k];if(!rec)return;
+    var row=headers.map(function(h){var sk=h.replace(/[.#$\[\]\/]/g,'_');return rec[sk]!==undefined?rec[sk]:(rec[h]!==undefined?rec[h]:'');});
+    row._fbKey=k;rows.push(row);
   });
   return rows;
 }
-
-// ── Headers config (matches migration) ──
-var H = {
-  HOLD: ['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','Rel To:-','DESCRIPTION','0ther','PAYMENT BY','FINAL BY','payment date','MESSAGE','ATTEND BY','key manager status'],
-  ERR:  ['id','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','Driver Details','T AMT','AMT T B REL','STATUS','0ther','AmtStatus','Rel To -','Message','UTR','Payment_date'],
-  RECH: ['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Submitted by','Payment status','Utr Number','Message From Payment dep.','Payment date'],
-  DIS:  ['id','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','DISABLE COUNT','ACTION'],
-  TKT:  ['TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','STATUS','SUBMITTED BY','RESOLVED BY','RESOLVE DATE','ADMIN NOTE'],
-  USR:  ['USER_ID','USERNAME','PASSWORD','ROLE','DEPARTMENT','CREATED_BY','Agent_Name']
+var H={
+  HOLD:['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','Rel To:-','DESCRIPTION','0ther','PAYMENT BY','FINAL BY','payment date','MESSAGE','ATTEND BY','key manager status'],
+  ERR:['id','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','Driver Details','T AMT','AMT T B REL','STATUS','0ther','AmtStatus','Rel To -','Message','UTR','Payment_date'],
+  RECH:['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Submitted by','Payment status','Utr Number','Message From Payment dep.','Payment date'],
+  DIS:['id','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','DISABLE COUNT','ACTION'],
+  TKT:['TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','STATUS','SUBMITTED BY','RESOLVED BY','RESOLVE DATE','ADMIN NOTE'],
+  USR:['USER_ID','USERNAME','PASSWORD','ROLE','DEPARTMENT','CREATED_BY','Agent_Name']
 };
-
-// ── Auth state ──
-var _fbToken = null; // Firebase uses open rules — token not needed in test mode
-
-// ── Login via Firebase ──
-function doLogin(){
-  var u=document.getElementById('selUser').value;
-  var p=document.getElementById('inpPass').value;
-  var rem=document.getElementById('chkRem').checked;
-  if(!u){lErr('Select username.');return;}
-  if(!p){lErr('Enter password.');return;}
-  var btn=document.getElementById('btnLogin');
-  btn.disabled=true; btn.textContent='Authenticating...'; hideLErr();
-
-  // Read users from Firebase
-  fbGet('users', function(err, data) {
-    btn.disabled=false; btn.textContent='LOGIN TO CRM';
-    if (err || !data) { lErr('Connection error. Check internet.'); return; }
-    // Find matching user
-    var found = null;
-    Object.keys(data).forEach(function(k) {
-      var usr = data[k];
-      if (!usr) return;
-      var uname = (usr.USERNAME||'').toString().trim().toUpperCase();
-      var pass  = (usr.PASSWORD||'').toString().trim();
-      if (uname === u.toString().trim().toUpperCase() && pass === p) {
-        found = usr;
-      }
-    });
-    if (!found) { lErr('Invalid username or password.'); return; }
-
-    // Build session
-    var token = 'fb_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
-    var st = rem ? localStorage : sessionStorage;
-    st.setItem('crm_t',  token);
-    st.setItem('crm_un', found.USERNAME||'');
-    st.setItem('crm_ro', found.ROLE||'');
-    st.setItem('crm_dp', found.DEPARTMENT||'');
-    st.setItem('crm_id', String(found.USER_ID||''));
-    st.setItem('crm_an', found.Agent_Name||'');
-    if(rem) localStorage.setItem('crm_u', u);
-    else localStorage.removeItem('crm_u');
-
-    _tok  = token;
-    _user = {
-      username:   found.USERNAME||'',
-      role:       found.ROLE||'',
-      department: found.DEPARTMENT||'',
-      userId:     found.USER_ID||'',
-      agentName:  found.Agent_Name||''
-    };
-    bootApp();
-  });
-}
-
-// ── Logout ──
-function doLogout(){
-  ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an'].forEach(function(k){
-    localStorage.removeItem(k); sessionStorage.removeItem(k);
-  });
-  _tok=null; _user=null; _store={};
-  Object.keys(_listeners).forEach(fbUnlisten);
-  if(_rt) clearInterval(_rt);
-  if(_rt2) clearInterval(_rt2);
-  if(_storeRt) clearInterval(_storeRt);
-  hide('app'); show('loginPage');
-  document.getElementById('inpPass').value='';
-}
-
-// ── Load all sheet data into _store ──
-function preloadStore(){
-  var sheets = [
-    {path:'hold',          key:'hold',          hdrs:H.HOLD},
-    {path:'errorpayments', key:'errorpayments',  hdrs:H.ERR},
-    {path:'recharge',      key:'recharge',       hdrs:H.RECH},
-    {path:'disable',       key:'disable',        hdrs:H.DIS},
-    {path:'tickets',       key:'tickets',        hdrs:H.TKT}
-  ];
-  var loaded = 0;
-  var total  = sheets.length;
-  sheets.forEach(function(s) {
-    fbGet(s.path, function(err, data) {
-      if (!err && data) {
-        var rows = fbObjToRows(data, s.hdrs);
-        _store[s.key] = {headers: s.hdrs, rows: rows};
-      }
-      loaded++;
-      if (loaded === total) {
-        saveStoreToLocal();
-        if (_pg && _pg !== 'dashboard') loadPg(_pg);
-      }
-    });
-  });
-}
-
-// ── HOLD specific functions ──
-function getHoldMain(params, cb) {
-  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
-  var r = filterHoldViewFB('main', params);
-  cb({success:true, headers:H.HOLD, rows:r.rows, total:r.total,
-      page:r.page, pageSize:r.pageSize, totalPages:r.totalPages});
-}
-
-function getHoldDone(params, cb) {
-  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
-  var r = filterHoldViewFB('done', params);
-  cb({success:true, headers:H.HOLD, rows:r.rows, total:r.total,
-      page:r.page, pageSize:r.pageSize, totalPages:r.totalPages});
-}
-
-function filterHoldViewFB(mode, st) {
-  var data = _store.hold;
-  if (!data) return {rows:[],total:0,page:1,pageSize:100,totalPages:1};
-  var headers = H.HOLD;
-  var sIdx  = headers.indexOf('STATUS');
-  var asIdx = headers.indexOf('AmtStatus');
-  var rows  = data.rows.filter(function(r) {
-    var st2 = (r[sIdx]||'').toString().toUpperCase().trim();
-    var as  = (r[asIdx]||'').toString().toUpperCase().trim();
-    if (mode === 'main') {
-      return (st2==='HOLD'||st2==='CBD')&&(as==='PENDING'||as==='');
-    } else {
-      return (st2==='HOLD'||st2==='CBD')&&(as==='OK'||as==='DONE');
-    }
-  });
-  // Role filter for calling agent
-  var role = R();
-  if (role === 'CALLING AGENT') {
-    var hbIdx = headers.indexOf('HOLD BY');
-    var uname = (_user&&(_user.agentName||_user.username)||'').toUpperCase();
-    rows = rows.filter(function(r){ return (r[hbIdx]||'').toString().toUpperCase()===uname; });
-  }
-  var page = parseInt(st&&st.page)||1;
-  var ps   = parseInt(st&&st.pageSize)||100;
-  var total = rows.length;
-  var start = (page-1)*ps;
-  return {rows:rows.slice(start,start+ps), total:total, page:page,
-          pageSize:ps, totalPages:Math.ceil(total/ps)||1};
-}
-
-// ── Add/Update/Delete HOLD row ──
-function fbAddHoldRow(data, cb) {
-  var ts = Date.now();
-  var key = (data['BOOKING ID']||'').toString().replace(/[.#$\[\]\/]/g,'_')||'bk_'+ts;
-  fbSet('hold/'+key, data, function(err) {
-    if (err) { cb({success:false,error:err.message}); return; }
-    // Update local store
-    if (_store.hold) {
-      var row = H.HOLD.map(function(h){ return data[h.replace(/[.#$\[\]\/]/g,'_')]||data[h]||''; });
-      row._fbKey = key;
-      _store.hold.rows.push(row);
-    }
-    cb({success:true});
-  });
-}
-
-function fbUpdateHoldRow(fbKey, data, cb) {
-  fbPatch('hold/'+fbKey, data, function(err) {
-    if (err) { cb({success:false,error:err.message}); return; }
-    // Update local store
-    if (_store.hold) {
-      for (var i=0; i<_store.hold.rows.length; i++) {
-        if (_store.hold.rows[i]._fbKey === fbKey) {
-          H.HOLD.forEach(function(h,idx) {
-            var sk = h.replace(/[.#$\[\]\/]/g,'_');
-            if (data[sk]!==undefined) _store.hold.rows[i][idx]=data[sk];
-            else if (data[h]!==undefined) _store.hold.rows[i][idx]=data[h];
-          });
-          break;
-        }
-      }
-    }
-    cb({success:true});
-  });
-}
-
-function fbDeleteHoldRow(fbKey, cb) {
-  fbDelete('hold/'+fbKey, function(err) {
-    if (err) { cb({success:false,error:err.message}); return; }
-    if (_store.hold) {
-      _store.hold.rows = _store.hold.rows.filter(function(r){ return r._fbKey !== fbKey; });
-    }
-    cb({success:true});
-  });
-}
-
-// ── Quick HOLD action (STATUS change) ──
-function quickHoldFB(bid) {
-  if(!confirm('Set STATUS = HOLD for Booking ID: '+bid+'?')) return;
-  showAlert('Updating...','info');
-  // Find the row
-  if (!_store.hold) { showAlert('Data not loaded','error'); return; }
-  var bidIdx = H.HOLD.indexOf('BOOKING ID');
-  var sIdx   = H.HOLD.indexOf('STATUS');
-  for (var i=0; i<_store.hold.rows.length; i++) {
-    if ((_store.hold.rows[i][bidIdx]||'').toString().trim()===bid.toString().trim()) {
-      var fbKey = _store.hold.rows[i]._fbKey;
-      var updates = {}; updates['STATUS'] = 'HOLD';
-      fbPatch('hold/'+fbKey, updates, function(err) {
-        if (err) { showAlert('Failed: '+err.message,'error'); return; }
-        _store.hold.rows[i][sIdx] = 'HOLD';
-        showAlert('STATUS changed to HOLD ✓','success');
-        loadHoldReq();
-      });
-      return;
-    }
-  }
-  showAlert('Booking ID not found','error');
-}
-
-// ── Quick Disable action ──
-function quickDisableFB(rid, newAction, type) {
-  var msg = newAction==='ENABLED'?'Mark as ENABLED?':'Mark as DISABLED?';
-  if(!confirm(msg)) return;
-  showAlert('Updating...','info');
-  if (!_store.disable) { showAlert('Data not loaded','error'); return; }
-  var idIdx  = H.DIS.indexOf('id');
-  var actIdx = H.DIS.indexOf('ACTION');
-  var enByIdx= H.DIS.indexOf('ENABLED BY');
-  for (var i=0; i<_store.disable.rows.length; i++) {
-    if ((_store.disable.rows[i][idIdx]||'').toString().trim()===rid.toString().trim()) {
-      var fbKey = _store.disable.rows[i]._fbKey;
-      var updates = {ACTION: newAction};
-      if (newAction==='ENABLED') updates['ENABLED_BY']=_user.username||'';
-      fbPatch('disable/'+fbKey, updates, function(err) {
-        if (err) { showAlert('Failed: '+err.message,'error'); return; }
-        _store.disable.rows[i][actIdx] = newAction;
-        if (newAction==='ENABLED'&&enByIdx>=0) _store.disable.rows[i][enByIdx]=_user.username||'';
-        var msg2 = newAction==='ENABLED'?'ENABLED ✓ | BY: '+(_user.username||''):'DISABLED ✓';
-        showAlert(msg2,'success');
-        if(type==='enable') loadEnReq(); else loadDisReq();
-      });
-      return;
-    }
-  }
-  showAlert('Row not found','error');
-}
-
-// ── Ticket functions ──
-function fbAddTicket(data, cb) {
-  var now    = new Date();
-  var mmdd   = (now.getMonth()+1).toString().padStart(2,'0') + now.getDate().toString().padStart(2,'0');
-  // Count today's tickets for sequence
-  var seq    = 1;
-  if (_store.tickets && _store.tickets.rows) {
-    var prefix = 'TSP-TKT-'+mmdd+'-';
-    _store.tickets.rows.forEach(function(r){ if((r[0]||'').indexOf(prefix)===0) seq++; });
-  }
-  var tktId  = 'TSP-TKT-'+mmdd+'-'+String(seq).padStart(3,'0');
-  var dateStr= now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
-  var record = {
-    'TICKET_ID':       tktId,
-    'DATE':            dateStr,
-    'CUSTOMER_NUMBER': (data['CUSTOMER NUMBER']||'').toString().trim(),
-    'ISSUE':           (data['ISSUE']||'').toString().trim(),
-    'REMARK':          (data['REMARK']||'').toString().trim(),
-    'STATUS':          'PENDING',
-    'SUBMITTED_BY':    _user.username||'',
-    'RESOLVED_BY':     '',
-    'RESOLVE_DATE':    '',
-    'ADMIN_NOTE':      ''
-  };
-  var fbKey = tktId.replace(/[.#$\[\]\/]/g,'_');
-  fbSet('tickets/'+fbKey, record, function(err) {
-    if (err) { cb({success:false,error:err.message}); return; }
-    // Update local store
-    if (_store.tickets) {
-      var row = H.TKT.map(function(h){ return record[h.replace(/[.#$\[\]\/]/g,'_')]||''; });
-      row._fbKey = fbKey;
-      _store.tickets.rows.push(row);
-    }
-    cb({success:true, ticketId:tktId});
-  });
-}
-
-function fbUpdateTicketStatus(tktId, newStatus, adminNote, cb) {
-  var role = R();
-  if (role!=='ADMIN'&&role!=='MANAGER'&&role!=='ACCOUNTANT') {
-    cb({success:false,error:'Access denied'}); return;
-  }
-  if (!_store.tickets) { cb({success:false,error:'Data not loaded'}); return; }
-  var tIdx = H.TKT.indexOf('TICKET ID');
-  for (var i=0; i<_store.tickets.rows.length; i++) {
-    var row = _store.tickets.rows[i];
-    if ((row[tIdx]||'').toString().trim()===tktId.toString().trim()) {
-      var fbKey = row._fbKey;
-      var now = new Date();
-      var dateStr = now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
-      var updates = {
-        STATUS:       newStatus,
-        RESOLVED_BY:  _user.username||'',
-        RESOLVE_DATE: dateStr,
-        ADMIN_NOTE:   adminNote||''
-      };
-      fbPatch('tickets/'+fbKey, updates, function(err) {
-        if (err) { cb({success:false,error:err.message}); return; }
-        var stIdx = H.TKT.indexOf('STATUS');
-        var rbIdx = H.TKT.indexOf('RESOLVED BY');
-        var rdIdx = H.TKT.indexOf('RESOLVE DATE');
-        var anIdx = H.TKT.indexOf('ADMIN NOTE');
-        _store.tickets.rows[i][stIdx] = newStatus;
-        _store.tickets.rows[i][rbIdx] = _user.username||'';
-        _store.tickets.rows[i][rdIdx] = dateStr;
-        _store.tickets.rows[i][anIdx] = adminNote||'';
-        cb({success:true});
-      });
-      return;
-    }
-  }
-  cb({success:false, error:'Ticket not found: '+tktId});
-}
-
-// ── User management ──
-function fbGetUsers(cb) {
-  fbGet('users', function(err, data) {
-    if (err||!data) { cb({success:false,error:'Failed to load users'}); return; }
-    var users = Object.keys(data).map(function(k){
-      var u = data[k]; u._fbKey = k; return u;
-    }).filter(Boolean);
-    cb({success:true, data:users});
-  });
-}
-
-function fbSaveUser(userData, isNew, cb) {
-  var uid  = (userData.USER_ID||'').toString().trim();
-  var key  = 'u_'+uid;
-  var record = {};
-  H.USR.forEach(function(h){ record[h]=userData[h]||''; });
-  fbSet('users/'+key, record, function(err){
-    if(err){cb({success:false,error:err.message});return;}
-    cb({success:true});
-  });
-}
-
-function fbDeleteUser(userId, cb) {
-  fbDelete('users/u_'+userId, function(err){
-    if(err){cb({success:false,error:err.message});return;}
-    cb({success:true});
-  });
-}
-
-// ── Live HOLD sync (5s polling) ──
-var _holdPollCount = 0;
-function startHoldLiveSync() {
-  if (_rt) clearInterval(_rt);
-  _rt = setInterval(function() {
-    if (document.hidden || _searchActive) return;
-    // Poll Firebase for HOLD changes
-    fbGet('hold', function(err, data) {
-      if (err || !data) return;
-      var rows = fbObjToRows(data, H.HOLD);
-      var changed = !_store.hold || rows.length !== _store.hold.rows.length;
-      if (!changed && _store.hold) {
-        // Check last row difference
-        var newLast = JSON.stringify(rows[rows.length-1]);
-        var oldLast = JSON.stringify(_store.hold.rows[_store.hold.rows.length-1]);
-        changed = newLast !== oldLast;
-      }
-      if (changed) {
-        var prevLen = _store.hold ? _store.hold.rows.length : 0;
-        _store.hold = {headers:H.HOLD, rows:rows};
-        saveStoreToLocal();
-        var diff = rows.length - prevLen;
-        if (prevLen > 0) {
-          if (diff > 0) showAlert('🔴 '+diff+' new HOLD record'+(diff>1?'s':'')+'!','info');
-          else showAlert('🔄 HOLD data updated','info');
-        }
-        if (_pg==='hold-main') loadHoldMain();
-        else if (_pg==='hold-done') loadHoldDone();
-        else if (_pg==='hold-req') loadHoldReq();
-        updateBadges();
-      }
-    });
-  }, 5000);
-}
-
-// ── Export CSV ──
-function doExport() {
-  var sheetMap = {
-    hold:'hold', errorpayments:'errorpayments',
-    recharge:'recharge', disable:'disable'
-  };
-  var hdrMap = {hold:H.HOLD, errorpayments:H.ERR, recharge:H.RECH, disable:H.DIS};
-  var sh = _eiSh;
-  var data = _store[sh];
-  if (!data) { showAlert('Data not loaded yet','error'); return; }
-  var rows = [data.headers].concat(data.rows.map(function(r){
-    return data.headers.map(function(_,i){ return r[i]||''; });
-  }));
-  var csv = rows.map(function(row){
-    return row.map(function(c){
-      var s = String(c);
-      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)
-        s='"'+s.replace(/"/g,'""')+'"';
-      return s;
-    }).join(',');
-  }).join('\r\n');
-  var blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href   = url;
-  a.download = (_eiTitle||'export').replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-  showAlert('Exported '+data.rows.length+' rows ✓','success');
-  var es = document.getElementById('exportStatus');
-  if(es) es.textContent='✅ '+data.rows.length+' rows exported';
-}
-
-// ── Dashboard stats (computed from _store) ──
-function getDashboardStatsFB(dateFrom, dateTo, cb) {
-  if (!_store.hold) { cb({success:false,error:'Loading...'}); return; }
-  var h = H.HOLD;
-  var sIdx  = h.indexOf('STATUS');
-  var asIdx = h.indexOf('AmtStatus');
-  var hbIdx = h.indexOf('HOLD BY');
-  var atIdx = h.indexOf('ATTEND BY');
-  var dIdx  = h.indexOf('DATE');
-  var fbIdx = h.indexOf('FINAL BY');
-  var rows  = _store.hold.rows;
-
-  // Date filter
-  if (dateFrom || dateTo) {
-    rows = rows.filter(function(r) {
-      var d = r[dIdx] ? new Date(r[dIdx].split('/').reverse().join('-')) : null;
-      if (!d || isNaN(d.getTime())) return true;
-      if (dateFrom && d < new Date(dateFrom)) return false;
-      if (dateTo   && d > new Date(dateTo))   return false;
-      return true;
-    });
-  }
-
-  var holdPend=0, cbdPend=0, solved=0;
-  var agentMap={}, kaMap={};
-  rows.forEach(function(r) {
-    var st = (r[sIdx]||'').toUpperCase().trim();
-    var as = (r[asIdx]||'').toUpperCase().trim();
-    var hb = (r[hbIdx]||'').trim();
-    var at = (r[atIdx]||'').trim();
-    var fb = (r[fbIdx]||'').trim();
-    if (st==='HOLD'&&(as==='PENDING'||as==='')) holdPend++;
-    if (st==='CBD' &&(as==='PENDING'||as==='')) cbdPend++;
-    if (as==='OK'||as==='DONE') solved++;
-    if (hb) { agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0}; }
-    if (st==='HOLD') agentMap[hb]&&agentMap[hb].hold++;
-    if (st==='CBD')  agentMap[hb]&&agentMap[hb].cbd++;
-    if (fb&&(as==='OK'||as==='DONE')) { agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0}; agentMap[fb].solved++; }
-    if (at) { kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0}; kaMap[at].attempts++; }
-  });
-
-  // Recharge, Disable from store
-  var rechPend=0, disCnt=0, disReq=0, enReq=0;
-  if (_store.recharge) {
-    var psIdx = H.RECH.indexOf('Payment status');
-    _store.recharge.rows.forEach(function(r){ if((r[psIdx]||'').toUpperCase().trim()==='PENDING') rechPend++; });
-  }
-  if (_store.disable) {
-    var actIdx = H.DIS.indexOf('ACTION');
-    _store.disable.rows.forEach(function(r){
-      var act = (r[actIdx]||'').toUpperCase().trim();
-      if(act==='DISABLED') disCnt++;
-      if(act==='DISABLE KARNA HAI') disReq++;
-      if(act==='ENABLE KARNA HAI') enReq++;
-    });
-  }
-
-  cb({
-    success:true,
-    holdPending: holdPend, cbdPending: cbdPend, solved: solved,
-    rechargePending: rechPend,
-    totalDisabled: disCnt, disableReq: disReq, enableReq: enReq,
-    agentReport: Object.values(agentMap),
-    kaReport:    Object.values(kaMap)
-  });
-}
-
-// ── KA Agents ──
-function fbGetKAAgents(cb) {
-  fbGet('agents', function(err, data) {
-    if (err||!data) { cb({success:false,data:[]}); return; }
-    var agents = [];
-    var myName = (_user&&(_user.agentName||_user.username)||'').toUpperCase();
-    Object.keys(data).forEach(function(k){
-      var a = data[k];
-      if (!a) return;
-      if (!myName || (a.assigned||'').toUpperCase()===myName) agents.push(a);
-    });
-    cb({success:true, data:agents});
-  });
-}
-
-function fbGetAgentNames(cb) {
-  fbGet('agents', function(err, data) {
-    if (err||!data) { cb({success:true,data:[]}); return; }
-    var names = [];
-    Object.keys(data).forEach(function(k){ if(data[k]&&data[k].name) names.push(data[k].name); });
-    cb({success:true, data:names});
-  });
-}
-
-
-function savePanel(){
-  var sh=_ps,rowId=_pid,mode=_pm;
-  var btn=document.getElementById('saveBtn');
-  btn.removeAttribute('onclick');btn.disabled=true;btn.textContent='Saving...';
-  var inputs=document.querySelectorAll('#pBody [name]');
-  var d={};for(var i=0;i<inputs.length;i++) d[inputs[i].name]=inputs[i].value;
-  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
-  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
-  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
-  var path=pathMap[sh];
-  if(!path){showAlert('Unknown sheet: '+sh,'error');btn.disabled=false;btn.textContent='Save Record';return;}
-  var hdrs=hdrMap[sh],keyCol=keyMap[sh];
-  var record={};
-  hdrs.forEach(function(h){record[h.replace(/[.#$\[\]\/]/g,'_')]=d[h]||'';});
-  if(mode==='add'){
-    var keyVal=(d[keyCol]||'').toString().replace(/[.#$\[\]\/]/g,'_')||'r_'+Date.now();
-    fbSet(path+'/'+keyVal,record,function(err){
-      btn.disabled=false;btn.textContent='Save Record';
-      if(err){showAlert('ERR_HOLD_ADD: '+err.message,'error');return;}
-      if(_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$\[\]\/]/g,'_')]||'';});row._fbKey=keyVal;_store[sh].rows.push(row);}
-      showAlert('Saved!','success');closePanel();
-      if(sh==='hold'){_holdRowCount=0;_holdTs='0';}
-      loadPg(sh);updateBadges();
-    });
-  }else{
-    var fbKey=rowId;
-    if(_store[sh]){var kIdx=hdrs.indexOf(keyCol);for(var i2=0;i2<_store[sh].rows.length;i2++){if((_store[sh].rows[i2][kIdx]||'').toString().trim()===rowId.toString().trim()){fbKey=_store[sh].rows[i2]._fbKey||rowId;break;}}}
-    fbPatch(path+'/'+fbKey,record,function(err){
-      btn.disabled=false;btn.textContent='Save Record';
-      if(err){showAlert('ERR_HOLD_UPD: '+err.message,'error');return;}
-      if(_store[sh]){var kIdx2=hdrs.indexOf(keyCol);for(var i3=0;i3<_store[sh].rows.length;i3++){if((_store[sh].rows[i3][kIdx2]||'').toString().trim()===rowId.toString().trim()){hdrs.forEach(function(h,idx2){_store[sh].rows[i3][idx2]=record[h.replace(/[.#$\[\]\/]/g,'_')]||'';});break;}}}
-      showAlert('Saved!','success');closePanel();
-      if(sh==='hold'){_holdRowCount=0;_holdTs='0';}
-      loadPg(sh);updateBadges();
-    });
-  }
-}
-function deleteRow(sh,rowId){
-  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
-  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
-  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
-  var path=pathMap[sh];
-  if(!path){showAlert('Unknown sheet','error');return;}
-  if(!confirm('Delete this record?'))return;
-  var hdrs=hdrMap[sh],kIdx=hdrs.indexOf(keyMap[sh]);
-  var fbKey=rowId;
-  if(_store[sh]){for(var i=0;i<_store[sh].rows.length;i++){if((_store[sh].rows[i][kIdx]||'').toString().trim()===rowId.toString().trim()){fbKey=_store[sh].rows[i]._fbKey||rowId;break;}}}
-  fbDelete(path+'/'+fbKey,function(err){
-    if(err){showAlert('Delete failed: '+err.message,'error');return;}
-    if(_store[sh]){_store[sh].rows=_store[sh].rows.filter(function(r){return r._fbKey!==fbKey;});}
-    showAlert('Deleted','success');loadPg(sh);updateBadges();
-  });
-}
 function fbLoadAllSheets(){
   var sheets=[{path:'hold',key:'hold',hdrs:H.HOLD},{path:'errorpayments',key:'errorpayments',hdrs:H.ERR},{path:'recharge',key:'recharge',hdrs:H.RECH},{path:'disable',key:'disable',hdrs:H.DIS},{path:'tickets',key:'tickets',hdrs:H.TKT}];
   var loaded=0;
   sheets.forEach(function(s){
     fbGet(s.path,function(err,data){
-      if(!err&&data){var rows=fbObjToRows(data,s.hdrs);_store[s.key]={headers:s.hdrs,rows:rows};}
-      loaded++;
-      if(loaded===sheets.length){saveStoreToLocal();updateBadges();if(_pg&&_pg!=='dashboard')loadPg(_pg);}
+      if(!err&&data){_store[s.key]={headers:s.hdrs,rows:fbObjToRows(data,s.hdrs)};}
+      if(++loaded===sheets.length){saveStoreToLocal();updateBadges();if(_pg&&_pg!=='dashboard')loadPg(_pg);}
     });
   });
 }
@@ -1043,63 +432,83 @@ function tryRestoreSession(){
   _user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};
   return !!_user.username;
 }
-
-function bootApp(){
-  // Hide splash FIRST before anything else can fail
-  try{var s=document.getElementById('splash');if(s){s.style.display='none';}}catch(e){}
-  hide('loginPage');show('app');
-  document.getElementById('tbAv').textContent=(_user.username||'U')[0].toUpperCase();
-  document.getElementById('tbUn').textContent=_user.username||'—';
-  document.getElementById('tbRl').textContent=_user.role||'—';
-  document.getElementById('ddN').textContent=_user.username||'—';
-  document.getElementById('ddR').textContent=(_user.role||'')+(_user.department?' · '+_user.department:'');
-  var role=R();
-  if(role==='ADMIN'||role==='MANAGER') document.getElementById('adminNav').style.display='block';
-  // Show request tabs
-  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT'){
-    document.getElementById('nav-hold-req').style.display='flex';
-    document.getElementById('nav-dis-req').style.display='flex';
-    document.getElementById('nav-en-req').style.display='flex';
-  }
-  // Tickets tab visible for ALL roles
-  document.getElementById('tktNav').style.display='block';
-  // Hide Dashboard nav for Calling Agent — they go straight to Pending Hold
-  if(role==='CALLING AGENT'){
-    var dashNav=document.getElementById('nav-dashboard');
-    if(dashNav) dashNav.style.display='none';
-    var mainLbl=document.getElementById('mainNavLabel');
-    if(mainLbl) mainLbl.style.display='none';
-  }
-  if(role==='KEY ACCOUNT'){
-    document.getElementById('kaNav').style.display='block';
-  }
-  // Load agent lists + store current user's display name
-  fbGetAgentNames(function(r){if(r&&r.success){_agents=r.data;if(R()==="CALLING AGENT"){var uname=(_user.agentName||_user.username||"").toUpperCase();for(var ai=0;ai<_agents.length;ai++){if(_agents[ai].toUpperCase()===uname){_user.agentDisplayName=_agents[ai];break;}}if(!_user.agentDisplayName)_user.agentDisplayName=_user.agentName||_user.username||"";}}});
-  fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});
-  // ── FIX A: Load localStorage BEFORE nav so first click is instant ──
-  var hadLocal = loadStoreFromLocal();
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden){if(_rt){clearInterval(_rt);_rt=null;}if(_rt2){clearInterval(_rt2);_rt2=null;}}
-    else{if(!_rt)startRT();}
+function fbGetAgentNames(cb){fbGet('agents',function(err,data){var n=[];if(!err&&data)Object.keys(data).forEach(function(k){if(data[k]&&data[k].name)n.push(data[k].name);});cb({success:true,data:n});});}
+function fbGetKAAgents(cb){fbGet('agents',function(err,data){var a=[];var myN=(_user&&(_user.agentName||_user.username)||'').toUpperCase();if(!err&&data)Object.keys(data).forEach(function(k){var ag=data[k];if(!ag)return;if(!myN||(ag.assigned||'').toUpperCase()===myN)a.push(ag);});cb({success:true,data:a});});}
+function fbGetUsers(cb){fbGet('users',function(err,data){if(err||!data){cb({success:false,error:'Failed'});return;}var u=Object.keys(data).map(function(k){var x=data[k];if(x)x._fbKey=k;return x;}).filter(Boolean);cb({success:true,data:u});});}
+function fbSaveUser(d,isNew,cb){var uid=(d.USER_ID||'').toString().trim();fbSet('users/u_'+uid,{USER_ID:uid,USERNAME:d.USERNAME||'',PASSWORD:d.PASSWORD||'',ROLE:d.ROLE||'',DEPARTMENT:d.DEPARTMENT||'',CREATED_BY:d.CREATED_BY||'',Agent_Name:d.Agent_Name||''},function(err){cb(err?{success:false,error:err.message}:{success:true});});}
+function fbDeleteUser(uid,cb){fbDelete('users/u_'+uid,function(err){cb(err?{success:false,error:err.message}:{success:true});});}
+function fbAddTicket(data,cb){
+  var now=new Date(),mmdd=(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0');
+  var seq=1;if(_store.tickets&&_store.tickets.rows){var p='TSP-TKT-'+mmdd+'-';_store.tickets.rows.forEach(function(r){if((r[0]||'').indexOf(p)===0)seq++;});}
+  var tktId='TSP-TKT-'+mmdd+'-'+String(seq).padStart(3,'0');
+  var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
+  var rec={TICKET_ID:tktId,DATE:ds,CUSTOMER_NUMBER:(data['CUSTOMER NUMBER']||'').trim(),ISSUE:(data['ISSUE']||'').trim(),REMARK:(data['REMARK']||'').trim(),STATUS:'PENDING',SUBMITTED_BY:_user.username||'',RESOLVED_BY:'',RESOLVE_DATE:'',ADMIN_NOTE:''};
+  var key=tktId.replace(/[.#$\[\]\/]/g,'_');
+  fbSet('tickets/'+key,rec,function(err){
+    if(err){cb({success:false,error:err.message});return;}
+    if(_store.tickets){var row=H.TKT.map(function(h){return rec[h.replace(/[.#$\[\]\/]/g,'_')]||'';});row._fbKey=key;_store.tickets.rows.push(row);}
+    cb({success:true,ticketId:tktId});
   });
-  startRT();
-  var _bootRole=R();
-  if(hadLocal){
-    // Store loaded from localStorage — navigate instantly
-    if(_bootRole==='CALLING AGENT') nav('hold-main');
-    else nav('dashboard');
-    // Sync from server silently in background
-    preloadStore();
-  } else {
-    // No local cache — navigate immediately, load data in background
-    if(_bootRole==='CALLING AGENT') nav('hold-main');
-    else nav('dashboard');
-    // startRT() already called above — don't call twice
-    preloadStore();
-  }
 }
-
-var _holdRowCount=0, _holdTs='0';
+function fbUpdateTicketStatus(tktId,newStatus,adminNote,cb){
+  if(!_store.tickets){cb({success:false,error:'No data'});return;}
+  var tIdx=H.TKT.indexOf('TICKET ID');
+  for(var i=0;i<_store.tickets.rows.length;i++){
+    if((_store.tickets.rows[i][tIdx]||'').trim()===tktId.trim()){
+      var fk=_store.tickets.rows[i]._fbKey,now=new Date();
+      var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();
+      fbPatch('tickets/'+fk,{STATUS:newStatus,RESOLVED_BY:_user.username||'',RESOLVE_DATE:ds,ADMIN_NOTE:adminNote||''},function(err){cb(err?{success:false,error:err.message}:{success:true});});
+      return;
+    }
+  }
+  cb({success:false,error:'Not found'});
+}
+function startHoldLiveSync(){
+  if(_rt)clearInterval(_rt);
+  _rt=setInterval(function(){
+    if(document.hidden||_searchActive)return;
+    fbGet('hold',function(err,data){
+      if(err||!data)return;
+      var rows=fbObjToRows(data,H.HOLD);
+      var changed=!_store.hold||rows.length!==_store.hold.rows.length;
+      if(changed){
+        var prev=_store.hold?_store.hold.rows.length:0;
+        _store.hold={headers:H.HOLD,rows:rows};saveStoreToLocal();
+        var diff=rows.length-prev;
+        if(prev>0)showAlert(diff>0?'🔴 '+diff+' new HOLD!':'🔄 HOLD updated','info');
+        if(_pg==='hold-main')loadHoldMain();else if(_pg==='hold-done')loadHoldDone();else if(_pg==='hold-req')loadHoldReq();
+        updateBadges();
+      }
+    });
+  },5000);
+}
+function getHoldMainFB(st,cb){
+  if(!_store.hold){cb({success:false,error:'Loading...'});return;}
+  var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY');
+  var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='PENDING'||as==='');});
+  if(R()==='CALLING AGENT'){var un=(_user.agentDisplayName||_user.agentName||_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[hbIdx]||'').toUpperCase()===un;});}
+  var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;
+  cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});
+}
+function getHoldDoneFB(st,cb){
+  if(!_store.hold){cb({success:false,error:'Loading...'});return;}
+  var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus');
+  var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');});
+  var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;
+  cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});
+}
+function getDashboardStatsFB(dateFrom,dateTo,cb){
+  if(!_store.hold){cb({success:false,error:'Loading...'});return;}
+  var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');
+  var rows=_store.hold.rows;
+  if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});
+  var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};
+  rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});
+  var rechPend=0,disCnt=0,disReq=0,enReq=0;
+  if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}
+  if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}
+  cb({success:true,holdPending:holdPend,cbdPending:cbdPend,solved:solved,rechargePending:rechPend,totalDisabled:disCnt,disableReq:disReq,enableReq:enReq,agentReport:Object.values(agentMap),kaReport:Object.values(kaMap)});
+}
 
 
 // Hard fallback: if splash still showing after 5s, force show login
@@ -1154,21 +563,166 @@ var DOPTS={
 
 // Department selection — load all usernames initially in background
 var _allUsernames = [];
+/* FB:getPublicUsernames */
 
-// bootApp is defined by Firebase version (fb_js)
+function selectDept(dept, icon){
+  var role=dept; // role IS the card label now
+  // Highlight selected card
+  document.querySelectorAll('.dept-card').forEach(function(el){ el.classList.remove('active'); });
+  var card = document.getElementById('dept-'+dept);
+  if(card) card.classList.add('active');
+  // Update login box labels
+  document.getElementById('loginDeptIcon').textContent = icon;
+  document.getElementById('loginDeptLabel').textContent = dept;
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('inpPass').value = '';
+  hideLErr();
+  // Filter usernames by department
+  var sel = document.getElementById('selUser');
+  sel.innerHTML = '<option value="">Loading...</option>';
+  /* FB:getUsersByDepartment */
+  // Remember dept
+  localStorage.setItem('crm_dept', dept);
+}
 
+function resetDeptSelect(){
+  document.querySelectorAll('.dept-card').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('loginBox').style.display = 'none';
+  localStorage.removeItem('crm_dept');
+}
+
+(function(){
+  var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');
+  if(!t){try{var sp2=document.getElementById('splash');if(sp2)sp2.style.display='none';}catch(e){}show('loginPage');return;}
+  // Hide splash immediately — before any function calls
+  try{var sp=document.getElementById('splash');if(sp){sp.style.display='none';}}catch(e){}
+  // Restore user info from storage — no server call needed on load
+  _tok=t;
+  _user={
+    username: localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'User',
+    role:     localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',
+    department: localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',
+    userId:   localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||''
+  };
+  // Show app immediately — no server round trip
+  bootApp();
+})();
+
+document.getElementById('inpPass').onkeydown=function(e){if(e.key==='Enter')doLogin();};
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.tb-user')&&!e.target.closest('#uDD'))
+    document.getElementById('uDD').style.display='none';
+});
+
+function clrSt(){['crm_t','crm_u','crm_un','crm_ro','crm_dp','crm_id'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k);});}
+
+/* ═══ LOGIN ═══ */
+function doLogin(){
+  var u=document.getElementById('selUser').value,p=document.getElementById('inpPass').value,rem=document.getElementById('chkRem').checked;
+  if(!u){lErr('Select username.');return;}if(!p){lErr('Enter password.');return;}
+  var btn=document.getElementById('btnLogin');btn.disabled=true;btn.textContent='Authenticating...';hideLErr();
+  fbGet('users',function(err,data){
+    btn.disabled=false;btn.textContent='LOGIN TO CRM';
+    if(err||!data){lErr('Connection error. Check internet.');return;}
+    var found=null;
+    Object.keys(data).forEach(function(k){var u2=data[k];if(!u2)return;if((u2.USERNAME||'').trim().toUpperCase()===u.trim().toUpperCase()&&(u2.PASSWORD||'').trim()===p)found=u2;});
+    if(!found){lErr('Invalid username or password.');return;}
+    var token='fb_'+Date.now()+'_'+Math.random().toString(36).substr(2,9);
+    var st=rem?localStorage:sessionStorage;
+    st.setItem('crm_t',token);st.setItem('crm_un',found.USERNAME||'');st.setItem('crm_ro',found.ROLE||'');st.setItem('crm_dp',found.DEPARTMENT||'');st.setItem('crm_id',String(found.USER_ID||''));st.setItem('crm_an',found.Agent_Name||'');
+    if(rem)localStorage.setItem('crm_u',u);else localStorage.removeItem('crm_u');
+    _tok=token;_user={username:found.USERNAME||'',role:found.ROLE||'',department:found.DEPARTMENT||'',userId:found.USER_ID||'',agentName:found.Agent_Name||''};
+    bootApp();
+  });
+}
+
+function lErr(m){document.getElementById('lErrMsg').textContent=m;document.getElementById('lErr').style.display='block';}
+function hideLErr(){document.getElementById('lErr').style.display='none';}
+
+/* ═══ BOOT ═══ */
+function bootApp(){
+  // Hide splash FIRST before anything else can fail
+  try{var s=document.getElementById('splash');if(s){s.style.display='none';}}catch(e){}
+  hide('loginPage');show('app');
+  document.getElementById('tbAv').textContent=(_user.username||'U')[0].toUpperCase();
+  document.getElementById('tbUn').textContent=_user.username||'—';
+  document.getElementById('tbRl').textContent=_user.role||'—';
+  document.getElementById('ddN').textContent=_user.username||'—';
+  document.getElementById('ddR').textContent=(_user.role||'')+(_user.department?' · '+_user.department:'');
+  var role=R();
+  if(role==='ADMIN'||role==='MANAGER') document.getElementById('adminNav').style.display='block';
+  // Show request tabs
+  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT'){
+    document.getElementById('nav-hold-req').style.display='flex';
+    document.getElementById('nav-dis-req').style.display='flex';
+    document.getElementById('nav-en-req').style.display='flex';
+  }
+  // Tickets tab visible for ALL roles
+  document.getElementById('tktNav').style.display='block';
+  // Hide Dashboard nav for Calling Agent — they go straight to Pending Hold
+  if(role==='CALLING AGENT'){
+    var dashNav=document.getElementById('nav-dashboard');
+    if(dashNav) dashNav.style.display='none';
+    var mainLbl=document.getElementById('mainNavLabel');
+    if(mainLbl) mainLbl.style.display='none';
+  }
+  if(role==='KEY ACCOUNT'){
+    document.getElementById('kaNav').style.display='block';
+  }
+  // Load agent lists + store current user's display name
+  fbGetAgentNames(function(r){
+    if(r&&r.success){
+      _agents=r.data;
+      // Find current user's Agent_Name for auto-fill
+      if(R()==='CALLING AGENT'){
+        var uname=(_user.username||'').toUpperCase();
+        for(var ai=0;ai<_agents.length;ai++){
+          if(_agents[ai].toUpperCase()===uname||_agents[ai].toUpperCase().indexOf(uname)>=0){
+            _user.agentDisplayName=_agents[ai];break;
+          }
+        }
+        if(!_user.agentDisplayName) _user.agentDisplayName=_user.username||'';
+      }
+    }
+  });
+  fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});
+  // ── FIX A: Load localStorage BEFORE nav so first click is instant ──
+  var hadLocal = loadStoreFromLocal();
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){if(_rt){clearInterval(_rt);_rt=null;}if(_rt2){clearInterval(_rt2);_rt2=null;}}
+    else{if(!_rt)startRT();}
+  });
+  startRT();
+  var _bootRole=R();
+  if(hadLocal){
+    // Store loaded from localStorage — navigate instantly
+    if(_bootRole==='CALLING AGENT') nav('hold-main');
+    else nav('dashboard');
+    // Sync from server silently in background
+    preloadStore();
+  } else {
+    // No local cache — navigate immediately, load data in background
+    if(_bootRole==='CALLING AGENT') nav('hold-main');
+    else nav('dashboard');
+    // startRT() already called above — don't call twice
+    preloadStore();
+  }
+}
 
 var _holdRowCount=0, _holdTs='0';
 
-function startRT(){ startHoldLiveSync(); _rt2=setInterval(function(){if(!document.hidden)updateBadges();},8000); _storeRt=setInterval(function(){if(!document.hidden&&!_searchActive)fbLoadAllSheets();},60000); }
+function startRT(){startHoldLiveSync();_rt2=setInterval(function(){if(!document.hidden)updateBadges();},8000);_storeRt=setInterval(function(){if(!document.hidden&&!_searchActive)fbLoadAllSheets();},60000);}
 
-function fastHoldSync(){ /* Firebase polling via startHoldLiveSync */ }
 
-function preloadStore(){ fbLoadAllSheets(); }
+function fastHoldSync(){}
+
+
+function preloadStore(){fbLoadAllSheets();}
+
 
 function silentStoreRefresh(){
   if(_searchActive) return;
-  /* FB: getAllSheetData from _store */
+  /* FB:getAllSheetData */
 }
 
 function saveStoreToLocal(){
@@ -1208,11 +762,11 @@ function loadStoreFromLocal(){
 }
 
 function updateBadges(){
-  /* FB: getHoldRequests from _store */
-  /* FB: getDisableRequests from _store */
-  /* FB: getEnableRequests from _store */
+  /* FB:getHoldRequests */
+  /* FB:getDisableRequests */
+  /* FB:getEnableRequests */
   // Ticket pending badge (for current user's pending tickets)
-  /* FB: getTickets from _store */
+  /* FB:getTickets */
 }
 
 function hideSplash(){
@@ -1226,7 +780,12 @@ function hideSplash(){
 }
 
 /* ═══ LOGOUT ═══ */
-// doLogout: see Firebase version
+function doLogout(){
+  ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k);});
+  _tok=null;_user=null;_store={};if(_rt)clearInterval(_rt);if(_rt2)clearInterval(_rt2);if(_storeRt)clearInterval(_storeRt);
+  hide('app');show('loginPage');document.getElementById('inpPass').value='';
+}
+
 function toggleDD(){var d=document.getElementById('uDD');d.style.display=d.style.display==='none'?'block':'none';}
 
 /* ═══ NAV ═══ */
@@ -1290,7 +849,7 @@ function sRefresh(pg){
   var fns={'hold-main':'getHoldMain','hold-done':'getHoldDone','errorpayments':'getErrorPaymentsData','recharge':'getRechargeData','disable':'getDisableListData','hold-req':'getHoldRequests','dis-req':'getDisableRequests','en-req':'getEnableRequests','tickets':'getTickets'};
   var fn=fns[pg];if(!fn)return;
   var st=_ts[pg]||{page:1,pageSize:50};
-  /* FB: getDashboardStats from _store */
+  /* FB:getDashboardStats */
 }
 function clearDashFilter(){
   var f=document.getElementById('dashFrom'),t=document.getElementById('dashTo');
@@ -1574,7 +1133,7 @@ function loadHoldMain(){
     return;
   }
   setC(skeletonTable('Pending Hold'));
-  /* FB: getHoldMain from _store */
+  /* FB:getHoldMain */
 }
 function loadHoldDone(){
   var st=_ts['hold-done']=_ts['hold-done']||{page:1,pageSize:100,search:'',dateFrom:'',dateTo:''};
@@ -1585,7 +1144,7 @@ function loadHoldDone(){
     return;
   }
   setC(skeletonTable('Done Hold'));
-  /* FB: getHoldDone from _store */
+  /* FB:getHoldDone */
 }
 
 function filterHoldView(view, st){
@@ -1721,7 +1280,7 @@ function universalHoldSearch(v, viewKey){
   if(t.length>=3){
     _bidSearchTimer=setTimeout(function(){
       setC('<div class="ldr"><span class="sp"></span>Searching all HOLD records for: <strong>'+t+'</strong>...</div>');
-      /* FB: searchHoldAll from _store */
+      /* FB:searchHoldAll */
     }, 400);
   } else if(!t){
     _searchActive=false;
@@ -1817,7 +1376,7 @@ function loadHoldReq(){
     if(_store.hold&&_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }return;
   }
   setC(skeletonTable('Hold Requests'));
-  // Hold req from _store
+  /* FB:getHoldRequests */
 }
 function renderHoldReq(r){
   var role=R(),isKA=role==='KEY ACCOUNT';
@@ -1867,7 +1426,20 @@ function renderHoldReq(r){
   html+='<div class="pager"><span>'+r.rows.length+' requests</span></div></div>';
   setC(html);
 }
-function quickHold(bid){ quickHoldFB(bid); }
+function quickHold(bid){
+  if(!confirm('Set STATUS = HOLD for: '+bid+'?'))return;
+  showAlert('Updating...','info');if(!_store.hold){showAlert('Not loaded','error');return;}
+  var bidIdx=H.HOLD.indexOf('BOOKING ID'),sIdx=H.HOLD.indexOf('STATUS');
+  for(var i=0;i<_store.hold.rows.length;i++){
+    if((_store.hold.rows[i][bidIdx]||'').toString().trim()===bid.toString().trim()){
+      var fk=_store.hold.rows[i]._fbKey,ri=i;
+      fbPatch('hold/'+fk,{STATUS:'HOLD'},function(err){if(err){showAlert('Failed','error');return;}_store.hold.rows[ri][sIdx]='HOLD';showAlert('STATUS = HOLD ✓','success');loadHoldReq();});
+      return;
+    }
+  }
+  showAlert('Not found','error');
+}
+
 
 /* ═══ DISABLE REQUESTS ═══ */
 function loadDisReq(){
@@ -1882,7 +1454,7 @@ function loadDisReq(){
     if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
   }
   setC(skeletonTable('Disable Requests'));
-  /* FB: getDisableRequests from _store */
+  /* FB:getDisableRequests */
 }
 function renderDisReq(r){
   var html='<div class="pg-head"><div class="pg-t">🔒 <span class="hl">Disable Requests</span></div>'
@@ -1942,7 +1514,7 @@ function loadEnReq(){
     if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
   }
   setC(skeletonTable('Enable Requests'));
-  /* FB: getEnableRequests from _store */
+  /* FB:getEnableRequests */
 }
 
 function renderDisEnReq(r, type){
@@ -2033,7 +1605,7 @@ function loadSh(sh,title,icon){
     recharge:      'getRechargeData',
     disable:       'getDisableListData'
   };
-  /* FB: quickDisableAction from _store */
+  /* FB:quickDisableAction */
 }
 
 function openDisEdit(rid){
@@ -2090,7 +1662,7 @@ function openPanel(mode,sh,rowId){
       }
     }
     document.getElementById('pBody').innerHTML='<div class="ldr"><span class="sp"></span>Loading...</div>';
-    /* FB: getUsers from _store */
+    /* FB:getUsers */
 }
 function openUserPanel(u){
   document.getElementById('pTitle').textContent=u?'Edit User':'Add User';
@@ -2107,18 +1679,18 @@ function openUserPanel(u){
   btn.onclick=function(){
     var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
     btn.disabled=true;btn.textContent='Saving...';
-    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.success){showAlert('Saved!','success');closePanel();loadUsers();/* FB: getAgentNames from _store *//* FB: getKeyAccountAgents from _store */}else showAlert(r?r.error:'Failed.','error');};
+    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.success){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r2){if(r2&&r2.success)_agents=r2.data;});fbGetKAAgents(function(r3){if(r3&&r3.success)_kaAgents=r3.data;});}else showAlert(r?r.error:'Failed.','error');};
     var fail=function(e){btn.disabled=false;btn.textContent='Save User';showAlert(e.message,'error');};
-    if(!u){ fbSaveUser(d,true,ok); }
-    else{d.userId=u.USER_ID; fbSaveUser(d,false,ok); }
+    if(!u) fbSaveUser(d,true,ok);
+    else{d.userId=u.USER_ID;fbSaveUser(d,false,ok);}
   };
 }
-function delUser(uid){if(!confirm('Delete?'))return;fbDeleteUser(uid,function(r){if(r&&r.success){showAlert('Deleted','success');loadUsers();}else showAlert(r?r.error:'Failed','error');});}
+function delUser(uid){if(!confirm('Delete?'))return;/* FB:deleteUser */}
 
 /* ═══ EXPORT ═══ */
 function exportCSV(sh){
   var m={hold:'HOLD',errorpayments:'ErrorPayments',recharge:'RECHARGE_DATA',disable:'dISABLE_LIST'};
-  /* FB: exportSheetCSV from _store */
+  /* FB:exportSheetCSV */
 }
 
 /* ═══ ALERTS ═══ */
@@ -2224,7 +1796,7 @@ function showExportImport(sh, title){
 function closeEiModal(){/* no longer needed but kept for compat */}
 function doExport(){
   showAlert('Exporting...','info');
-  /* FB: exportSheetData from _store */
+  /* FB:exportSheetData */
 }
 
 function doImport(){
@@ -2235,7 +1807,7 @@ function doImport(){
     var csv=ev.target.result;
     var res=document.getElementById('importResult');
     if(res) res.textContent='Uploading...';
-    /* FB: importSheetData from _store */
+    /* FB:importSheetData */
   };
   reader.readAsText(fileEl.files[0]);
 }
@@ -2274,7 +1846,7 @@ function loadTickets(){
     return;
   }
   setC(skeletonTable('Tickets'));
-  /* FB: getTickets from _store */
+  /* FB:getTickets */
 }
 
 function renderTickets(r, isMgr){
@@ -2418,7 +1990,7 @@ function openRaiseTicket(){
     if(!d['CUSTOMER NUMBER']||!d['CUSTOMER NUMBER'].trim()){showAlert('Customer number required','error');return;}
     if(!d['ISSUE']||!d['ISSUE'].trim()){showAlert('Issue description required','error');return;}
     btn.disabled=true; btn.textContent='Submitting...';
-    /* FB: addTicket from _store */
+    /* FB:addTicket */
   };
 }
 
@@ -2521,7 +2093,7 @@ function openTktUpdate(tktId, curStatus, curNote){
     var st=document.querySelector('#pBody [name="tktStatus"]').value;
     var note=document.querySelector('#pBody [name="tktNote"]').value;
     btn.disabled=true; btn.textContent='Updating...';
-    /* FB: updateTicketStatus from _store */
+    /* FB:updateTicketStatus */
   };
 }
 
@@ -2547,7 +2119,7 @@ function loadTopAgents(){
     return;
   }
   setC('<div class="ldr"><span class="sp"></span>Loading your Top Agents...</div>');
-  /* FB: getMyTopAgents from _store */
+  /* FB:getMyTopAgents */
 }
 
 function renderTopAgents(r){
@@ -2631,7 +2203,7 @@ function refreshTopAgents(){
   var btn=document.getElementById('taRefreshBtn');
   if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
   // Also clear server cache
-  /* FB: invalidateTopAgentsCache from _store */
+  /* FB:invalidateTopAgentsCache */
 }
 
 function hlText(text, q){
@@ -2658,20 +2230,19 @@ window.addEventListener('load',function(){
     var sp=document.getElementById('splash');
     if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
     else{
-      if(sp)sp.style.display='none';
-      show('loginPage');
+      if(sp)sp.style.display='none';show('loginPage');
       fbGet('users',function(err,data){
-        var sel=document.getElementById('selUser');
-        if(!sel)return;
+        var sel=document.getElementById('selUser');if(!sel)return;
         sel.innerHTML='<option value="">-- Select User --</option>';
         if(!err&&data)Object.keys(data).forEach(function(k){
-          if(data[k]&&data[k].USERNAME)
-            sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
         });
       });
     }
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
+
 
 </script>
 </body>
