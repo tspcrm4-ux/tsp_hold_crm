@@ -415,7 +415,40 @@ function getHoldMainFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){i
 function getHoldDoneFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldDoneFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');});var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
 function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}cb({success:true,holdPending:holdPend,cbdPending:cbdPend,solved:solved,rechargePending:rechPend,totalDisabled:disCnt,disableReq:disReq,enableReq:enReq,agentReport:Object.values(agentMap),kaReport:Object.values(kaMap)});}
 function skeletonTable(title){var rows='';for(var i=0;i<8;i++){rows+='<tr>';for(var j=0;j<6;j++)rows+='<td><div style="height:14px;background:var(--bg3);border-radius:3px;width:'+(60+Math.floor(Math.random()*30))+'%"></div></td>';rows+='</tr>';}return '<div class="pg-head"><div class="pg-t">'+(title||'')+'</div></div><div class="tcard"><div class="tscroll"><table><thead><tr><th>DATE</th><th>ID</th><th>NAME</th><th>STATUS</th><th>AMT</th><th>ACTIONS</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
-function doExport(){var data=_store[_eiSh];if(!data){showAlert('Data not loaded','error');return;}var rows=[data.headers].concat(data.rows.map(function(r){return data.headers.map(function(_,i){return r[i]||'';}); }));var csv=rows.map(function(row){return row.map(function(c){var s=String(c);if(s.indexOf(',')>=0||s.indexOf('"')>=0)s='"'+s.replace(/"/g,'""')+'"';return s;}).join(',');}).join('\n');var blob=new Blob([csv],{type:'text/csv'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=(_eiTitle||'export').replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);showAlert('Exported ✓','success');}
+function doExport(filteredOnly){
+  var data=_store[_eiSh];
+  if(!data||!data.rows||!data.rows.length){showAlert('No data loaded','error');return;}
+  var rows=data.rows;
+  // If filtered, apply current filter/search
+  if(filteredOnly){
+    var st=_ts[_eiSh]||{search:'',page:1,pageSize:99999};
+    var fr=filterStore(_eiSh,{page:1,pageSize:99999,search:st.search,dateFrom:st.dateFrom,dateTo:st.dateTo});
+    rows=fr.rows;
+  }
+  var csvRows=[data.headers].concat(rows.map(function(r){
+    return data.headers.map(function(_,i){return r[i]!==undefined?r[i]:'';});
+  }));
+  var csv=csvRows.map(function(row){
+    return row.map(function(cell){
+      var s=String(cell===null||cell===undefined?'':cell);
+      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)
+        s='"'+s.replace(/"/g,'""')+'"';
+      return s;
+    }).join(',');
+  }).join('\r\n');
+  var bom='\uFEFF'; // UTF-8 BOM for Excel
+  var blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download=(_eiTitle||'export').replace(/\s+/g,'_')+(filteredOnly?'_filtered':'_all')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  var es=document.getElementById('exportStatus');
+  if(es)es.textContent='✅ '+rows.length+' rows exported';
+  showAlert('Exported '+rows.length+' rows ✓','success');
+}
+
 function filterStoreTkt(){if(!_store.tickets)return {headers:H.TKT,rows:[],total:0};var rows=_store.tickets.rows;var role=R();if(role!=='ADMIN'&&role!=='MANAGER'&&role!=='ACCOUNTANT'){var sbIdx=H.TKT.indexOf('SUBMITTED BY');var uname=(_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[sbIdx]||'').toUpperCase()===uname;});}if(_tktSearch){var tl=_tktSearch.toLowerCase();rows=rows.filter(function(r){return r.some(function(c){return String(c).toLowerCase().indexOf(tl)>=0;});});}if(_tktFilter){var stIdx=H.TKT.indexOf('STATUS');rows=rows.filter(function(r){return(r[stIdx]||'').toUpperCase()===_tktFilter.toUpperCase();});}return {headers:H.TKT,rows:rows,total:rows.length};}
 
 
@@ -2054,76 +2087,74 @@ var _eiSh='', _eiTitle='';
 
 function showExportImport(sh, title){
   var role=R();
-  var canExport=role==='ADMIN'||role==='ACCOUNTANT'||role==='MANAGER';
+  var isAdmin=role==='ADMIN';
+  var canExport=role==='ADMIN'||role==='ACCOUNTANT';
   var canImport=role==='ADMIN'||role==='ACCOUNTANT';
   if(!canExport){showAlert('Access denied','error');return;}
   _eiSh=sh; _eiTitle=title;
 
-  // Sheet info for user guidance
-  var sheetInfo={
-    hold:         {sheet:'HOLD',          key:'BOOKING ID',   icon:'📌'},
-    errorpayments:{sheet:'ErrorPayments', key:'id',           icon:'⚠️'},
-    recharge:     {sheet:'RECHARGE_DATA', key:'Complaint Id', icon:'📱'},
-    disable:      {sheet:'dISABLE_LIST',  key:'id',           icon:'🚫'}
-  };
-  var info=sheetInfo[sh]||{sheet:title,key:'id',icon:'📄'};
+  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id'};
+  var iconMap={hold:'📌',errorpayments:'⚠️',recharge:'📱'};
+  var key=keyMap[sh]||'id';
+  var icon=iconMap[sh]||'📄';
 
   var html='<div class="pg-head">';
-  html+='<div><div class="pg-t">'+info.icon+' Export / Import — <span class="hl">'+esc(title)+'</span></div>';
-  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">Sheet: <strong>'+info.sheet+'</strong></div>';
-  html+='</div>';
-  html+='<button class="btn btn-s btn-sm" onclick="loadPg(\''+sh+'\')" >← Back to '+esc(title)+'</button>';
+  html+='<div class="pg-t">'+icon+' Export / Import — <span class="hl">'+esc(title)+'</span></div>';
+  html+='<button class="btn btn-s btn-sm" onclick="loadPg(\''+sh+'\')">← Back</button>';
   html+='</div>';
 
-  // How-to guide
+  // ── EXPORT SECTION ──
   html+='<div class="tcard" style="padding:16px;margin-bottom:14px">';
-  html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">📋 How it works</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
-  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">';
-  html+='<strong style="color:var(--text2)">📤 Export:</strong><br>';
-  html+='Downloads the entire <strong>'+info.sheet+'</strong> sheet as a CSV file.<br>';
-  html+='Open in Excel/Google Sheets to edit.<br>';
-  html+='Dates are in DD/MM/YYYY format.';
+  html+='<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">📤 Export as CSV</div>';
+  html+='<div style="display:flex;gap:10px;margin-bottom:10px">';
+  html+='<button class="btn btn-p btn-sm" onclick="doExport(false)">⬇ Export All Rows</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="doExport(true)">⬇ Export Filtered Only</button>';
   html+='</div>';
-  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">';
-  html+='<strong style="color:var(--text2)">📥 Import:</strong><br>';
-  html+='Upload a CSV to update data in <strong>'+info.sheet+'</strong>.<br>';
-  html+='Key column: <strong style="color:var(--gold)">'+info.key+'</strong><br>';
-  html+='• If key exists → updates that row (empty cells ignored)<br>';
-  html+='• If key is new → adds as a new row';
-  html+='</div>';
-  html+='</div>';
+  html+='<div style="font-size:11px;color:var(--text3)">Key column: <strong style="color:var(--gold)">'+key+'</strong> — use this to match rows on import.</div>';
+  html+='<span id="exportStatus" style="font-size:12px;color:var(--green);margin-left:4px"></span>';
   html+='</div>';
 
-  // Export section
-  if(canExport){
+  // ── IMPORT/UPDATE SECTION ──
+  if(canImport){
     html+='<div class="tcard" style="padding:16px;margin-bottom:14px">';
-    html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">📤 Export '+esc(title)+' as CSV</div>';
-    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Downloads all rows from the <strong>'+info.sheet+'</strong> sheet. You can then edit in Excel and re-import.</div>';
-    html+='<button class="btn btn-p btn-sm" onclick="doExport()">⬇ Download '+esc(title)+' CSV</button>';
-    html+='<span id="exportStatus" style="font-size:12px;color:var(--text3);margin-left:12px"></span>';
+    html+='<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px">📥 Import / Update from CSV</div>';
+    html+='<div style="font-size:11px;color:var(--gold);background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px">';
+    html+='⚠ CSV headers must match exactly.<br>';
+    html+='Rows matching <strong>'+key+'</strong> → updated. New rows → added. Nothing deleted.';
+    if(sh==='hold') html+='<br>⛔ Duplicate BOOKING IDs are blocked — existing record will be updated, not duplicated.';
+    html+='</div>';
+    html+='<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:10px">';
+    html+='<button class="btn btn-s btn-sm" onclick="doImport()">⬆ Upload & Sync to Firebase</button>';
+    html+='<div id="importResult" style="margin-top:12px;font-size:12px"></div>';
     html+='</div>';
   }
 
-  // Import section
-  if(canImport){
+  // ── ADMIN: BULK UPLOAD ANY SHEET ──
+  if(isAdmin){
     html+='<div class="tcard" style="padding:16px">';
-    html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:4px">📥 Import CSV into '+esc(title)+'</div>';
-    html+='<div style="font-size:11px;color:var(--gold);background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px">';
-    html+='⚠ CSV must have the same column headers as the exported file.<br>';
-    html+='Matching is done by: <strong>'+info.key+'</strong>';
+    html+='<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px">🔧 Admin: Bulk Upload Any Sheet to Firebase</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Upload CSV exported from Google Sheet to populate Firebase. Select which sheet this CSV belongs to, then upload.</div>';
+    html+='<div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">';
+    html+='<select id="bulkSheetSel" style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">';
+    html+='<option value="">-- Select Sheet --</option>';
+    html+='<option value="hold">HOLD</option>';
+    html+='<option value="errorpayments">Error Payments</option>';
+    html+='<option value="recharge">Recharge</option>';
+    html+='<option value="disable">Disable List</option>';
+    html+='<option value="tickets">Tickets</option>';
+    html+='<option value="users">Users</option>';
+    html+='<option value="agents">Agents (all agents)</option>';
+    html+='</select>';
     html+='</div>';
-    html+='<div style="margin-bottom:12px">';
-    html+='<label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">Select CSV File</label>';
-    html+='<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text)">';
-    html+='</div>';
-    html+='<button class="btn btn-s btn-sm" onclick="doImport()">⬆ Upload & Import</button>';
-    html+='<div id="importResult" style="margin-top:12px;font-size:12px"></div>';
+    html+='<input type="file" accept=".csv" id="bulkCsvInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:10px">';
+    html+='<button class="btn btn-p btn-sm" onclick="doBulkUpload()">🚀 Upload to Firebase</button>';
+    html+='<div id="bulkResult" style="margin-top:12px;font-size:12px"></div>';
     html+='</div>';
   }
 
   setC(html);
 }
+
 
 function closeEiModal(){/* no longer needed but kept for compat */}
 function doExport(){
@@ -2134,15 +2165,74 @@ function doExport(){
 function doImport(){
   var fileEl=document.getElementById('csvFileInput');
   if(!fileEl||!fileEl.files||!fileEl.files[0]){showAlert('Select a CSV file first','error');return;}
+  var res=document.getElementById('importResult');
+  if(res)res.textContent='Reading file...';
   var reader=new FileReader();
   reader.onload=function(ev){
-    var csv=ev.target.result;
-    var res=document.getElementById('importResult');
-    if(res) res.textContent='Uploading...';
-    showAlert('Use Google Sheets for bulk import','info');
+    var txt=ev.target.result.replace(/^\uFEFF/,''); // remove BOM
+    var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
+    if(lines.length<2){if(res)res.textContent='❌ File is empty or has no data rows.';return;}
+    // Parse CSV
+    function parseCSVLine(line){
+      var result=[],cur='',inQ=false;
+      for(var i=0;i<line.length;i++){
+        var ch=line[i];
+        if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+        else if(ch===','&&!inQ){result.push(cur);cur='';}
+        else cur+=ch;
+      }
+      result.push(cur);
+      return result;
+    }
+    var headers=parseCSVLine(lines[0]);
+    var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge'};
+    var keyColMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id'};
+    var path=pathMap[_eiSh];
+    var keyCol=keyColMap[_eiSh];
+    if(!path){if(res)res.textContent='❌ Import not supported for this sheet.';return;}
+    var keyIdx=headers.indexOf(keyCol);
+    if(keyIdx<0){if(res)res.textContent='❌ Key column "'+keyCol+'" not found in CSV headers.';return;}
+    // Build Firebase updates
+    var updates={};
+    var added=0,updated=0,skipped=0;
+    for(var i=1;i<lines.length;i++){
+      var vals=parseCSVLine(lines[i]);
+      if(vals.length<2)continue;
+      var keyVal=(vals[keyIdx]||'').trim();
+      if(!keyVal){skipped++;continue;}
+      // Block duplicate BOOKING ID in hold (already handled by key matching - update)
+      var fbKey=keyVal.replace(/[.#$[\]\/]/g,'_');
+      var record={};
+      headers.forEach(function(h,j){record[h.replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';});
+      // Check if exists in store
+      var exists=false;
+      if(_store[_eiSh]&&_store[_eiSh].rows){
+        var ki=(_store[_eiSh].headers||[]).indexOf(keyCol);
+        for(var si=0;si<_store[_eiSh].rows.length;si++){
+          if((_store[_eiSh].rows[si][ki]||'').toString().trim()===keyVal){exists=true;break;}
+        }
+      }
+      updates[fbKey]=record;
+      if(exists)updated++;else added++;
+    }
+    if(Object.keys(updates).length===0){if(res)res.textContent='❌ No valid rows found.';return;}
+    if(res)res.textContent='Uploading '+Object.keys(updates).length+' rows to Firebase...';
+    // PATCH (not PUT) so we only update/add, never delete
+    fbPatch(path,updates,function(err){
+      if(err){if(res){res.textContent='❌ Error: '+err.message;res.style.color='var(--red)';}showAlert('Import failed','error');return;}
+      // Reload store for this sheet
+      var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH};
+      fbGet(path,function(e2,data2){
+        if(!e2&&data2)_store[_eiSh]={headers:hdrMap[_eiSh]||headers,rows:fbObjToRows(data2,hdrMap[_eiSh]||headers)};
+        var msg='✅ Updated: '+updated+' · Added: '+added+(skipped?' · Skipped: '+skipped:'');
+        if(res){res.textContent=msg;res.style.color='var(--green)';}
+        showAlert(msg,'success');
+      });
+    });
   };
   reader.readAsText(fileEl.files[0]);
 }
+
 
 
 /* ═══ TICKETS ═══ */
@@ -2573,6 +2663,79 @@ window.addEventListener('load',function(){
 });
 
 
+
+
+function doBulkUpload(){
+  var shSel=document.getElementById('bulkSheetSel');
+  var fileEl=document.getElementById('bulkCsvInput');
+  var res=document.getElementById('bulkResult');
+  if(!shSel||!shSel.value){showAlert('Select a sheet first','error');return;}
+  if(!fileEl||!fileEl.files||!fileEl.files[0]){showAlert('Select a CSV file','error');return;}
+  var targetSh=shSel.value;
+  var keyColMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id',tickets:'TICKET ID',users:'USER_ID',agents:'Agent Number'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS,tickets:H.TKT,users:H.USR};
+  var keyCol=keyColMap[targetSh]||'id';
+  if(res)res.textContent='Reading file...';
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var txt=ev.target.result.replace(/^\uFEFF/,'');
+    var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
+    if(lines.length<2){if(res)res.textContent='❌ Empty file.';return;}
+    function parseCSVLine(line){
+      var result=[],cur='',inQ=false;
+      for(var i=0;i<line.length;i++){
+        var ch=line[i];
+        if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+        else if(ch===','&&!inQ){result.push(cur);cur='';}
+        else cur+=ch;
+      }
+      result.push(cur);return result;
+    }
+    var headers=parseCSVLine(lines[0]);
+    var keyIdx=headers.indexOf(keyCol);
+    // For agents, use index if no key col
+    var updates={};var count=0;
+    for(var i=1;i<lines.length;i++){
+      var vals=parseCSVLine(lines[i]);
+      if(!vals||vals.length<2)continue;
+      var keyVal=keyIdx>=0?(vals[keyIdx]||'').trim():'row_'+i;
+      if(!keyVal)keyVal='row_'+i;
+      var fbKey=keyVal.toString().replace(/[.#$[\]\/]/g,'_').substring(0,60);
+      if(targetSh==='users') fbKey='u_'+fbKey;
+      else if(targetSh==='agents') fbKey='a_'+i;
+      var record={};
+      headers.forEach(function(h,j){
+        if(h) record[h.replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';
+      });
+      updates[fbKey]=record;count++;
+      // Batch 500 at a time
+      if(count%500===0){
+        var batchCopy=Object.assign({},updates);
+        fbPatch(targetSh,batchCopy,function(err){if(err)console.error('Batch error:',err.message);});
+        updates={};
+        if(res)res.textContent='Uploading... '+count+' rows done';
+      }
+    }
+    if(Object.keys(updates).length>0){
+      if(res)res.textContent='Uploading final batch ('+count+' total rows)...';
+      fbPatch(targetSh,updates,function(err){
+        if(err){if(res){res.textContent='❌ Error: '+err.message;res.style.color='var(--red)';}return;}
+        // Reload store
+        if(hdrMap[targetSh]){
+          fbGet(targetSh,function(e2,d2){
+            if(!e2&&d2)_store[targetSh]={headers:hdrMap[targetSh],rows:fbObjToRows(d2,hdrMap[targetSh])};
+          });
+        }
+        if(res){res.textContent='✅ '+count+' rows uploaded to Firebase ('+targetSh+') successfully!';res.style.color='var(--green)';}
+        showAlert('✅ '+count+' rows uploaded!','success');
+      });
+    } else {
+      if(res){res.textContent='✅ '+count+' rows uploaded to Firebase ('+targetSh+') successfully!';res.style.color='var(--green)';}
+      showAlert('✅ '+count+' rows uploaded!','success');
+    }
+  };
+  reader.readAsText(fileEl.files[0]);
+}
 
 </script>
 </body>
