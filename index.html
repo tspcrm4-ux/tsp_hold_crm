@@ -413,7 +413,24 @@ function fbUpdateTicketStatus(tktId,newStatus,adminNote,cb){if(!_store.tickets){
 function startHoldLiveSync(){if(_rt)clearInterval(_rt);_rt=setInterval(function(){if(document.hidden||_searchActive)return;fbGet('hold',function(err,data){if(err||!data)return;var rows=fbObjToRows(data,H.HOLD);var changed=!_store.hold||rows.length!==_store.hold.rows.length;if(changed){var prev=_store.hold?_store.hold.rows.length:0;_store.hold={headers:H.HOLD,rows:rows};saveStoreToLocal();var diff=rows.length-prev;if(prev>0)showAlert(diff>0?'🔴 '+diff+' new HOLD!':'🔄 HOLD updated','info');if(_pg==='hold-main')loadHoldMain();else if(_pg==='hold-done')loadHoldDone();else if(_pg==='hold-req')loadHoldReq();updateBadges();}});},5000);}
 function getHoldMainFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldMainFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='PENDING'||as==='');});if(R()==='CALLING AGENT'){var un=(_user.agentDisplayName||_user.agentName||_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[hbIdx]||'').toUpperCase()===un;});}var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
 function getHoldDoneFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldDoneFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');});var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
-function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}cb({success:true,holdPending:holdPend,cbdPending:cbdPend,solved:solved,rechargePending:rechPend,totalDisabled:disCnt,disableReq:disReq,enableReq:enReq,agentReport:Object.values(agentMap),kaReport:Object.values(kaMap)});}
+function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
+  var errorPend=0;
+  if(_store.errorpayments){var asIdx2=H.ERR.indexOf('AmtStatus');_store.errorpayments.rows.forEach(function(r){if((r[asIdx2]||'').toUpperCase().trim()==='PENDING'||!(r[asIdx2]||'').trim())errorPend++;});}
+  var holdTotal=rows.length;
+  cb({success:true,
+    holdPending:holdPend, holdPend:holdPend,
+    cbdPending:cbdPend,   cbdPend:cbdPend,
+    holdSolved:solved,    solved:solved,
+    cbdSolved:0,
+    holdTotal:holdTotal,
+    rechargePending:rechPend,
+    errorPending:errorPend,
+    totalDisabled:disCnt,
+    disableReq:disReq,    disableReqPending:disReq,
+    enableReq:enReq,      enableReqPending:enReq,
+    agentReport:Object.values(agentMap),
+    kaReport:Object.values(kaMap)
+  });}
 function skeletonTable(title){var rows='';for(var i=0;i<8;i++){rows+='<tr>';for(var j=0;j<6;j++)rows+='<td><div style="height:14px;background:var(--bg3);border-radius:3px;width:'+(60+Math.floor(Math.random()*30))+'%"></div></td>';rows+='</tr>';}return '<div class="pg-head"><div class="pg-t">'+(title||'')+'</div></div><div class="tcard"><div class="tscroll"><table><thead><tr><th>DATE</th><th>ID</th><th>NAME</th><th>STATUS</th><th>AMT</th><th>ACTIONS</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
 function doExport(filteredOnly){
   var data=_store[_eiSh];
@@ -1761,7 +1778,8 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
       var re=rowId.replace(/'/g,"'");
       html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
-    html+='<td style="width:30px;text-align:center"><input type="checkbox" class="row-cb-'+sh+'" data-fbkey="'+(r.rows[i]._fbKey||i)+'" onchange="toggleBulkRow(\''+sh+'\',\''+String(r.rows[i]._fbKey||i)+'\',this)"></td>';
+    var _cbKey=String(r.rows[i]._fbKey||i);
+    html+='<td style="width:30px;text-align:center"><input type="checkbox" class="row-cb-'+sh+'" data-fbkey="'+_cbKey+'" data-sh="'+sh+'" onchange="toggleBulkRow(this.dataset.sh,this.dataset.fbkey,this)"></td>';
       for(var c=0;c<cols.length;c++){
         var ci=sHdrs.indexOf(cols[c]);
         var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
@@ -2158,7 +2176,10 @@ function fi(label,name,val,type,extra){
   var req=extra==='req'?'<span class="freq">*</span>':'';
   var v=String(val===null||val===undefined?'':val);
   var h='<div class="fr"><label class="fl">'+label+req+'</label>';
-  if(type==='agent') return h+agSel(name,v)+'</div>';
+  if(type==='agent'){
+    // Show as text input pre-filled with current user - not a dropdown
+    return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(v||(_user&&_user.username)||'')+'" placeholder="Enter name or agent"></div>';
+  }
   if(type==='textarea') return h+'<textarea class="fta" name="'+name+'">'+esc(v)+'</textarea></div>';
   if(type==='date') return h+'<input class="fi2" type="date" name="'+name+'" value="'+esc(v?v.substring(0,10):'')+'"></div>';
   if(type==='number') return h+'<input class="fi2" type="number" name="'+name+'" value="'+esc(v)+'" step="0.01"></div>';
@@ -3076,6 +3097,7 @@ function doBulkEdit(sh){
   });
 }
 var _pg_title='', _pg_icon='';
+
 
 
 </script>
