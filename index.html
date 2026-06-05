@@ -394,6 +394,30 @@ tr.ka-row:hover td{background:#fef9c3!important}
 function show(id){document.getElementById(id).style.display=id==='loginPage'?'flex':'block';}
 function hide(id){document.getElementById(id).style.display='none';}
 
+function R(){return (_user&&_user.role||'').toUpperCase();}
+function setC(h){document.getElementById('mc').innerHTML=h;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function showAlert(msg,type){
+  // Error code lookup
+  var ERR={
+    'ERR_TKT_ADD':'Ticket submit failed — TICKETS sheet missing?',
+    'ERR_TKT_GET':'Tickets load failed',
+    'ERR_TKT_UPD':'Ticket update failed',
+    'ERR_ALL_DATA':'Data load failed — check Script Properties > SPREADSHEET_ID',
+    'ERR_HOLD_ADD':'HOLD add failed — duplicate Booking ID?',
+    'ERR_IMPORT':'CSV import failed — check column headers',
+    'ERR_EXPORT':'CSV export failed'
+  };
+  var disp=msg;
+  for(var code in ERR){if(msg&&msg.indexOf(code)>=0){disp='['+code+'] '+ERR[code];break;}}
+  var b=document.getElementById('alb');
+  document.getElementById('alMsg').textContent=disp;
+  b.className='alb show a-'+(type||'success');
+  if(_at)clearTimeout(_at);
+  _at=setTimeout(hideAlert,(type==='error'||type==='err')?8000:4000);
+}
+function hideAlert(){document.getElementById('alb').className='alb';}
+
 
 
 /* ═══ FIREBASE BASE ═══ */
@@ -1680,6 +1704,7 @@ window.addEventListener('load',function(){
     }
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
 
 
 
