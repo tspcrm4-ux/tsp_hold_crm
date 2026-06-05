@@ -488,7 +488,17 @@ function selectDept(dept, icon){
   // Filter usernames by department
   var sel = document.getElementById('selUser');
   sel.innerHTML = '<option value="">Loading...</option>';
-  /* FB:unknown */;
+  fbGet('users',function(err,data){
+    sel.innerHTML='<option value="">-- Select User --</option>';
+    if(!err&&data){
+      Object.keys(data).forEach(function(k){
+        var u=data[k];
+        if(!u||!u.USERNAME)return;
+        if((u.ROLE||'').toUpperCase()===dept.toUpperCase())
+          sel.innerHTML+='<option value="'+u.USERNAME+'">'+u.USERNAME+'</option>';
+      });
+    }
+  });
   // Remember dept
   localStorage.setItem('crm_dept', dept);
 }
@@ -2561,6 +2571,7 @@ window.addEventListener('load',function(){
     }
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
 
 </script>
 </body>
