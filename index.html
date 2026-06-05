@@ -593,7 +593,7 @@ function resetDeptSelect(){
 
 (function(){
   var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');
-  if(!t){try{var sp2=document.getElementById('splash');if(sp2)sp2.style.display='none';}catch(e){}show('loginPage');return;}
+  if(!t){try{var sp2=document.getElementById('splash');if(sp2)sp2.style.display='none';}catch(e){}document.getElementById('loginPage').style.display='flex';return;}
   // Hide splash immediately — before any function calls
   try{var sp=document.getElementById('splash');if(sp){sp.style.display='none';}}catch(e){}
   // Restore user info from storage — no server call needed on load
@@ -1666,6 +1666,7 @@ window.addEventListener('load',function(){
     }
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
 
 
 
