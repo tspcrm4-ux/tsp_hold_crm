@@ -1120,7 +1120,7 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   html+='</div>';
   html+='<div style="display:flex;gap:7px">';
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\'hold\',null)">+ Add</button>';
-  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+viewKey+'\',\''+title+'\')">📤 Export/Import</button>';
   html+='</div></div>';
 
   // Search bar with booking ID search note
@@ -1131,7 +1131,7 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
     html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateFrom||'')+'" onchange="_ts[\'hold-done\'].dateFrom=this.value;_ts[\'hold-done\'].page=1;loadHoldDone()">';
     html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateTo||'')+'" onchange="_ts[\'hold-done\'].dateTo=this.value;_ts[\'hold-done\'].page=1;loadHoldDone()">';
   }
-  var pgSzHtml='<select class="fs" style="width:75px" onchange="chgPgSz(\''+sh+'\',\''+title+'\',\''+icon+'\',this.value)">';
+  var pgSzHtml='<select class="fs" style="width:75px" onchange="chgPgSz(\''+viewKey+'\',\''+title+'\',\''+icon+'\',this.value)">';
   [50,100,200,500].forEach(function(n){pgSzHtml+='<option value="'+n+'"'+(parseInt(st.pageSize)===n?' selected':'')+'>'+n+'/pg</option>';});
   pgSzHtml+='</select>';
   html+=pgSzHtml;
@@ -2571,6 +2571,7 @@ window.addEventListener('load',function(){
     }
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
 
 
 </script>
