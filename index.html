@@ -604,9 +604,10 @@ function bootApp(){
   document.getElementById('ddN').textContent=_user.username||'—';
   document.getElementById('ddR').textContent=(_user.role||'')+(_user.department?' · '+_user.department:'');
   var role=R();
+  // Admin nav (Users management)
   if(role==='ADMIN'||role==='MANAGER') document.getElementById('adminNav').style.display='block';
-  // Show request tabs
-  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT'){
+  // Request tabs — ACCOUNTANT excluded
+  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'){
     document.getElementById('nav-hold-req').style.display='flex';
     document.getElementById('nav-dis-req').style.display='flex';
     document.getElementById('nav-en-req').style.display='flex';
@@ -801,10 +802,15 @@ function sRefresh(pg){
 function loadDash(){
   var fromEl=document.getElementById('dashFrom'),toEl=document.getElementById('dashTo');
   var fv=fromEl?fromEl.value:'',tv=toEl?toEl.value:'';
+  window._dsFrom=fv; window._dsTo=tv;
   window._dashFilter={from:fv,to:tv};
   window._dashTab=window._dashTab||'overview';
   setC('<div class="ldr"><span class="sp"></span>Loading dashboard...</div>');
-  getDashboardStatsFB(window._dsFrom||'',window._dsTo||'',function(r){if(r&&r.success)renderDashContent(r);});
+  getDashboardStatsFB(fv,tv,function(r){
+    if(!r||!r.success){setC('<div class="ldr">Dashboard data not loaded yet. Please wait...</div>');return;}
+    window._dashData=r;
+    renderDashShell(fv,tv);
+  });
 }
 function clearDashFilter(){
   var f=document.getElementById('dashFrom'),t=document.getElementById('dashTo');
@@ -1235,17 +1241,32 @@ function universalHoldSearch(v, viewKey){
   if(t.length>=3){
     _bidSearchTimer=setTimeout(function(){
       setC('<div class="ldr"><span class="sp"></span>Searching all HOLD records for: <strong>'+t+'</strong>...</div>');
-      var tl=t.toLowerCase();
-          var bidx2=_store.hold&&_store.hold.headers?_store.hold.headers.indexOf('BOOKING ID'):0;
-          if(_store.hold&&_store.hold.rows){
-            for(var si=0;si<_store.hold.rows.length;si++){
-              var bid2=(_store.hold.rows[si][bidx2]||'').toString().toLowerCase();
-              if(bid2.indexOf(tl)>=0) fakeR.rows.push(_store.hold.rows[si]);
-            }
-            fakeR.total=fakeR.rows.length;
-            if(fakeR.rows.length>0){renderUniversalResults(fakeR,t);return;}
+      function doHoldSearch(){
+        var tl=t.toLowerCase();
+        var fakeR={headers:_store.hold.headers,rows:[],total:0};
+        // Search ALL columns (not just BOOKING ID)
+        for(var si=0;si<_store.hold.rows.length;si++){
+          var row=_store.hold.rows[si];
+          var matches=false;
+          for(var ci=0;ci<row.length;ci++){
+            if(String(row[ci]||'').toLowerCase().indexOf(tl)>=0){matches=true;break;}
           }
-          setC('<div class="ldr">No record found for: <strong>'+t+'</strong><br><br><button class="btn btn-s btn-sm" onclick="_searchActive=false;loadHoldMain()">← Back</button></div>');
+          if(matches) fakeR.rows.push(row);
+        }
+        fakeR.total=fakeR.rows.length;
+        if(fakeR.rows.length>0){renderUniversalResults(fakeR,t);return;}
+        setC('<div class="ldr">No record found for: <strong>'+t+'</strong><br><br><button class="btn btn-s btn-sm" onclick="_searchActive=false;loadHoldMain()">← Back</button></div>');
+      }
+      if(_store.hold&&_store.hold.rows&&_store.hold.rows.length>0){
+        doHoldSearch();
+      } else {
+        // Load hold data first then search
+        fbGet('hold',function(err,data){
+          if(!err&&data){_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};}
+          if(_store.hold&&_store.hold.rows) doHoldSearch();
+          else setC('<div class="ldr">No HOLD data in Firebase yet.</div>');
+        });
+      }
     }, 400);
   } else if(!t){
     _searchActive=false;
@@ -1340,8 +1361,16 @@ function loadHoldReq(){
     
     if(_store.hold&&_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }return;
   }
-  setC(skeletonTable('Hold Requests'));
-  /* FB:holdReq from store */;
+  // Store empty - load from Firebase first
+  fbGet('hold',function(err,data){
+    if(!err&&data){_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};}
+    var hdrs=_store.hold?_store.hold.headers:H.HOLD;
+    var sidx=hdrs.indexOf('STATUS');
+    var rows=(_store.hold?_store.hold.rows:[]).filter(function(r){
+      return (r[sidx]||'').toString().trim().toUpperCase()==='TO BE HOLD BY SENIOR';
+    });
+    renderHoldReq({success:true,headers:hdrs,rows:rows,total:rows.length});
+  });
 }
 function renderHoldReq(r){
   var role=R(),isKA=role==='KEY ACCOUNT';
@@ -1422,8 +1451,15 @@ function loadDisReq(){
     
     if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
   }
-  setC(skeletonTable('Disable Requests'));
-  /* FB:disReq from store */;
+  fbGet('disable',function(err,data){
+    if(!err&&data){_store.disable={headers:H.DIS,rows:fbObjToRows(data,H.DIS)};}
+    var hdrs=_store.disable?_store.disable.headers:H.DIS;
+    var aidx=hdrs.indexOf('ACTION');
+    var rows=(_store.disable?_store.disable.rows:[]).filter(function(r){
+      return (r[aidx]||'').toString().trim().toUpperCase()==='DISABLE KARNA HAI';
+    });
+    renderDisEnReq({success:true,headers:hdrs,rows:rows,total:rows.length},'disable');
+  });
 }
 function renderDisReq(r){
   var html='<div class="pg-head"><div class="pg-t">🔒 <span class="hl">Disable Requests</span></div>'
@@ -1483,7 +1519,15 @@ function loadEnReq(){
     if(_store.disable&&_store.disable._stale){ _store.disable._stale=false; bgSyncSheet('disable'); }return;
   }
   setC(skeletonTable('Enable Requests'));
-  /* FB:enReq from store */;
+  fbGet('disable',function(err,data){
+    if(!err&&data){_store.disable={headers:H.DIS,rows:fbObjToRows(data,H.DIS)};}
+    var hdrs=_store.disable?_store.disable.headers:H.DIS;
+    var aidx=hdrs.indexOf('ACTION');
+    var rows=(_store.disable?_store.disable.rows:[]).filter(function(r){
+      return (r[aidx]||'').toString().trim().toUpperCase()==='ENABLE KARNA HAI';
+    });
+    renderDisEnReq({success:true,headers:hdrs,rows:rows,total:rows.length},'enable');
+  });
 }
 
 function renderDisEnReq(r, type){
@@ -1559,6 +1603,7 @@ var COLS={
 };
 
 function loadSh(sh,title,icon){
+  _pg_title=title; _pg_icon=icon;
   var st=_ts[sh]=_ts[sh]||{page:1,pageSize:100,search:''};
   // ── INSTANT: use _store if available and not stale ──
   if(_store[sh]&&_store[sh].rows&&!_store[sh]._stale){
@@ -1588,19 +1633,8 @@ function bgSyncSheet(sh){
   /* FB:unknown */;
 }
 
-function skeletonTable(title){
-  var rows='';
-  for(var i=0;i<8;i++){
-    rows+='<tr>';
-    for(var j=0;j<6;j++) rows+='<td><div style="height:14px;background:var(--bg3);border-radius:3px;width:'+(60+Math.random()*30|0)+'%;animation:skel 1.2s ease-in-out infinite alternate"></div></td>';
-    rows+='</tr>';
-  }
-  return '<div class="pg-head"><div class="pg-t">'+title+'</div></div>'+
-    '<style>@keyframes skel{from{opacity:.4}to{opacity:.9}}</style>'+
-    '<div class="tcard"><div class="tscroll"><table><thead><tr>'+
-    '<th>DATE</th><th>ID</th><th>NAME</th><th>STATUS</th><th>AMOUNT</th><th>ACTIONS</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-}
+// dup removed
+
 
 function filterStore(sh,st){
   // Filter, search, and paginate store data client-side — instant
@@ -1665,7 +1699,163 @@ function renderSh(sh,title,icon,r){
   if(!r||!r.success){setC(html+'<div class="ldr">'+( r?r.error:'Failed')+'</div>');return;}
   var hdrs=HDRS[sh]||[],cols=COLS[sh]||[],idKey=sh==='hold'?'BOOKING ID':sh==='recharge'?'Complaint Id':'id';
   var sHdrs=r.headers,startN=(st.page-1)*st.pageSize+1,attIdx=sHdrs.indexOf('ATTEND BY');
-  html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  
+  // ── Column filter bar ──
+  var hdrs=r.headers||[];
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px">';
+  html+='<span style="font-size:11px;color:var(--text3);align-self:center;font-weight:600">FILTER:</span>';
+  // Filterable columns for each sheet
+  var filterCols={hold:['STATUS','AmtStatus','HOLD BY','AGENT NUMBER'],errorpayments:['STATUS','AmtStatus','SUBMITTED BY'],recharge:['Payment status','Submitted by'],disable:['ACTION','TYPE','DISABLED BY']};
+  var cols=filterCols[sh]||hdrs.slice(0,6);
+  cols.forEach(function(col){
+    // Get unique values for this column
+    var ci=hdrs.indexOf(col);
+    if(ci<0)return;
+    var vals={};
+    (r.allRows||r.rows||[]).forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)vals[v]=1;});
+    var options=Object.keys(vals).sort();
+    if(!options.length)return;
+    html+='<div style="display:flex;align-items:center;gap:4px">';
+    html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
+    html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" onchange="applyColFilter(\''+sh+'\',\''+col+'\',this.value)" data-col="'+esc(col)+'">';
+    html+='<option value="">All</option>';
+    options.forEach(function(v){html+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+    html+='</select></div>';
+  });
+  html+='<button class="btn btn-s btn-xs" style="margin-left:auto" onclick="clearColFilters(\''+sh+'\')" title="Clear filters">✕ Clear</button>';
+  html+='</div>';
+
+  // ── Bulk edit bar (Admin/Manager/Accountant only) ──
+  if(isMgr||role==='ACCOUNTANT'){
+    html+='<div id="bulkBar_'+sh+'" style="display:none;background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:7px;padding:8px 12px;margin-bottom:10px;display:none;align-items:center;gap:8px;flex-wrap:wrap">';
+    html+='<span style="font-size:12px;font-weight:600;color:var(--gold)">✏️ Bulk Edit:</span>';
+    html+='<span id="bulkCount_'+sh+'" style="font-size:11px;color:var(--text3)">0 selected</span>';
+    // AmtStatus quick change
+    html+='<select id="bulkField_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
+    html+='<option value="AmtStatus">AmtStatus</option>';
+    html+='<option value="STATUS">STATUS</option>';
+    html+='<option value="key manager status">key manager status</option>';
+    html+='</select>';
+    html+='<select id="bulkVal_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
+    html+='<option value="PENDING">PENDING</option>';
+    html+='<option value="OK">OK</option>';
+    html+='<option value="DONE">DONE</option>';
+    html+='<option value="HOLD">HOLD</option>';
+    html+='<option value="CBD">CBD</option>';
+    html+='</select>';
+    html+='<button class="btn btn-p btn-xs" onclick="doBulkEdit(\''+sh+'\')">Apply to Selected</button>';
+    html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
+    html+='</div>';
+  }
+html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
+  for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+  html+='</tr></thead><tbody>';
+  if(!r.rows.length){html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">No records found</td></tr>';}
+  else{
+    for(var i=0;i<r.rows.length;i++){
+      var row=r.rows[i];
+      var attVal=attIdx>=0?(row[attIdx]||''):'';
+      var isKARow=attVal&&kaSet[String(attVal).toLowerCase()];
+      var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
+      _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
+      var re=rowId.replace(/'/g,"'");
+      html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
+    html+='<td style="width:30px;text-align:center"><input type="checkbox" class="row-cb-'+sh+'" data-fbkey="'+(r.rows[i]._fbKey||i)+'" onchange="toggleBulkRow(\''+sh+'\',\''+String(r.rows[i]._fbKey||i)+'\',this)"></td>';
+      for(var c=0;c<cols.length;c++){
+        var ci=sHdrs.indexOf(cols[c]);
+        var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
+        var cv=rCell(cols[c],val);
+        if(cols[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
+        html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
+      }
+      html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\''+sh+'\',\''+re+'\')">Edit</button> ';
+      if(isMgr) html+='<button class="btn btn-d btn-xs" onclick="confirmDel(\''+sh+'\',\''+re+'\')">Del</button>';
+      html+='</td></tr>';
+    }
+  }
+  html+='</tbody></table></div>';
+  var tp=r.totalPages||1;
+  html+='<div class="pager"><span>Showing '+(r.rows.length>0?(startN)+'–'+(startN+r.rows.length-1):0)+' of '+r.total+'</span><div class="pbtns">';
+  html+='<button class="pb" '+(st.page<=1?'disabled':'')+' onclick="chgPg(\''+sh+'\',' +(st.page-1)+')">‹</button>';
+  var pf=Math.max(1,st.page-2),pt2=Math.min(tp,st.page+2);
+  for(var p=pf;p<=pt2;p++) html+='<button class="pb '+(p===st.page?'cur':'')+'" onclick="chgPg(\''+sh+'\','+p+')">'+p+'</button>';
+  html+='<button class="pb" '+(st.page>=tp?'disabled':'')+' onclick="chgPg(\''+sh+'\',' +(st.page+1)+')">›</button>';
+  html+='</div></div></div>';
+  setC(html);
+
+  var st=_ts[sh]||{page:1,pageSize:50};
+  var role=R(),isAdmin=role==='ADMIN',isMgr=isAdmin||role==='MANAGER';
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
+  html+='<div style="display:flex;gap:7px">';
+  html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
+  html+='</div></div>';
+  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" placeholder="Filter rows..." oninput="onSrch(this.value)"></div>';
+  if(sh==='hold'){
+    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateFrom||'')+'" onchange="_ts.hold.dateFrom=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
+    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateTo||'')+'" onchange="_ts.hold.dateTo=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
+    html+='<select class="fs" onchange="_ts.hold.statusFilter=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')"><option value="">All Status</option><option>HOLD</option><option>CBD</option><option>TO BE HOLD BY SENIOR</option></select>';
+  }
+  var pgSzHtml='<select class="fs" style="width:75px" onchange="chgPgSz(\''+sh+'\',\''+title+'\',\''+icon+'\',this.value)">';
+  [50,100,200,500].forEach(function(n){pgSzHtml+='<option value="'+n+'"'+(parseInt(st.pageSize)===n?' selected':'')+'>'+n+'/pg</option>';});
+  pgSzHtml+='</select>';
+  html+=pgSzHtml;
+  html+='<span class="f-m">'+(r&&r.success?r.total:0)+' records</span></div>';
+  if(!r||!r.success){setC(html+'<div class="ldr">'+( r?r.error:'Failed')+'</div>');return;}
+  var hdrs=HDRS[sh]||[],cols=COLS[sh]||[],idKey=sh==='hold'?'BOOKING ID':sh==='recharge'?'Complaint Id':'id';
+  var sHdrs=r.headers,startN=(st.page-1)*st.pageSize+1,attIdx=sHdrs.indexOf('ATTEND BY');
+  
+  // ── Column filter bar ──
+  var hdrs=r.headers||[];
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px">';
+  html+='<span style="font-size:11px;color:var(--text3);align-self:center;font-weight:600">FILTER:</span>';
+  // Filterable columns for each sheet
+  var filterCols={hold:['STATUS','AmtStatus','HOLD BY','AGENT NUMBER'],errorpayments:['STATUS','AmtStatus','SUBMITTED BY'],recharge:['Payment status','Submitted by'],disable:['ACTION','TYPE','DISABLED BY']};
+  var cols=filterCols[sh]||hdrs.slice(0,6);
+  cols.forEach(function(col){
+    // Get unique values for this column
+    var ci=hdrs.indexOf(col);
+    if(ci<0)return;
+    var vals={};
+    (r.allRows||r.rows||[]).forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)vals[v]=1;});
+    var options=Object.keys(vals).sort();
+    if(!options.length)return;
+    html+='<div style="display:flex;align-items:center;gap:4px">';
+    html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
+    html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" onchange="applyColFilter(\''+sh+'\',\''+col+'\',this.value)" data-col="'+esc(col)+'">';
+    html+='<option value="">All</option>';
+    options.forEach(function(v){html+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+    html+='</select></div>';
+  });
+  html+='<button class="btn btn-s btn-xs" style="margin-left:auto" onclick="clearColFilters(\''+sh+'\')" title="Clear filters">✕ Clear</button>';
+  html+='</div>';
+
+  // ── Bulk edit bar (Admin/Manager/Accountant only) ──
+  if(isMgr||role==='ACCOUNTANT'){
+    html+='<div id="bulkBar_'+sh+'" style="display:none;background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:7px;padding:8px 12px;margin-bottom:10px;display:none;align-items:center;gap:8px;flex-wrap:wrap">';
+    html+='<span style="font-size:12px;font-weight:600;color:var(--gold)">✏️ Bulk Edit:</span>';
+    html+='<span id="bulkCount_'+sh+'" style="font-size:11px;color:var(--text3)">0 selected</span>';
+    // AmtStatus quick change
+    html+='<select id="bulkField_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
+    html+='<option value="AmtStatus">AmtStatus</option>';
+    html+='<option value="STATUS">STATUS</option>';
+    html+='<option value="key manager status">key manager status</option>';
+    html+='</select>';
+    html+='<select id="bulkVal_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
+    html+='<option value="PENDING">PENDING</option>';
+    html+='<option value="OK">OK</option>';
+    html+='<option value="DONE">DONE</option>';
+    html+='<option value="HOLD">HOLD</option>';
+    html+='<option value="CBD">CBD</option>';
+    html+='</select>';
+    html+='<button class="btn btn-p btn-xs" onclick="doBulkEdit(\''+sh+'\')">Apply to Selected</button>';
+    html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
+    html+='</div>';
+  }
+html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
   for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">No records found</td></tr>';}
@@ -1748,7 +1938,39 @@ function doQuickDisable(rid, newAction, type){
   var msg=newAction==='ENABLED'?'Mark as ENABLED? (ENABLED BY will be set to '+(_user.username||'you')+')':'Mark as DISABLED?';
   if(!confirm(msg)) return;
   showAlert('Updating...','info');
-  doQuickDisable(rid,newAction,type);
+  if(!_store.disable){
+    fbGet('disable',function(err,data){
+      if(!err&&data)_store.disable={headers:H.DIS,rows:fbObjToRows(data,H.DIS)};
+      doQuickDisableExec(rid,newAction,type);
+    });
+    return;
+  }
+  doQuickDisableExec(rid,newAction,type);
+}
+
+function doQuickDisableExec(rid, newAction, type){
+  var idIdx=H.DIS.indexOf('id'),actIdx=H.DIS.indexOf('ACTION'),enByIdx=H.DIS.indexOf('ENABLED BY');
+  if(!_store.disable){showAlert('Data not loaded','error');return;}
+  for(var i=0;i<_store.disable.rows.length;i++){
+    var row=_store.disable.rows[i];
+    if((row[idIdx]||'').toString().trim()===rid.toString().trim()){
+      var fk=row._fbKey, ri=i;
+      var upd={ACTION:newAction};
+      if(newAction==='ENABLED') upd.ENABLED_BY=_user.username||'';
+      fbPatch('disable/'+fk, upd, function(err){
+        if(err){showAlert('Failed: '+err.message,'error');return;}
+        _store.disable.rows[ri][actIdx]=newAction;
+        if(newAction==='ENABLED'&&enByIdx>=0) _store.disable.rows[ri][enByIdx]=_user.username||'';
+        showAlert(newAction==='ENABLED'?'✅ ENABLED by '+(_user.username||''):'✅ DISABLED','success');
+        if(type==='enable') loadEnReq();
+        else if(type==='disable') loadDisReq();
+        else loadDisReq();
+        updateBadges();
+      });
+      return;
+    }
+  }
+  showAlert('Record not found: '+rid,'error');
 }
 
 function openDisEdit(rid){
@@ -2088,8 +2310,8 @@ var _eiSh='', _eiTitle='';
 function showExportImport(sh, title){
   var role=R();
   var isAdmin=role==='ADMIN';
-  var canExport=role==='ADMIN'||role==='ACCOUNTANT';
-  var canImport=role==='ADMIN'||role==='ACCOUNTANT';
+  var canExport=role==='ADMIN'||role==='ACCOUNTANT'||role==='MANAGER';
+  var canImport=role==='ADMIN'||role==='ACCOUNTANT'||role==='MANAGER';
   if(!canExport){showAlert('Access denied','error');return;}
   _eiSh=sh; _eiTitle=title;
 
@@ -2637,8 +2859,10 @@ function hlText(text, q){
 /* ═══ UTILS ═══ */
 function R(){return (_user&&_user.role||'').toUpperCase();}
 function setC(h){document.getElementById('mc').innerHTML=h;}
-function show(id){document.getElementById(id).style.display=id==='loginPage'?'flex':'block';}
-function hide(id){document.getElementById(id).style.display='none';}
+// dup removed
+
+// dup removed
+
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 
@@ -2678,16 +2902,8 @@ function doBulkUpload(){
     var txt=ev.target.result.replace(/^\uFEFF/,'');
     var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
     if(lines.length<2){if(res)res.textContent='❌ Empty file.';return;}
-    function parseCSVLine(line){
-      var result=[],cur='',inQ=false;
-      for(var i=0;i<line.length;i++){
-        var ch=line[i];
-        if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
-        else if(ch===','&&!inQ){result.push(cur);cur='';}
-        else cur+=ch;
-      }
-      result.push(cur);return result;
-    }
+    // dup removed
+
     var headers=parseCSVLine(lines[0]);
     var keyIdx=headers.indexOf(keyCol);
     // For agents, use index if no key col
@@ -2733,6 +2949,133 @@ function doBulkUpload(){
   };
   reader.readAsText(fileEl.files[0]);
 }
+
+
+
+
+
+
+// ── Column filter state ──
+var _colFilters={};
+
+function applyColFilter(sh, col, val){
+  if(!_colFilters[sh]) _colFilters[sh]={};
+  if(val) _colFilters[sh][col]=val;
+  else delete _colFilters[sh][col];
+  // Re-render with filter applied
+  var st=_ts[sh]||{page:1,pageSize:50};
+  var data=_store[sh];
+  if(!data) return;
+  var filtered=filterStoreWithCols(sh, st);
+  renderSh(sh, _pg_title||sh, _pg_icon||'', filtered);
+}
+
+function clearColFilters(sh){
+  _colFilters[sh]={};
+  var st=_ts[sh]||{page:1,pageSize:50};
+  var filtered=filterStore(sh,st);
+  renderSh(sh, _pg_title||sh, _pg_icon||'', filtered);
+}
+
+function filterStoreWithCols(sh, st){
+  var data=_store[sh];
+  if(!data) return {headers:[],rows:[],total:0};
+  var filters=_colFilters[sh]||{};
+  var rows=data.rows.filter(function(row){
+    for(var col in filters){
+      if(!filters[col]) continue;
+      var ci=data.headers.indexOf(col);
+      if(ci<0) continue;
+      if((row[ci]||'').toString().trim().toLowerCase()!==filters[col].toLowerCase()) return false;
+    }
+    return true;
+  });
+  // Apply search too
+  if(st.search){
+    var tl=st.search.toLowerCase();
+    rows=rows.filter(function(r){return r.some(function(c){return String(c).toLowerCase().indexOf(tl)>=0;});});
+  }
+  var page=parseInt(st.page)||1, ps=parseInt(st.pageSize)||50, total=rows.length;
+  return {headers:data.headers, rows:rows.slice((page-1)*ps,(page-1)*ps+ps), allRows:rows, total:total, page:page, pageSize:ps, totalPages:Math.ceil(total/ps)||1};
+}
+
+// ── Bulk edit ──
+var _bulkSelected={};
+
+function toggleBulkRow(sh, fbKey, checkbox){
+  if(!_bulkSelected[sh]) _bulkSelected[sh]={};
+  if(checkbox.checked) _bulkSelected[sh][fbKey]=true;
+  else delete _bulkSelected[sh][fbKey];
+  var count=Object.keys(_bulkSelected[sh]||{}).length;
+  var countEl=document.getElementById('bulkCount_'+sh);
+  if(countEl) countEl.textContent=count+' selected';
+  var bar=document.getElementById('bulkBar_'+sh);
+  if(bar) bar.style.display=count>0?'flex':'none';
+}
+
+function selectAllRows(sh, checkbox){
+  var cbs=document.querySelectorAll('.row-cb-'+sh);
+  if(!_bulkSelected[sh]) _bulkSelected[sh]={};
+  cbs.forEach(function(cb){
+    cb.checked=checkbox.checked;
+    var fk=cb.getAttribute('data-fbkey');
+    if(checkbox.checked) _bulkSelected[sh][fk]=true;
+    else delete _bulkSelected[sh][fk];
+  });
+  var count=Object.keys(_bulkSelected[sh]).length;
+  var countEl=document.getElementById('bulkCount_'+sh);
+  if(countEl) countEl.textContent=count+' selected';
+  var bar=document.getElementById('bulkBar_'+sh);
+  if(bar) bar.style.display=count>0?'flex':'none';
+}
+
+function clearBulkSel(sh){
+  _bulkSelected[sh]={};
+  document.querySelectorAll('.row-cb-'+sh).forEach(function(cb){cb.checked=false;});
+  var bar=document.getElementById('bulkBar_'+sh);
+  if(bar) bar.style.display='none';
+}
+
+function doBulkEdit(sh){
+  var sel=_bulkSelected[sh]||{};
+  var keys=Object.keys(sel);
+  if(!keys.length){showAlert('Select at least one row','error');return;}
+  var fieldEl=document.getElementById('bulkField_'+sh);
+  var valEl=document.getElementById('bulkVal_'+sh);
+  if(!fieldEl||!valEl) return;
+  var field=fieldEl.value, newVal=valEl.value;
+  if(!field||!newVal){showAlert('Select field and value','error');return;}
+  if(!confirm('Set '+field+' = '+newVal+' for '+keys.length+' selected row(s)?'))return;
+  showAlert('Updating '+keys.length+' rows...','info');
+  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+  var path=pathMap[sh];
+  var hdrs=hdrMap[sh]||[];
+  var safeField=field.replace(/[.#$[\]\/]/g,'_');
+  var done=0, total=keys.length;
+  keys.forEach(function(fbKey){
+    var upd={};upd[safeField]=newVal;
+    fbPatch(path+'/'+fbKey, upd, function(err){
+      if(!err&&_store[sh]){
+        // Update local store
+        var fi=hdrs.indexOf(field);
+        for(var i=0;i<_store[sh].rows.length;i++){
+          if(_store[sh].rows[i]._fbKey===fbKey){
+            if(fi>=0)_store[sh].rows[i][fi]=newVal;
+            break;
+          }
+        }
+      }
+      done++;
+      if(done===total){
+        clearBulkSel(sh);
+        showAlert('✅ Updated '+total+' rows: '+field+' = '+newVal,'success');
+        loadPg(sh);
+      }
+    });
+  });
+}
+var _pg_title='', _pg_icon='';
 
 
 </script>
