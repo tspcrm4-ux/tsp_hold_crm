@@ -35,6 +35,8 @@
 
 
 
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -287,6 +289,8 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 .scard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15);border-color:var(--c,var(--gold))!important;}
 .scard:active{transform:translateY(-1px);}
+
+
 </style>
 </head>
 <body>
@@ -451,6 +455,35 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
+
+// ── Chart tooltip helper ──
+function addChartTooltip(canvas, labels, datasets){
+  var tip=document.getElementById('chartTip');
+  if(!tip){tip=document.createElement('div');tip.id='chartTip';
+    tip.style.cssText='position:fixed;background:rgba(0,0,0,.85);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:9999;max-width:200px;';
+    document.body.appendChild(tip);
+  }
+  canvas.addEventListener('mousemove',function(e){
+    var rect=canvas.getBoundingClientRect();
+    var mx=e.clientX-rect.left;
+    var W=canvas.width,pad={l:42,r:16,t:16,b:48};
+    var cW=W-pad.l-pad.r;
+    var n=labels.length;
+    if(!n){tip.style.display='none';return;}
+    var bW=cW/n,idx=Math.floor((mx-pad.l)/bW);
+    if(idx<0||idx>=n){tip.style.display='none';return;}
+    var txt='<strong>'+labels[idx]+'</strong><br>';
+    datasets.forEach(function(ds){txt+=ds.label+': <strong>'+ds.data[idx]+'</strong><br>';});
+    tip.innerHTML=txt;
+    tip.style.display='block';
+    tip.style.left=(e.clientX+12)+'px';
+    tip.style.top=(e.clientY-20)+'px';
+  });
+  canvas.addEventListener('mouseleave',function(){tip.style.display='none';});
+}
+
+
 
 
 
@@ -764,10 +797,12 @@ function fbLoadAllSheets(onComplete){
 
 var _loadingSheets=false;
 function preloadStore(){
-  if(_loadingSheets) return; // prevent duplicate concurrent loads
+  if(_loadingSheets) return;
   _loadingSheets=true;
   fbLoadAllSheets(function(){
     _loadingSheets=false;
+    // After all sheets loaded, refresh current page
+    if(_pg) loadPg(_pg);
   });
 }
 
@@ -1642,6 +1677,7 @@ function drawBar(canvas,labels,datasets){
     ctx.fillStyle='#4b5563';ctx.font='10px Arial';ctx.textAlign='left';
     ctx.fillText(ds.label,lx+13,H-3);lx+=ds.label.length*7+20;
   });
+  addChartTooltip(canvas,labels,datasets);
 }
 function drawPie(canvas,labels,vals,colors){
   var W=canvas.offsetWidth||280;
@@ -1924,7 +1960,7 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   html+='</div>';
 
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
-  for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
 
   if(!r.rows.length){
@@ -2528,7 +2564,7 @@ function renderSh(sh,title,icon,r){
   }
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){
     var filterMsg='';
@@ -2537,7 +2573,7 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
     if(dayLimit){
       filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
     }
-    html+='<tr><td colspan="'+(hdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
+    html+='<tr><td colspan="'+(sHdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
   }
   else{
     for(var i=0;i<r.rows.length;i++){
@@ -2656,7 +2692,7 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   }
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){
     var filterMsg='';
@@ -2665,7 +2701,7 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
     if(dayLimit){
       filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
     }
-    html+='<tr><td colspan="'+(hdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
+    html+='<tr><td colspan="'+(sHdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
   }
   else{
     for(var i=0;i<r.rows.length;i++){
@@ -4545,6 +4581,30 @@ function startPresenceRefresh(){
     });
   }, 15000);
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
