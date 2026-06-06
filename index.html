@@ -11,6 +11,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -237,6 +238,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 </style>
 </head>
 <body>
@@ -401,6 +403,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -2906,7 +2909,11 @@ function showExportImport(sh, title){
     html+='</select>';
     html+='</div>';
     html+='<input type="file" accept=".csv" id="bulkCsvInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:10px">';
+    html+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
     html+='<button class="btn btn-p btn-sm" onclick="doBulkUpload()">🚀 Upload to Firebase</button>';
+    html+='<button class="btn btn-d btn-sm" onclick="doClearSheet()">🗑 Clear Sheet First, Then Upload</button>';
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-top:6px">⚠ "Clear Sheet" deletes ALL existing data for selected sheet, then uploads CSV fresh.</div>';
     html+='<div id="bulkResult" style="margin-top:12px;font-size:12px"></div>';
     html+='</div>';
   }
@@ -3884,6 +3891,48 @@ window.addEventListener('load',function(){
   }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
 
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+function doClearSheet(){
+  var shSel=document.getElementById('bulkSheetSel');
+  var fileEl=document.getElementById('bulkCsvInput');
+  var res=document.getElementById('bulkResult');
+  if(!shSel||!shSel.value){showAlert('Select a sheet first','error');return;}
+  if(!fileEl||!fileEl.files||!fileEl.files[0]){showAlert('Select a CSV file first','error');return;}
+  var targetSh=shSel.value;
+  if(!confirm('⚠ DELETE ALL data in "'+targetSh+'" and replace with CSV?\nThis cannot be undone.'))return;
+  if(res){res.textContent='Clearing '+targetSh+'...';res.style.color='var(--red)';}
+  // Delete the entire node by setting it to null
+  fetch(FB_URL+'/'+targetSh+'.json'+fbGetAuthParam(),{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:'null'
+  })
+  .then(function(r){return r.json();})
+  .then(function(){
+    if(res){res.textContent='✅ Cleared! Now uploading CSV...';res.style.color='var(--green)';}
+    // Clear the store
+    if(_store[targetSh]) _store[targetSh]={headers:[],rows:[]};
+    // Now upload fresh
+    setTimeout(function(){ doBulkUpload(); }, 500);
+  })
+  .catch(function(e){
+    if(res){res.textContent='❌ Clear failed: '+e.message;res.style.color='var(--red)';}
+    showAlert('Clear failed: '+e.message,'error');
+  });
+}
 
 
 window.addEventListener('load',function(){
