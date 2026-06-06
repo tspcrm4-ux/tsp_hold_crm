@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="version" content="v2.1-862669">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Taxi Sanchalak CRM</title>
 <style>
+
 
 
 
@@ -271,6 +273,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 </style>
 </head>
 <body>
@@ -435,6 +438,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -926,7 +930,16 @@ function getHoldDoneFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){i
     if(!((s==='HOLD'||s==='CBD')&&(as==='DONE'))) return false;
     return isWithinDays(r[dIdx],7,'hold');
   });var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
-function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
+function getDashboardStatsFB(dateFrom,dateTo,cb){
+  if(!_store.hold||!_store.hold.rows||!_store.hold.rows.length){
+    // Load hold data directly then compute
+    fbGet('hold',function(err,data){
+      if(err||!data){cb({success:false,error:'No data'});return;}
+      _store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};
+      getDashboardStatsFB(dateFrom,dateTo,cb);
+    });
+    return;
+  }var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
   var errorPend=0;
   if(_store.errorpayments){var asIdx2=H.ERR.indexOf('AmtStatus');_store.errorpayments.rows.forEach(function(r){if((r[asIdx2]||'').toUpperCase().trim()==='PENDING'||!(r[asIdx2]||'').trim())errorPend++;});}
   var holdTotal=rows.length;
@@ -1227,6 +1240,11 @@ function bootApp(){
     show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-tickets'];
   } else if(role==='CALLING AGENT'){
     show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
+    // Explicitly hide dashboard for calling agent
+    var dashEl=document.getElementById('nav-dashboard');
+    if(dashEl) dashEl.style.display='none';
+    var mainEl=document.getElementById('mainNavLabel');
+    if(mainEl) mainEl.style.display='none';
   } else if(role==='KEY ACCOUNT'){
     show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
       'nav-errorpayments','nav-recharge','nav-disable',
@@ -1449,7 +1467,10 @@ function loadDash(){
   window._dashTab=window._dashTab||'overview';
   setC('<div class="ldr"><span class="sp"></span>Loading dashboard...</div>');
   getDashboardStatsFB(fv,tv,function(r){
-    if(!r||!r.success){setC('<div class="ldr">Dashboard data not loaded yet. Please wait...</div>');return;}
+    if(!r||!r.success){
+      setC('<div class="ldr" style="text-align:center"><div style="font-size:24px;margin-bottom:12px">📊</div><div>Loading dashboard data...</div><br><button class="btn btn-s btn-sm" onclick="loadDash()">🔄 Retry</button></div>');
+      return;
+    }
     window._dashData=r;
     renderDashShell(fv,tv);
   });
@@ -4341,6 +4362,18 @@ window.addEventListener('load',function(){
 });
 
 }
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
 
 window.addEventListener('load',function(){
   try{var sp=document.getElementById('splash');
