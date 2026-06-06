@@ -12,6 +12,8 @@
 
 
 
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -239,6 +241,8 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
 </style>
 </head>
 <body>
@@ -403,6 +407,8 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
+
 
 
 
@@ -3494,64 +3500,47 @@ function doBulkUpload(){
   if(res){res.textContent='Reading file...';res.style.color='var(--text)';}
   var reader=new FileReader();
   reader.onload=function(ev){
-    var txt=ev.target.result.replace(/^﻿/,'');
-    var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
-
-
-    if(lines.length<2){if(res)res.textContent='❌ Empty file.';return;}
-    var headers=parseCSVLine(lines[0]);
-    var keyIdx=headers.indexOf(keyCol);
-    // Parse ALL rows into batches of 200
-    var batches=[],curBatch={},count=0;
-    for(var i=1;i<lines.length;i++){
-      var vals=parseCSVLine(lines[i]);
-      if(!vals||vals.length<2)continue;
-      var keyVal=keyIdx>=0?(vals[keyIdx]||'').trim():'row_'+i;
-      if(!keyVal)keyVal='row_'+i;
-      var fbKey=keyVal.toString().replace(/[.#$[\]\/]/g,'_').substring(0,60);
-      if(targetSh==='users') fbKey='u_'+fbKey;
-      else if(targetSh==='agents') fbKey='a_'+i;
-      var record={};
-      headers.forEach(function(h,j){
-        if(h)record[h.replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';
-      });
-      curBatch[fbKey]=record; count++;
-      if(count%200===0){batches.push(curBatch);curBatch={};}
+    var txt=ev.target.result.replace(/^\uFEFF/,'');
+    var lines=txt.split(/\r?\n/);
+    var headers=null,batches=[],curBatch={},count=0,BATCH_SIZE=500;
+    for(var i=0;i<lines.length;i++){
+      var line=lines[i].trim();if(!line)continue;
+      var vals=line.indexOf('"')<0?line.split(','):parseCSVLine(line);
+      if(!headers){headers=vals.map(function(h){return h.trim().replace(/^\uFEFF/,'');});continue;}
+      if(vals.length<2)continue;
+      var ki=headers.indexOf(keyCol);
+      var kv=ki>=0?(vals[ki]||'').trim():'row_'+i;if(!kv)kv='row_'+i;
+      var fbKey=kv.toString().replace(/[.#$[\]\/]/g,'_').substring(0,60);
+      if(targetSh==='users')fbKey='u_'+fbKey;
+      else if(targetSh==='agents')fbKey='a_'+(count+1);
+      var rec={};
+      for(var j=0;j<headers.length;j++){if(headers[j])rec[headers[j].replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';}
+      curBatch[fbKey]=rec;count++;
+      if(count%BATCH_SIZE===0){batches.push(curBatch);curBatch={};if(res)res.textContent='Parsed '+count+' rows...';}
     }
-    if(Object.keys(curBatch).length>0) batches.push(curBatch);
-    if(batches.length===0){if(res)res.textContent='❌ No valid rows found.';return;}
-    if(res)res.textContent='Parsed '+count+' rows → uploading in '+batches.length+' batches...';
-    // Upload batches SEQUENTIALLY - one at a time
-    var batchIdx=0;
-    function uploadNextBatch(){
-      if(batchIdx>=batches.length){
-        // All done - reload store
-        if(hdrMap[targetSh]){
-          fbGet(targetSh,function(e2,d2){
-            if(!e2&&d2)_store[targetSh]={headers:hdrMap[targetSh],rows:fbObjToRows(d2,hdrMap[targetSh])};
-          });
-        }
-        if(res){res.textContent='✅ '+count+' rows uploaded to "'+targetSh+'" successfully!';res.style.color='var(--green)';}
-        showAlert('✅ '+count+' rows uploaded!','success');
+    if(Object.keys(curBatch).length>0)batches.push(curBatch);
+    if(!headers||batches.length===0){if(res)res.textContent='\u274c No valid rows found.';return;}
+    if(res)res.textContent='Parsed '+count+' rows \u2192 uploading '+batches.length+' batches...';
+    var bi=0;
+    function next(){
+      if(bi>=batches.length){
+        if(res){res.textContent='\u2705 '+count+' rows uploaded to "'+targetSh+'" successfully!';res.style.color='var(--green)';}
+        showAlert('\u2705 '+count+' rows uploaded!','success');
+        if(hdrMap[targetSh])fbGet(targetSh,function(e,d){if(!e&&d)_store[targetSh]={headers:hdrMap[targetSh],rows:fbObjToRows(d,hdrMap[targetSh])};});
         return;
       }
-      var done=batchIdx*200;
-      if(res)res.textContent='Uploading batch '+(batchIdx+1)+'/'+batches.length+' ('+Math.min(done+200,count)+' of '+count+' rows)...';
-      fbPatch(targetSh,batches[batchIdx],function(err){
-        if(err){
-          if(res){res.textContent='❌ Error on batch '+(batchIdx+1)+': '+err.message;res.style.color='var(--red)';}
-          showAlert('Upload error: '+err.message,'error');
-          return;
-        }
-        batchIdx++;
-        // Small delay between batches to avoid overwhelming Firebase
-        setTimeout(uploadNextBatch, 300);
+      var done=bi*BATCH_SIZE;
+      if(res)res.textContent='Batch '+(bi+1)+'/'+batches.length+' \u2014 '+Math.min(done+BATCH_SIZE,count)+'/'+count+' rows...';
+      fbPatch(targetSh,batches[bi],function(err){
+        if(err){if(res){res.textContent='\u274c Batch '+(bi+1)+' failed: '+err.message;res.style.color='var(--red)';}showAlert('Upload error','error');return;}
+        bi++;setTimeout(next,100);
       });
     }
-    uploadNextBatch();
+    next();
   };
   reader.readAsText(fileEl.files[0]);
 }
+
 
 
 
@@ -3933,6 +3922,30 @@ function doClearSheet(){
     showAlert('Clear failed: '+e.message,'error');
   });
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
