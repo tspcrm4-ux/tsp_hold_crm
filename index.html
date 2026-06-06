@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="version" content="v2.1-862669">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Taxi Sanchalak CRM</title>
 <style>
+
+
+
 
 
 
@@ -274,6 +276,9 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
+
 </style>
 </head>
 <body>
@@ -438,6 +443,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -1580,7 +1586,7 @@ function drawCharts(d){
     drawBar(tc,ags.map(function(a){return a.name;}),
       [{label:'Pending',data:ags.map(function(a){return (a.holdPend||0)+(a.cbdPend||0);}),color:'#b8860b'},
        {label:'Solved', data:ags.map(function(a){return a.solved||0;}),color:'#15803d'}]);
-
+  }
 }
 function drawBar(canvas,labels,datasets){
   var W=canvas.offsetWidth||600;
@@ -4361,7 +4367,17 @@ window.addEventListener('load',function(){
     }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
 
-}
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
 
 window.addEventListener('load',function(){
   try{var sp=document.getElementById('splash');
