@@ -38,6 +38,9 @@
 
 
 
+
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -293,6 +296,9 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
+
 </style>
 </head>
 <body>
@@ -457,6 +463,9 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
+
+
 
 
 
@@ -1989,7 +1998,11 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
         if(cols[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
         html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
       }
-      html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\'\'+re+\'\')">Edit</button></td>';
+      var _isMgr2=R()==='ADMIN'||R()==='MANAGER';
+      html+='<td style="white-space:nowrap">';
+      html+='<button class="btn btn-s btn-xs" data-sh="hold" data-id="'+re+'" onclick="openPanel(\'edit\',this.dataset.sh,this.dataset.id)" title="Edit">✏️ Edit</button> ';
+      if(_isMgr2) html+='<button class="btn btn-d btn-xs" data-sh="hold" data-id="'+re+'" onclick="confirmDel(this.dataset.sh,this.dataset.id)" title="Delete">🗑</button>';
+      html+='</td>';
       html+='</tr>';
     }
   }
@@ -2875,8 +2888,26 @@ function openPanel(mode,sh,rowId){
         }
       }
     }
-    document.getElementById('pBody').innerHTML='<div class="ldr"><span class="sp"></span>Loading...</div>';
-    /* FB:unknown */;
+    // Fetch from Firebase directly
+    var hdrMap2={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+    var hdrs2=hdrMap2[sh]||H.HOLD;
+    fbGet(sh,function(err2,data2){
+      if(err2||!data2){
+        document.getElementById('pBody').innerHTML='<div class="ldr">Failed to load. Try again.</div>';
+        return;
+      }
+      var rows2=fbObjToRows(data2,hdrs2);
+      var idKey2=sh==='hold'?'BOOKING ID':sh==='recharge'?'Complaint Id':'id';
+      var sidx2=hdrs2.indexOf(idKey2);
+      for(var si2=0;si2<rows2.length;si2++){
+        if(String(rows2[si2][sidx2])===String(rowId)){
+          var sd2={};
+          for(var sj2=0;sj2<hdrs2.length;sj2++) sd2[hdrs2[sj2]]=rows2[si2][sj2];
+          buildForm(sh,sd2); return;
+        }
+      }
+      document.getElementById('pBody').innerHTML='<div class="ldr">Record not found</div>';
+    });
   } else buildForm(sh,null);
 }
 
@@ -4581,6 +4612,42 @@ function startPresenceRefresh(){
     if(!document.hidden) fetchPresence(null); // fetch only, no re-render
   }, 30000); // every 30s not 15s
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
