@@ -37,6 +37,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -291,6 +292,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 .scard:active{transform:translateY(-1px);}
 
 
+
 </style>
 </head>
 <body>
@@ -455,6 +457,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 // ── Chart tooltip helper ──
@@ -1928,7 +1931,7 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   var hdrs=HDRS.hold,cols=COLS.hold,sHdrs=r.headers;
   var idKey='BOOKING ID',startN=(st.page-1)*st.pageSize+1;
   var attIdx=sHdrs.indexOf('ATTEND BY');
-  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++){var _ka=_kaAgents[ki];kaSet[(typeof _ka==='string'?_ka:(_ka.name||_ka.agentName||'')).toLowerCase()]=1;}
 
   
   // ── Filter bar for Hold tabs ──
@@ -2056,7 +2059,7 @@ function universalHoldSearch(v, viewKey){
 function renderUniversalResults(r, query){
   var hdrs=r.headers, rows=r.rows;
   var cols=['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','DESCRIPTION','PAYMENT BY','MESSAGE'];
-  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++){var _ka=_kaAgents[ki];kaSet[(typeof _ka==='string'?_ka:(_ka.name||_ka.agentName||'')).toLowerCase()]=1;}
   var attIdx=hdrs.indexOf('ATTEND BY');
 
   var html='<div class="pg-head"><div>';
@@ -2483,7 +2486,7 @@ function filterStore(sh,st){
 function renderSh(sh,title,icon,r){
   var st=_ts[sh]||{page:1,pageSize:50};
   var role=R(),isAdmin=role==='ADMIN',isMgr=isAdmin||role==='MANAGER';
-  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++){var _ka=_kaAgents[ki];kaSet[(typeof _ka==='string'?_ka:(_ka.name||_ka.agentName||'')).toLowerCase()]=1;}
   var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
   html+='<div style="display:flex;gap:7px">';
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
@@ -2611,7 +2614,7 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
 
   var st=_ts[sh]||{page:1,pageSize:50};
   var role=R(),isAdmin=role==='ADMIN',isMgr=isAdmin||role==='MANAGER';
-  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++) kaSet[_kaAgents[ki].toLowerCase()]=1;
+  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++){var _ka=_kaAgents[ki];kaSet[(typeof _ka==='string'?_ka:(_ka.name||_ka.agentName||'')).toLowerCase()]=1;}
   var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
   html+='<div style="display:flex;gap:7px">';
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
@@ -4575,12 +4578,21 @@ function getPresenceOnRow(sheet, rowId){
 // Refresh presence every 15s
 function startPresenceRefresh(){
   setInterval(function(){
-    if(!document.hidden) fetchPresence(function(){
-      // Re-render current page to update indicators
-      if(_pg==='hold-main'||_pg==='hold-done') loadPg(_pg);
-    });
-  }, 15000);
+    if(!document.hidden) fetchPresence(null); // fetch only, no re-render
+  }, 30000); // every 30s not 15s
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
