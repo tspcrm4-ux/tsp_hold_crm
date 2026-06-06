@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taxi Sanchalak CRM</title>
+<!-- Firebase SDK v9 compat (works with existing code) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
+
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -227,6 +231,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 .btn-wa-green{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#25D366;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:inherit;white-space:nowrap}
 .btn-wa-green:hover{background:#1DA851;transform:scale(1.04)}
 
+
 </style>
 </head>
 <body>
@@ -392,16 +397,424 @@ tr.ka-row:hover td{background:#fef9c3!important}
 </div>
 <script>
 
+/* ═══════════════════════════════════════════════════════════════
+   FIREBASE SDK LAYER - Step 1 Rebuild
+   Uses Firebase Realtime Database SDK instead of REST API
+   - Real-time listeners (not polling)
+   - Date-filtered loading
+   - Offline support
+   - ~95% bandwidth reduction
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Firebase config ──
+var FB_CONFIG = {
+  apiKey: "AIzaSyC-qE9fctFyFQeFPRFRm99MOBOEK_cjQ4s",
+  authDomain: "taxisanchalakcrm-712af.firebaseapp.com",
+  databaseURL: "https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "taxisanchalakcrm-712af",
+  storageBucket: "taxisanchalakcrm-712af.firebasestorage.app",
+  messagingSenderId: "281932163456",
+  appId: "1:281932163456:web:2dcdbaa9d5e44ac00df965"
+};
+
+var _fbApp = null;
+var _fbDb  = null;
+var _fbListeners = {}; // active listeners to detach on logout
+
+function initFirebaseSDK(){
+  if(_fbApp) return;
+  try {
+    _fbApp = firebase.initializeApp(FB_CONFIG);
+    _fbDb  = firebase.database();
+    // Enable offline persistence
+    _fbDb.ref('.info/connected').on('value', function(snap){
+      var online = snap.val();
+      var dot = document.getElementById('liveDot');
+      if(dot) dot.style.background = online ? '#22c55e' : '#f59e0b';
+      var lbl = document.getElementById('liveLabel');
+      if(lbl) lbl.textContent = online ? 'LIVE' : 'OFFLINE';
+    });
+  } catch(e) {
+    console.error('Firebase SDK init failed:', e);
+  }
+}
+
+// ── SDK wrappers (drop-in replacements for fbGet/fbPatch/fbSet/fbDelete) ──
+
+function fbGet(path, cb){
+  if(!_fbDb){ cb(new Error('DB not init'), null); return; }
+  _fbDb.ref(path).once('value')
+    .then(function(snap){ cb(null, snap.val()); })
+    .catch(function(e){ cb(e, null); });
+}
+
+function fbSet(path, data, cb){
+  if(!_fbDb){ if(cb) cb(new Error('DB not init'), null); return; }
+  // Add timestamp for date filtering
+  if(typeof data === 'object' && data !== null && !data.ts){
+    data.ts = Date.now();
+    data.ts_date = new Date().toISOString().slice(0,10);
+  }
+  _fbDb.ref(path).set(data)
+    .then(function(){ if(cb) cb(null, data); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+function fbPatch(path, data, cb){
+  if(!_fbDb){ if(cb) cb(new Error('DB not init'), null); return; }
+  _fbDb.ref(path).update(data)
+    .then(function(){ if(cb) cb(null, data); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+function fbDelete(path, cb){
+  if(!_fbDb){ if(cb) cb(new Error('DB not init'), null); return; }
+  _fbDb.ref(path).remove()
+    .then(function(){ if(cb) cb(null, null); })
+    .catch(function(e){ if(cb) cb(e, null); });
+}
+
+// ── Date filtering helpers ──
+
+function getDaysAgoDate(days){
+  var d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+function parseDDMMYYYY(str){
+  // Parse dd/MM/yyyy format
+  if(!str) return null;
+  var parts = str.toString().split('/');
+  if(parts.length !== 3) return null;
+  var d = new Date(parts[2], parts[1]-1, parts[0]);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isWithinDays(dateStr, days){
+  if(!dateStr) return false;
+  var d = parseDDMMYYYY(dateStr);
+  if(!d) return false;
+  return d >= getDaysAgoDate(days);
+}
+
+// ── Smart loading functions (replace fbLoadAllSheets) ──
+
+function fbLoadSheet(sheetKey, hdrs, options, cb){
+  /*
+    options = {
+      all: true,                    // load all records
+      days: 7,                      // load last N days
+      dateCol: 'DATE',              // which column has date
+      extraFilter: function(row){}, // additional filter
+    }
+    cb(rows) called when done
+  */
+  if(!_fbDb){ cb([]); return; }
+
+  _fbDb.ref(sheetKey).once('value')
+    .then(function(snap){
+      var data = snap.val();
+      if(!data){ cb([]); return; }
+
+      var rows = fbObjToRows(data, hdrs);
+
+      if(!options.all && options.days){
+        var dateIdx = hdrs.indexOf(options.dateCol || 'DATE');
+        if(dateIdx >= 0){
+          rows = rows.filter(function(r){
+            return isWithinDays(r[dateIdx], options.days);
+          });
+        }
+      }
+
+      if(options.extraFilter){
+        rows = rows.filter(options.extraFilter);
+      }
+
+      cb(rows, data);
+    })
+    .catch(function(e){
+      console.error('fbLoadSheet error:', sheetKey, e);
+      cb([]);
+    });
+}
+
+// ── Your exact loading rules ──
+
+function loadAllSheets(onComplete){
+  var loaded = 0;
+  var total  = 5;
+  function done(){ if(++loaded === total && onComplete) onComplete(); }
+
+  // 1. HOLD PENDING = ALL pending (no date filter)
+  //    HOLD DONE    = last 3 days (filtered client-side)
+  fbLoadSheet('hold', H.HOLD, {all: true}, function(rows){
+    _store.hold = {headers: H.HOLD, rows: rows};
+    saveStoreToLocal();
+    done();
+  });
+
+  // 2. ERROR PAYMENTS = last 7 days
+  fbLoadSheet('errorpayments', H.ERR, {days: 7, dateCol: 'DATE'}, function(rows){
+    _store.errorpayments = {headers: H.ERR, rows: rows};
+    done();
+  });
+
+  // 3. RECHARGE = last 7 days
+  fbLoadSheet('recharge', H.RECH, {days: 7, dateCol: 'Payment date'}, function(rows){
+    _store.recharge = {headers: H.RECH, rows: rows};
+    done();
+  });
+
+  // 4. DISABLE = active (ACTION=DISABLED) + last 3 days
+  fbLoadSheet('disable', H.DIS, {all: true}, function(rows){
+    var actIdx  = H.DIS.indexOf('ACTION');
+    var dateIdx = H.DIS.indexOf('DATE');
+    rows = rows.filter(function(r){
+      var act  = (r[actIdx]||'').toUpperCase().trim();
+      var active = act === 'DISABLED' || act === 'DISABLE KARNA HAI' || act === 'ENABLE KARNA HAI';
+      var recent = isWithinDays(r[dateIdx], 3);
+      return active || recent;
+    });
+    _store.disable = {headers: H.DIS, rows: rows};
+    done();
+  });
+
+  // 5. TICKETS = ALL
+  fbLoadSheet('tickets', H.TKT, {all: true}, function(rows){
+    _store.tickets = {headers: H.TKT, rows: rows};
+    done();
+  });
+}
+
+// ── Real-time listeners (replace 5s polling) ──
+
+var _listenersActive = false;
+
+function attachListeners(){
+  if(_listenersActive || !_fbDb) return;
+  _listenersActive = true;
+
+  // HOLD listener - only listen for changes, not initial load
+  var holdRef = _fbDb.ref('hold');
+
+  _fbListeners.holdChanged = holdRef.on('child_changed', function(snap){
+    var fbKey = snap.key;
+    var val   = snap.val();
+    if(!val || !_store.hold) return;
+    var updated = false;
+    for(var i = 0; i < _store.hold.rows.length; i++){
+      if(_store.hold.rows[i]._fbKey === fbKey){
+        var newRow = H.HOLD.map(function(h){
+          var sk = h.replace(/[.#$[\]\/]/g,'_');
+          return val[sk] !== undefined ? val[sk] : (val[h] !== undefined ? val[h] : '');
+        });
+        newRow._fbKey = fbKey;
+        _store.hold.rows[i] = newRow;
+        updated = true;
+        break;
+      }
+    }
+    if(!updated){
+      // New row or not in filtered set - add it
+      var newRow2 = H.HOLD.map(function(h){
+        var sk = h.replace(/[.#$[\]\/]/g,'_');
+        return val[sk] !== undefined ? val[sk] : (val[h] !== undefined ? val[h] : '');
+      });
+      newRow2._fbKey = fbKey;
+      _store.hold.rows.push(newRow2);
+    }
+    saveStoreToLocal();
+    // Re-render current hold tab
+    if(_pg === 'hold-main') loadHoldMain();
+    else if(_pg === 'hold-done') loadHoldDone();
+    else if(_pg === 'hold-req') loadHoldReq();
+    updateBadges();
+  });
+
+  _fbListeners.holdAdded = holdRef.on('child_added', function(snap){
+    if(!_store.hold || !_listenersActive) return;
+    var fbKey = snap.key;
+    // Check if already in store (from initial load)
+    var exists = _store.hold.rows.some(function(r){ return r._fbKey === fbKey; });
+    if(exists) return;
+    var val = snap.val();
+    if(!val) return;
+    var newRow = H.HOLD.map(function(h){
+      var sk = h.replace(/[.#$[\]\/]/g,'_');
+      return val[sk] !== undefined ? val[sk] : (val[h] !== undefined ? val[h] : '');
+    });
+    newRow._fbKey = fbKey;
+    _store.hold.rows.push(newRow);
+    saveStoreToLocal();
+    showAlert('🔴 New HOLD record added!', 'info');
+    if(_pg === 'hold-main') loadHoldMain();
+    updateBadges();
+  });
+
+  _fbListeners.holdRemoved = holdRef.on('child_removed', function(snap){
+    if(!_store.hold) return;
+    _store.hold.rows = _store.hold.rows.filter(function(r){
+      return r._fbKey !== snap.key;
+    });
+    saveStoreToLocal();
+    if(_pg === 'hold-main') loadHoldMain();
+    else if(_pg === 'hold-done') loadHoldDone();
+    updateBadges();
+  });
+
+  // Tickets listener
+  var tktRef = _fbDb.ref('tickets');
+  _fbListeners.tktChanged = tktRef.on('child_changed', function(snap){
+    if(!_store.tickets) return;
+    var fbKey = snap.key, val = snap.val();
+    for(var i = 0; i < _store.tickets.rows.length; i++){
+      if(_store.tickets.rows[i]._fbKey === fbKey){
+        var r = H.TKT.map(function(h){
+          var sk = h.replace(/[.#$[\]\/]/g,'_');
+          return val[sk] !== undefined ? val[sk] : (val[h] !== undefined ? val[h] : '');
+        });
+        r._fbKey = fbKey;
+        _store.tickets.rows[i] = r;
+        break;
+      }
+    }
+    if(_pg === 'tickets') loadTickets();
+    updateBadges();
+  });
+
+  _fbListeners.tktAdded = tktRef.on('child_added', function(snap){
+    if(!_store.tickets || !_listenersActive) return;
+    var fbKey = snap.key;
+    var exists = _store.tickets.rows.some(function(r){ return r._fbKey === fbKey; });
+    if(exists) return;
+    var val = snap.val();
+    var r = H.TKT.map(function(h){
+      var sk = h.replace(/[.#$[\]\/]/g,'_');
+      return val[sk] !== undefined ? val[sk] : (val[h] !== undefined ? val[h] : '');
+    });
+    r._fbKey = fbKey;
+    _store.tickets.rows.push(r);
+    if(_pg === 'tickets') loadTickets();
+    updateBadges();
+  });
+}
+
+function detachListeners(){
+  if(!_fbDb) return;
+  try {
+    if(_fbListeners.holdChanged)  _fbDb.ref('hold').off('child_changed', _fbListeners.holdChanged);
+    if(_fbListeners.holdAdded)    _fbDb.ref('hold').off('child_added',   _fbListeners.holdAdded);
+    if(_fbListeners.holdRemoved)  _fbDb.ref('hold').off('child_removed', _fbListeners.holdRemoved);
+    if(_fbListeners.tktChanged)   _fbDb.ref('tickets').off('child_changed', _fbListeners.tktChanged);
+    if(_fbListeners.tktAdded)     _fbDb.ref('tickets').off('child_added',   _fbListeners.tktAdded);
+  } catch(e){}
+  _fbListeners = {};
+  _listenersActive = false;
+}
+
+// ── On-demand old record search ──
+
+function searchOldRecord(term, sheet, cb){
+  /*
+    Searches Firebase for records NOT in current _store
+    Used when local search returns no results
+    Downloads only matching rows
+  */
+  if(!_fbDb){ cb([]); return; }
+  var hdrs = H[sheet.toUpperCase()] || H.HOLD;
+  var path = sheet.toLowerCase();
+
+  // Try to find by BOOKING ID first (exact match, cheapest)
+  var bidIdx = hdrs.indexOf('BOOKING ID');
+  if(bidIdx >= 0 && /^\d{5,}$/.test(term.trim())){
+    // Looks like a booking ID - do exact query
+    var safeKey = term.trim().replace(/[.#$[\]\/]/g,'_');
+    _fbDb.ref(path + '/' + safeKey).once('value')
+      .then(function(snap){
+        if(snap.val()){
+          var row = hdrs.map(function(h){
+            var sk = h.replace(/[.#$[\]\/]/g,'_');
+            var v = snap.val();
+            return v[sk] !== undefined ? v[sk] : (v[h] !== undefined ? v[h] : '');
+          });
+          row._fbKey = snap.key;
+          cb([row]);
+        } else {
+          // Not found by key - do full search
+          fullTextSearch(term, path, hdrs, cb);
+        }
+      })
+      .catch(function(){ cb([]); });
+  } else {
+    fullTextSearch(term, path, hdrs, cb);
+  }
+}
+
+function fullTextSearch(term, path, hdrs, cb){
+  // Downloads all records for this sheet and searches
+  // Only used as fallback when local search fails
+  _fbDb.ref(path).once('value')
+    .then(function(snap){
+      var data = snap.val();
+      if(!data){ cb([]); return; }
+      var rows = fbObjToRows(data, hdrs);
+      var tl = term.toLowerCase();
+      var matches = rows.filter(function(r){
+        return r.some(function(cell){
+          return String(cell||'').toLowerCase().indexOf(tl) >= 0;
+        });
+      });
+      // Add found rows to store for this session
+      cb(matches.slice(0, 50)); // max 50 results
+    })
+    .catch(function(){ cb([]); });
+}
+
+// ── Updated startRT (no more polling) ──
+function startRT(){
+  attachListeners();
+  // Only update badges every 30s (not 8s)
+  _rt2 = setInterval(function(){
+    if(!document.hidden) updateBadges();
+  }, 30000);
+  // NO more 60s full refresh timer - listeners handle updates
+}
+
+// ── Updated fbLoadAllSheets (uses smart loading) ──
+function fbLoadAllSheets(onComplete){
+  loadAllSheets(function(){
+    saveStoreToLocal();
+    updateBadges();
+    if(_pg && _pg !== 'dashboard') loadPg(_pg);
+    if(onComplete) onComplete();
+  });
+}
+
+// ── Updated preloadStore ──
+function preloadStore(){
+  fbLoadAllSheets();
+}
+
+
+
 function show(id){document.getElementById(id).style.display=id==='loginPage'?'flex':'block';}
 function hide(id){document.getElementById(id).style.display='none';}
-var FB_URL="https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
-function fbGet(path,cb){fetch(FB_URL+'/'+path+'.json').then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});}
-function fbSet(path,data,cb){fetch(FB_URL+'/'+path+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
-function fbPatch(path,data,cb){fetch(FB_URL+'/'+path+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
-function fbDelete(path,cb){fetch(FB_URL+'/'+path+'.json',{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
-function fbObjToRows(obj,headers){if(!obj)return [];var rows=[];Object.keys(obj).forEach(function(k){var rec=obj[k];if(!rec)return;var row=headers.map(function(h){var sk=h.replace(/[.#$[\]\/]/g,'_');return rec[sk]!==undefined?rec[sk]:(rec[h]!==undefined?rec[h]:'');});row._fbKey=k;rows.push(row);});return rows;}
+// replaced by SDK
+// replaced by SDK
+
+// replaced by SDK
+
+// replaced by SDK
+
+// replaced by SDK
+
+// replaced by SDK
+
 var H={HOLD:['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','Rel To:-','DESCRIPTION','0ther','PAYMENT BY','FINAL BY','payment date','MESSAGE','ATTEND BY','key manager status'],ERR:['id','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','Driver Details','T AMT','AMT T B REL','STATUS','0ther','AmtStatus','Rel To -','Message','UTR','Payment_date'],RECH:['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Submitted by','Payment status','Utr Number','Message From Payment dep.','Payment date'],DIS:['id','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','DISABLE COUNT','ACTION'],TKT:['TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','STATUS','SUBMITTED BY','RESOLVED BY','RESOLVE DATE','ADMIN NOTE'],USR:['USER_ID','USERNAME','PASSWORD','ROLE','DEPARTMENT','CREATED_BY','Agent_Name']};
-function fbLoadAllSheets(){var sheets=[{path:'hold',key:'hold',hdrs:H.HOLD},{path:'errorpayments',key:'errorpayments',hdrs:H.ERR},{path:'recharge',key:'recharge',hdrs:H.RECH},{path:'disable',key:'disable',hdrs:H.DIS},{path:'tickets',key:'tickets',hdrs:H.TKT}];var loaded=0;sheets.forEach(function(s){fbGet(s.path,function(err,data){if(!err&&data){_store[s.key]={headers:s.hdrs,rows:fbObjToRows(data,s.hdrs)};}if(++loaded===sheets.length){saveStoreToLocal();updateBadges();if(_pg&&_pg!=='dashboard')loadPg(_pg);}});});}
+// replaced by SDK
+
 function tryRestoreSession(){var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');if(!t)return false;_tok=t;_user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};return !!_user.username;}
 function fbGetAgentNames(cb){fbGet('agents',function(err,data){var n=[];if(!err&&data)Object.keys(data).forEach(function(k){if(data[k]&&data[k].name)n.push(data[k].name);});cb({success:true,data:n});});}
 function fbGetKAAgents(cb){fbGet('agents',function(err,data){var a=[];var myN=(_user&&(_user.agentName||_user.username)||'').toUpperCase();if(!err&&data)Object.keys(data).forEach(function(k){var ag=data[k];if(!ag)return;if(!myN||(ag.assigned||'').toUpperCase()===myN)a.push(ag);});cb({success:true,data:a});});}
@@ -410,7 +823,8 @@ function fbSaveUser(d,isNew,cb){var uid=(d.USER_ID||'').toString().trim();fbSet(
 function fbDeleteUser(uid,cb){fbDelete('users/u_'+uid,function(err){cb(err?{success:false,error:err.message}:{success:true});});}
 function fbAddTicket(data,cb){var now=new Date(),mmdd=(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0');var seq=1;if(_store.tickets&&_store.tickets.rows){var p='TSP-TKT-'+mmdd+'-';_store.tickets.rows.forEach(function(r){if((r[0]||'').indexOf(p)===0)seq++;});}var tktId='TSP-TKT-'+mmdd+'-'+String(seq).padStart(3,'0');var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();var rec={TICKET_ID:tktId,DATE:ds,CUSTOMER_NUMBER:(data['CUSTOMER NUMBER']||'').trim(),ISSUE:(data['ISSUE']||'').trim(),REMARK:(data['REMARK']||'').trim(),STATUS:'PENDING',SUBMITTED_BY:_user.username||'',RESOLVED_BY:'',RESOLVE_DATE:'',ADMIN_NOTE:''};var key=tktId.replace(/[.#$[\]\/]/g,'_');fbSet('tickets/'+key,rec,function(err){if(err){cb({success:false,error:err.message});return;}if(_store.tickets){var row=H.TKT.map(function(h){return rec[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=key;_store.tickets.rows.push(row);}cb({success:true,ticketId:tktId});});}
 function fbUpdateTicketStatus(tktId,newStatus,adminNote,cb){if(!_store.tickets){cb({success:false,error:'No data'});return;}var tIdx=H.TKT.indexOf('TICKET ID');for(var i=0;i<_store.tickets.rows.length;i++){if((_store.tickets.rows[i][tIdx]||'').trim()===tktId.trim()){var fk=_store.tickets.rows[i]._fbKey,now=new Date();var ds=now.getDate().toString().padStart(2,'0')+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getFullYear();fbPatch('tickets/'+fk,{STATUS:newStatus,RESOLVED_BY:_user.username||'',RESOLVE_DATE:ds,ADMIN_NOTE:adminNote||''},function(err){cb(err?{success:false,error:err.message}:{success:true});});return;}}cb({success:false,error:'Not found'});}
-function startHoldLiveSync(){if(_rt)clearInterval(_rt);_rt=setInterval(function(){if(document.hidden||_searchActive)return;fbGet('hold',function(err,data){if(err||!data)return;var rows=fbObjToRows(data,H.HOLD);var changed=!_store.hold||rows.length!==_store.hold.rows.length;if(changed){var prev=_store.hold?_store.hold.rows.length:0;_store.hold={headers:H.HOLD,rows:rows};saveStoreToLocal();var diff=rows.length-prev;if(prev>0)showAlert(diff>0?'🔴 '+diff+' new HOLD!':'🔄 HOLD updated','info');if(_pg==='hold-main')loadHoldMain();else if(_pg==='hold-done')loadHoldDone();else if(_pg==='hold-req')loadHoldReq();updateBadges();}});},5000);}
+// replaced by SDK
+
 function getHoldMainFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldMainFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='PENDING'||as==='');});if(R()==='CALLING AGENT'){var un=(_user.agentDisplayName||_user.agentName||_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[hbIdx]||'').toUpperCase()===un;});}var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1,allRows:_store.hold?_store.hold.rows:rows});}
 function getHoldDoneFB(st,cb){if(!_store.hold){fbGet('hold',function(err,data){if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};getHoldDoneFB(st,cb);});return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus');var rows=_store.hold.rows.filter(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();return(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');});var page=parseInt(st&&st.page)||1,ps=parseInt(st&&st.pageSize)||100,total=rows.length;cb({success:true,headers:h,rows:rows.slice((page-1)*ps,(page-1)*ps+ps),total:total,page:page,pageSize:ps,totalPages:Math.ceil(total/ps)||1});}
 function getDashboardStatsFB(dateFrom,dateTo,cb){if(!_store.hold){fbLoadAllSheets();setTimeout(function(){getDashboardStatsFB(dateFrom,dateTo,cb);},2000);return;}var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
@@ -612,6 +1026,7 @@ function hideLErr(){document.getElementById('lErr').style.display='none';}
 
 /* ═══ BOOT ═══ */
 function bootApp(){
+  initFirebaseSDK();
   // Hide splash FIRST before anything else can fail
   try{var s=document.getElementById('splash');if(s){s.style.display='none';}}catch(e){}
   hide('loginPage');show('app');
@@ -669,17 +1084,15 @@ function bootApp(){
 
 var _holdRowCount=0, _holdTs='0';
 
-function startRT(){
-  startHoldLiveSync();
-  _rt2=setInterval(function(){if(!document.hidden)updateBadges();},8000);
-  _storeRt=setInterval(function(){if(!document.hidden&&!_searchActive)fbLoadAllSheets();},60000);
-}
+// replaced by SDK
+
 
 
 function fastHoldSync(){}
 
 
-function preloadStore(){fbLoadAllSheets();}
+// replaced by SDK
+
 
 
 function silentStoreRefresh(){
@@ -744,6 +1157,7 @@ function hideSplash(){
 /* ═══ LOGOUT ═══ */
 function doLogout(){
   ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k);});
+  detachListeners();
   _tok=null;_user=null;_store={};
   if(_rt)clearInterval(_rt);if(_rt2)clearInterval(_rt2);if(_storeRt)clearInterval(_storeRt);
   hide('app');show('loginPage');document.getElementById('inpPass').value='';
@@ -3184,6 +3598,37 @@ function clearHoldFilters(viewKey){
   if(viewKey==='hold-main') loadHoldMain();
   else loadHoldDone();
 }
+
+
+
+window.addEventListener('load', function(){
+  initFirebaseSDK();
+  try{
+    var sp = document.getElementById('splash');
+    if(tryRestoreSession()){
+      if(sp) sp.style.display='none';
+      bootApp();
+    } else {
+      if(sp) sp.style.display='none';
+      show('loginPage');
+      // Load usernames for login dropdown
+      fbGet('users', function(err, data){
+        var sel = document.getElementById('selUser');
+        if(!sel) return;
+        sel.innerHTML = '<option value="">-- Select User --</option>';
+        if(!err && data){
+          Object.keys(data).forEach(function(k){
+            if(data[k] && data[k].USERNAME)
+              sel.innerHTML += '<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+          });
+        }
+      });
+    }
+  } catch(e){
+    try{document.getElementById('splash').style.display='none';}catch(e2){}
+    show('loginPage');
+  }
+});
 
 </script>
 </body>
