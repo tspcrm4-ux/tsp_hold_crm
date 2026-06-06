@@ -2125,7 +2125,15 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
   for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
-  if(!r.rows.length){html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">No records found</td></tr>';}
+  if(!r.rows.length){
+    var filterMsg='';
+    var dayRules={errorpayments:7,recharge:7,disable:3};
+    var dayLimit=dayRules[sh];
+    if(dayLimit){
+      filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
+    }
+    html+='<tr><td colspan="'+(hdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
+  }
   else{
     for(var i=0;i<r.rows.length;i++){
       var row=r.rows[i];
@@ -2243,7 +2251,15 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
   for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
   html+='</tr></thead><tbody>';
-  if(!r.rows.length){html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">No records found</td></tr>';}
+  if(!r.rows.length){
+    var filterMsg='';
+    var dayRules={errorpayments:7,recharge:7,disable:3};
+    var dayLimit=dayRules[sh];
+    if(dayLimit){
+      filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
+    }
+    html+='<tr><td colspan="'+(hdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
+  }
   else{
     for(var i=0;i<r.rows.length;i++){
       var row=r.rows[i];
@@ -3591,6 +3607,21 @@ window.addEventListener('load', function(){
   }
 });
 
+
+
+function loadSheetAll(sh){
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS,tickets:H.TKT};
+  var hdrs=hdrMap[sh]||H.HOLD;
+  setC('<div class="ldr"><span class="sp"></span>Loading all '+sh+' records...</div>');
+  fbGet(sh, function(err, data){
+    if(err||!data){setC('<div class="ldr">Failed to load</div>');return;}
+    var rows=fbObjToRows(data,hdrs);
+    _store[sh]={headers:hdrs,rows:rows};
+    saveStoreToLocal();
+    showAlert('Loaded '+rows.length+' total records','success');
+    loadPg(sh);
+  });
+}
 </script>
 </body>
 </html>
