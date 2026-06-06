@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Taxi Sanchalak CRM</title>
 <style>
+
+
+
+
+
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -227,6 +232,11 @@ tr.ka-row:hover td{background:#fef9c3!important}
 .btn-wa-green{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#25D366;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;font-family:inherit;white-space:nowrap}
 .btn-wa-green:hover{background:#1DA851;transform:scale(1.04)}
 
+
+
+
+
+
 </style>
 </head>
 <body>
@@ -393,6 +403,89 @@ tr.ka-row:hover td{background:#fef9c3!important}
 <script>
 
 
+
+
+// ══════════════════════════════════════════════════
+// FIREBASE AUTH - REST API (no SDK needed)
+// Signs user into Firebase Auth after CRM login
+// Enables secure database rules
+// ══════════════════════════════════════════════════
+
+var _fbApiKey = "AIzaSyC-qE9fctFyFQeFPRFRm99MOBOEK_cjQ4s";
+var _fbAuthToken = null;  // Firebase ID token
+
+function fbAuthSignIn(email, password, cb){
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + _fbApiKey, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, password: password, returnSecureToken: true})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.idToken){
+      _fbAuthToken = d.idToken;
+      // Store token - expires in 1 hour, refresh needed
+      sessionStorage.setItem('crm_fbt', d.idToken);
+      sessionStorage.setItem('crm_fbr', d.refreshToken);
+      cb(true, d.idToken);
+    } else {
+      cb(false, d.error ? d.error.message : 'Auth failed');
+    }
+  })
+  .catch(function(e){ cb(false, e.message); });
+}
+
+function fbAuthSignUp(email, password, cb){
+  // Create Firebase Auth user (admin only, called during user creation)
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + _fbApiKey, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: email, password: password, returnSecureToken: true})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.idToken) cb(true, d.idToken);
+    else cb(false, d.error ? d.error.message : 'SignUp failed');
+  })
+  .catch(function(e){ cb(false, e.message); });
+}
+
+function fbAuthRefreshToken(cb){
+  var refresh = sessionStorage.getItem('crm_fbr');
+  if(!refresh){ if(cb) cb(false); return; }
+  fetch('https://securetoken.googleapis.com/v1/token?key=' + _fbApiKey, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(refresh)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.id_token){
+      _fbAuthToken = d.id_token;
+      sessionStorage.setItem('crm_fbt', d.id_token);
+      sessionStorage.setItem('crm_fbr', d.refresh_token);
+      if(cb) cb(true);
+    } else { if(cb) cb(false); }
+  })
+  .catch(function(){ if(cb) cb(false); });
+}
+
+function fbGetAuthParam(){
+  // Returns auth query param for Firebase REST calls
+  var t = _fbAuthToken || sessionStorage.getItem('crm_fbt');
+  return t ? ('?auth=' + t) : '';
+}
+
+// Auto-refresh token every 55 minutes (token expires in 60 min)
+function startTokenRefresh(){
+  setInterval(function(){
+    fbAuthRefreshToken(null);
+  }, 55 * 60 * 1000);
+}
+
+
+
+
 /* ══════════════════════════════════════════════════
    FIREBASE REST API LAYER
    Simple, reliable, no SDK needed
@@ -402,18 +495,17 @@ tr.ka-row:hover td{background:#fef9c3!important}
 var FB_URL = "https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 function fbGet(path, cb){
-  fetch(FB_URL + '/' + path + '.json')
+  fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam())
     .then(function(r){ return r.json(); })
     .then(function(d){ cb(null, d); })
     .catch(function(e){ cb(e, null); });
 }
 
 function fbSet(path, data, cb){
-  // Add timestamp for date filtering
   if(data && typeof data === 'object' && !data.ts){
     data.ts = Date.now();
   }
-  fetch(FB_URL + '/' + path + '.json', {
+  fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam(), {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(data)
@@ -423,7 +515,7 @@ function fbSet(path, data, cb){
 }
 
 function fbPatch(path, data, cb){
-  fetch(FB_URL + '/' + path + '.json', {
+  fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam(), {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(data)
@@ -433,7 +525,7 @@ function fbPatch(path, data, cb){
 }
 
 function fbDelete(path, cb){
-  fetch(FB_URL + '/' + path + '.json', { method: 'DELETE' })
+  fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam(), { method: 'DELETE' })
     .then(function(r){ return r.json(); })
     .then(function(d){ if(cb) cb(null, d); })
     .catch(function(e){ if(cb) cb(e, null); });
@@ -718,7 +810,10 @@ function hide(id){document.getElementById(id).style.display='none';}
 var H={HOLD:['DATE','BOOKING ID','HOLD BY','AGENT NUMBER','DRIVER','STATUS','T AMT','AMT T B REL.','AmtStatus','Rel To:-','DESCRIPTION','0ther','PAYMENT BY','FINAL BY','payment date','MESSAGE','ATTEND BY','key manager status'],ERR:['id','DATE','BOOKING ID','SUBMITTED BY','ISSUE','Agent Details','Driver Details','T AMT','AMT T B REL','STATUS','0ther','AmtStatus','Rel To -','Message','UTR','Payment_date'],RECH:['Complaint Id','Mobile number','Customer name','Issue','Total Recharge amnt.','Amount to refund','Submitted by','Payment status','Utr Number','Message From Payment dep.','Payment date'],DIS:['id','DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','DISABLE COUNT','ACTION'],TKT:['TICKET ID','DATE','CUSTOMER NUMBER','ISSUE','REMARK','STATUS','SUBMITTED BY','RESOLVED BY','RESOLVE DATE','ADMIN NOTE'],USR:['USER_ID','USERNAME','PASSWORD','ROLE','DEPARTMENT','CREATED_BY','Agent_Name']};
 // replaced by SDK
 
-function tryRestoreSession(){var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');if(!t)return false;_tok=t;_user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};return !!_user.username;}
+function tryRestoreSession(){var t=localStorage.getItem('crm_t')||sessionStorage.getItem('crm_t');if(!t)return false;
+  // Restore Firebase auth token
+  _fbAuthToken=sessionStorage.getItem('crm_fbt')||null;
+  if(_fbAuthToken) startTokenRefresh();_tok=t;_user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};return !!_user.username;}
 function fbGetAgentNames(cb){fbGet('agents',function(err,data){var n=[];if(!err&&data)Object.keys(data).forEach(function(k){if(data[k]&&data[k].name)n.push(data[k].name);});cb({success:true,data:n});});}
 function fbGetKAAgents(cb){fbGet('agents',function(err,data){var a=[];var myN=(_user&&(_user.agentName||_user.username)||'').toUpperCase();if(!err&&data)Object.keys(data).forEach(function(k){var ag=data[k];if(!ag)return;if(!myN||(ag.assigned||'').toUpperCase()===myN)a.push(ag);});cb({success:true,data:a});});}
 function fbGetUsers(cb){fbGet('users',function(err,data){if(err||!data){cb({success:false,error:'Failed'});return;}var u=Object.keys(data).map(function(k){var x=data[k];if(x)x._fbKey=k;return x;}).filter(Boolean);cb({success:true,data:u});});}
@@ -920,7 +1015,24 @@ function doLogin(){
     st.setItem('crm_dp',found.DEPARTMENT||'');st.setItem('crm_id',String(found.USER_ID||''));st.setItem('crm_an',found.Agent_Name||'');
     if(rem)localStorage.setItem('crm_u',u);else localStorage.removeItem('crm_u');
     _tok=token;_user={username:found.USERNAME||'',role:found.ROLE||'',department:found.DEPARTMENT||'',userId:found.USER_ID||'',agentName:found.Agent_Name||''};
-    bootApp();
+    // Sign into Firebase Auth for secure DB access
+    var fbEmail=(found.USERNAME||u).toLowerCase().replace(/[^a-z0-9]/g,'')+'@taxisanchalak.crm';
+    var fbPass='CRM$'+(found.PASSWORD||'').trim()+'$TSP';
+    fbAuthSignIn(fbEmail, fbPass, function(ok, result){
+      if(!ok){
+        // Auth user may not exist yet - try creating it
+        fbAuthSignUp(fbEmail, fbPass, function(ok2){
+          if(ok2){
+            fbAuthSignIn(fbEmail, fbPass, function(ok3){
+              if(ok3) startTokenRefresh();
+            });
+          }
+        });
+      } else {
+        startTokenRefresh();
+      }
+      bootApp(); // Boot regardless - graceful degradation
+    });
   });
 }
 
@@ -1059,7 +1171,8 @@ function hideSplash(){
 
 /* ═══ LOGOUT ═══ */
 function doLogout(){
-  ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k);});
+  ['crm_t','crm_un','crm_ro','crm_dp','crm_id','crm_an','crm_fbt','crm_fbr'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k);});
+  _fbAuthToken=null;
   detachListeners();
   _tok=null;_user=null;_store={};
   if(_rt)clearInterval(_rt);if(_rt2)clearInterval(_rt2);if(_storeRt)clearInterval(_storeRt);
@@ -2742,11 +2855,32 @@ function showExportImport(sh, title){
   // ── IMPORT/UPDATE SECTION ──
   if(canImport){
     html+='<div class="tcard" style="padding:16px;margin-bottom:14px">';
-    html+='<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px">📥 Import / Update from CSV</div>';
-    html+='<div style="font-size:11px;color:var(--gold);background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.2);border-radius:6px;padding:8px 12px;margin-bottom:12px">';
-    html+='⚠ CSV headers must match exactly.<br>';
-    html+='Rows matching <strong>'+key+'</strong> → updated. New rows → added. Nothing deleted.';
-    if(sh==='hold') html+='<br>⛔ Duplicate BOOKING IDs are blocked — existing record will be updated, not duplicated.';
+    html+='<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">📥 Import / Update from CSV</div>';
+    // Mode selector
+    html+='<div style="margin-bottom:12px">';
+    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Select Action:</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px">';
+    // Mode 1
+    html+='<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:7px;background:var(--bg3)">';
+    html+='<input type="radio" name="importMode_'+sh+'" value="update_only" style="margin-top:2px" checked>';
+    html+='<div><div style="font-size:12px;font-weight:700;color:var(--text)">1. Update existing rows only</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-top:2px">Finds rows by <strong style="color:var(--gold)">'+key+'</strong> → updates them. New rows in CSV are ignored. Nothing deleted.</div></div>';
+    html+='</label>';
+    // Mode 2
+    html+='<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:7px;background:var(--bg3)">';
+    html+='<input type="radio" name="importMode_'+sh+'" value="update_and_add" style="margin-top:2px">';
+    html+='<div><div style="font-size:12px;font-weight:700;color:var(--text)">2. Update existing + Add new rows</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-top:2px">Updates matching rows AND adds new rows not in Firebase. Nothing deleted.</div></div>';
+    html+='</label>';
+    // Mode 3
+    html+='<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:7px;background:rgba(239,68,68,.06)">';
+    html+='<input type="radio" name="importMode_'+sh+'" value="full_sync" style="margin-top:2px">';
+    html+='<div><div style="font-size:12px;font-weight:700;color:var(--red)">3. Full sync — Update + Add + Delete missing</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-top:2px">⚠ DANGEROUS: Rows in Firebase NOT in CSV will be deleted permanently.</div></div>';
+    html+='</label>';
+    html+='</div></div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Key column: <strong style="color:var(--gold)">'+key+'</strong>';
+    if(sh==='hold') html+=' — Duplicate BOOKING IDs are never created, always updated.';
     html+='</div>';
     html+='<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:10px">';
     html+='<button class="btn btn-s btn-sm" onclick="doImport()">⬆ Upload & Sync to Firebase</button>';
@@ -2787,12 +2921,17 @@ function closeEiModal(){/* no longer needed but kept for compat */}
 function doImport(){
   var fileEl=document.getElementById('csvFileInput');
   if(!fileEl||!fileEl.files||!fileEl.files[0]){showAlert('Select a CSV file first','error');return;}
+  // Get selected mode
+  var modeEls=document.querySelectorAll('input[name="importMode_'+_eiSh+'"]:checked');
+  var mode=modeEls.length>0?modeEls[0].value:'update_and_add';
   var res=document.getElementById('importResult');
   if(res)res.textContent='Reading file...';
   var reader=new FileReader();
   reader.onload=function(ev){
     var txt=ev.target.result.replace(/^\uFEFF/,''); // remove BOM
     var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
+
+
     if(lines.length<2){if(res)res.textContent='❌ File is empty or has no data rows.';return;}
     // Parse CSV
     function parseCSVLine(line){
@@ -2834,23 +2973,69 @@ function doImport(){
           if((_store[_eiSh].rows[si][ki]||'').toString().trim()===keyVal){exists=true;break;}
         }
       }
-      updates[fbKey]=record;
-      if(exists)updated++;else added++;
+      // Mode 1: update_only - skip new rows
+    if(mode==='update_only' && !exists){ skipped++; continue; }
+    updates[fbKey]=record;
+    if(exists)updated++;else added++;
     }
-    if(Object.keys(updates).length===0){if(res)res.textContent='❌ No valid rows found.';return;}
+    if(Object.keys(updates).length===0){
+      if(res)res.textContent='❌ No valid rows found'+(mode==='update_only'?' (no matching '+keyCol+' found in Firebase)':'')+'.'
+      return;
+    }
     if(res)res.textContent='Uploading '+Object.keys(updates).length+' rows to Firebase...';
-    // PATCH (not PUT) so we only update/add, never delete
-    fbPatch(path,updates,function(err){
+
+    function afterUpload(err){
       if(err){if(res){res.textContent='❌ Error: '+err.message;res.style.color='var(--red)';}showAlert('Import failed','error');return;}
-      // Reload store for this sheet
       var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH};
+
+      // Mode 3: full_sync - delete rows NOT in CSV
+      if(mode==='full_sync'){
+        var csvKeys=Object.keys(updates);
+        if(res)res.textContent='Checking for rows to delete...';
+        fbGet(path,function(e3,fbData){
+          var deleted=0;
+          if(!e3&&fbData){
+            var fbKeys=Object.keys(fbData);
+            var toDelete=fbKeys.filter(function(k){return csvKeys.indexOf(k)<0;});
+            deleted=toDelete.length;
+            var delDone=0;
+            if(toDelete.length===0){
+              finishImport();
+            } else {
+              if(!confirm('⚠ Delete '+toDelete.length+' rows from Firebase that are not in CSV?')){
+                finishImport(); return;
+              }
+              toDelete.forEach(function(k){
+                fbDelete(path+'/'+k,function(){
+                  if(++delDone===toDelete.length) finishImport();
+                });
+              });
+            }
+          } else { finishImport(); }
+
+          function finishImport(){
+            fbGet(path,function(e2,data2){
+              if(!e2&&data2)_store[_eiSh]={headers:hdrMap[_eiSh]||headers,rows:fbObjToRows(data2,hdrMap[_eiSh]||headers)};
+              var msg='✅ Updated: '+updated+' · Added: '+added+' · Deleted: '+deleted+(skipped?' · Skipped: '+skipped:'');
+              if(res){res.textContent=msg;res.style.color='var(--green)';}
+              showAlert(msg,'success');
+            });
+          }
+        });
+        return;
+      }
+
+      // Mode 1 & 2: reload and show result
       fbGet(path,function(e2,data2){
         if(!e2&&data2)_store[_eiSh]={headers:hdrMap[_eiSh]||headers,rows:fbObjToRows(data2,hdrMap[_eiSh]||headers)};
         var msg='✅ Updated: '+updated+' · Added: '+added+(skipped?' · Skipped: '+skipped:'');
         if(res){res.textContent=msg;res.style.color='var(--green)';}
         showAlert(msg,'success');
       });
-    });
+    }
+
+    // PATCH = update/add without deleting
+    fbPatch(path,updates,function(err){ afterUpload(err); });
   };
   reader.readAsText(fileEl.files[0]);
 }
@@ -3299,18 +3484,18 @@ function doBulkUpload(){
   var keyColMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id',tickets:'TICKET ID',users:'USER_ID',agents:'Agent Number'};
   var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS,tickets:H.TKT,users:H.USR};
   var keyCol=keyColMap[targetSh]||'id';
-  if(res)res.textContent='Reading file...';
+  if(res){res.textContent='Reading file...';res.style.color='var(--text)';}
   var reader=new FileReader();
   reader.onload=function(ev){
-    var txt=ev.target.result.replace(/^\uFEFF/,'');
+    var txt=ev.target.result.replace(/^﻿/,'');
     var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();});
-    if(lines.length<2){if(res)res.textContent='❌ Empty file.';return;}
-    // dup removed
 
+
+    if(lines.length<2){if(res)res.textContent='❌ Empty file.';return;}
     var headers=parseCSVLine(lines[0]);
     var keyIdx=headers.indexOf(keyCol);
-    // For agents, use index if no key col
-    var updates={};var count=0;
+    // Parse ALL rows into batches of 200
+    var batches=[],curBatch={},count=0;
     for(var i=1;i<lines.length;i++){
       var vals=parseCSVLine(lines[i]);
       if(!vals||vals.length<2)continue;
@@ -3321,34 +3506,42 @@ function doBulkUpload(){
       else if(targetSh==='agents') fbKey='a_'+i;
       var record={};
       headers.forEach(function(h,j){
-        if(h) record[h.replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';
+        if(h)record[h.replace(/[.#$[\]\/]/g,'_')]=vals[j]!==undefined?vals[j].trim():'';
       });
-      updates[fbKey]=record;count++;
-      // Batch 500 at a time
-      if(count%500===0){
-        var batchCopy=Object.assign({},updates);
-        fbPatch(targetSh,batchCopy,function(err){if(err)console.error('Batch error:',err.message);});
-        updates={};
-        if(res)res.textContent='Uploading... '+count+' rows done';
-      }
+      curBatch[fbKey]=record; count++;
+      if(count%200===0){batches.push(curBatch);curBatch={};}
     }
-    if(Object.keys(updates).length>0){
-      if(res)res.textContent='Uploading final batch ('+count+' total rows)...';
-      fbPatch(targetSh,updates,function(err){
-        if(err){if(res){res.textContent='❌ Error: '+err.message;res.style.color='var(--red)';}return;}
-        // Reload store
+    if(Object.keys(curBatch).length>0) batches.push(curBatch);
+    if(batches.length===0){if(res)res.textContent='❌ No valid rows found.';return;}
+    if(res)res.textContent='Parsed '+count+' rows → uploading in '+batches.length+' batches...';
+    // Upload batches SEQUENTIALLY - one at a time
+    var batchIdx=0;
+    function uploadNextBatch(){
+      if(batchIdx>=batches.length){
+        // All done - reload store
         if(hdrMap[targetSh]){
           fbGet(targetSh,function(e2,d2){
             if(!e2&&d2)_store[targetSh]={headers:hdrMap[targetSh],rows:fbObjToRows(d2,hdrMap[targetSh])};
           });
         }
-        if(res){res.textContent='✅ '+count+' rows uploaded to Firebase ('+targetSh+') successfully!';res.style.color='var(--green)';}
+        if(res){res.textContent='✅ '+count+' rows uploaded to "'+targetSh+'" successfully!';res.style.color='var(--green)';}
         showAlert('✅ '+count+' rows uploaded!','success');
+        return;
+      }
+      var done=batchIdx*200;
+      if(res)res.textContent='Uploading batch '+(batchIdx+1)+'/'+batches.length+' ('+Math.min(done+200,count)+' of '+count+' rows)...';
+      fbPatch(targetSh,batches[batchIdx],function(err){
+        if(err){
+          if(res){res.textContent='❌ Error on batch '+(batchIdx+1)+': '+err.message;res.style.color='var(--red)';}
+          showAlert('Upload error: '+err.message,'error');
+          return;
+        }
+        batchIdx++;
+        // Small delay between batches to avoid overwhelming Firebase
+        setTimeout(uploadNextBatch, 300);
       });
-    } else {
-      if(res){res.textContent='✅ '+count+' rows uploaded to Firebase ('+targetSh+') successfully!';res.style.color='var(--green)';}
-      showAlert('✅ '+count+' rows uploaded!','success');
     }
+    uploadNextBatch();
   };
   reader.readAsText(fileEl.files[0]);
 }
@@ -3622,6 +3815,87 @@ function loadSheetAll(sh){
     loadPg(sh);
   });
 }
+
+
+window.addEventListener('load', function(){
+  try{
+    var sp = document.getElementById('splash');
+    if(tryRestoreSession()){
+      if(sp) sp.style.display='none';
+      bootApp();
+    } else {
+      if(sp) sp.style.display='none';
+      show('loginPage');
+      fbGet('users', function(err, data){
+        var sel = document.getElementById('selUser');
+        if(!sel) return;
+        sel.innerHTML = '<option value="">-- Select User --</option>';
+        if(!err && data){
+          Object.keys(data).forEach(function(k){
+            if(data[k] && data[k].USERNAME)
+              sel.innerHTML += '<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+          });
+        }
+      });
+    }
+  } catch(e){
+    try{document.getElementById('splash').style.display='none';}catch(e2){}
+    show('loginPage');
+  }
+});
+
+
+
+window.addEventListener('load', function(){
+  try{
+    var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{
+      if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){
+        var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)
+            sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+        });
+      });
+    }
+  }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+
+window.addEventListener('load',function(){
+  try{
+    var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{
+      if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){
+        var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)
+            sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';
+        });
+      });
+    }
+  }catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 </script>
 </body>
 </html>
