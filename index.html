@@ -15,6 +15,8 @@
 
 
 
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -245,6 +247,8 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
 </style>
 </head>
 <body>
@@ -417,6 +421,8 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
 // ══════════════════════════════════════════════════
 // FIREBASE AUTH - REST API (no SDK needed)
 // Signs user into Firebase Auth after CRM login
@@ -551,7 +557,12 @@ function fbObjToRows(obj, headers){
     if(!rec) return;
     var row = headers.map(function(h){
       var sk = h.replace(/[.#$[\]\/]/g,'_');
-      return rec[sk] !== undefined ? rec[sk] : (rec[h] !== undefined ? rec[h] : '');
+      // Try sanitized key first, then original, then fbKey for 'id' columns
+      if(rec[sk] !== undefined) return rec[sk];
+      if(rec[h] !== undefined) return rec[h];
+      // For 'id' column - use the Firebase key
+      if(h==='id' || h==='ID') return k;
+      return '';
     });
     row._fbKey = k;
     rows.push(row);
@@ -569,20 +580,53 @@ function getDaysAgoDate(days){
 function parseDDMMYYYY(str){
   if(!str) return null;
   var s = str.toString().trim();
+  if(!s || s==='-' || s==='—' || s==='null') return null;
+
+  // Format: dd/MM/yyyy or d/M/yyyy (Indian format - most common)
   var parts = s.split('/');
   if(parts.length === 3){
-    var d = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-    if(!isNaN(d.getTime())) return d;
+    var dd=parseInt(parts[0]),mm=parseInt(parts[1]),yyyy=parseInt(parts[2]);
+    // Validate: day 1-31, month 1-12, year 2000-2099
+    if(dd>=1&&dd<=31&&mm>=1&&mm<=12&&yyyy>=2000&&yyyy<=2099){
+      var d=new Date(yyyy, mm-1, dd);
+      if(!isNaN(d.getTime())) return d;
+    }
+    // Try MM/dd/yyyy (US format) as fallback
+    if(mm>=1&&mm<=31&&dd>=1&&dd<=12&&yyyy>=2000&&yyyy<=2099){
+      var d2=new Date(yyyy, dd-1, mm);
+      if(!isNaN(d2.getTime())) return d2;
+    }
   }
-  // Try ISO format too
-  var d2 = new Date(s);
-  return isNaN(d2.getTime()) ? null : d2;
+
+  // Format: dd-MM-yyyy
+  parts = s.split('-');
+  if(parts.length === 3 && parts[0].length <= 2){
+    var dd2=parseInt(parts[0]),mm2=parseInt(parts[1]),yyyy2=parseInt(parts[2]);
+    if(dd2>=1&&dd2<=31&&mm2>=1&&mm2<=12&&yyyy2>=2000&&yyyy2<=2099){
+      var d3=new Date(yyyy2, mm2-1, dd2);
+      if(!isNaN(d3.getTime())) return d3;
+    }
+  }
+
+  // Format: yyyy-MM-dd (ISO)
+  if(parts.length === 3 && parts[0].length === 4){
+    var d4=new Date(s);
+    if(!isNaN(d4.getTime())) return d4;
+  }
+
+  // Last resort: try native Date parse
+  var d5=new Date(s);
+  return isNaN(d5.getTime()) ? null : d5;
 }
 
 function isWithinDays(dateStr, days){
-  if(!dateStr) return false;
+  if(!dateStr || dateStr==='' || dateStr==='-' || dateStr==='—') return false;
   var d = parseDDMMYYYY(dateStr);
-  if(!d) return false;
+  if(!d) return false; // Cannot parse - exclude from date filter
+  // Sanity check: reject dates before 2020 or in future
+  var now = new Date();
+  if(d > now) return false; // Future date - data error
+  if(d.getFullYear() < 2020) return false; // Too old - data error
   return d >= getDaysAgoDate(days);
 }
 
@@ -1091,10 +1135,16 @@ function bootApp(){
   document.getElementById('tktNav').style.display='block';
   // Hide Dashboard nav for Calling Agent — they go straight to Pending Hold
   if(role==='CALLING AGENT'){
+    // Hide dashboard and non-hold tabs
     var dashNav=document.getElementById('nav-dashboard');
     if(dashNav) dashNav.style.display='none';
     var mainLbl=document.getElementById('mainNavLabel');
     if(mainLbl) mainLbl.style.display='none';
+    // Hide sheets not relevant to calling agent
+    ['nav-hold-done','nav-errorpayments','nav-recharge','nav-disable'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.style.display='none';
+    });
   }
   if(role==='KEY ACCOUNT'){
     document.getElementById('kaNav').style.display='block';
@@ -1245,7 +1295,7 @@ function onSrch(v){
   if(_searchActive){
     _searchResumeTimer=setTimeout(function(){_searchActive=false;},30000);
   }
-  // 150ms debounce — wait for typing pause
+  // 300ms debounce — smoother typing
   if(_srchTimer) clearTimeout(_srchTimer);
   _srchTimer=setTimeout(function(){
     var t=v.toLowerCase().trim();
@@ -1925,21 +1975,38 @@ function renderHoldReq(r){
   setC(html);
 }
 function quickHold(bid){
-  if(!confirm('Set STATUS = HOLD for: '+bid+'?'))return;
+  if(!confirm('Set STATUS = HOLD for Booking ID: '+bid+'?'))return;
   showAlert('Updating...','info');
-  if(!_store.hold){showAlert('Not loaded','error');return;}
-  var bidIdx=H.HOLD.indexOf('BOOKING ID'),sIdx=H.HOLD.indexOf('STATUS');
-  for(var i=0;i<_store.hold.rows.length;i++){
-    if((_store.hold.rows[i][bidIdx]||'').toString().trim()===bid.toString().trim()){
-      var fk=_store.hold.rows[i]._fbKey,ri=i;
-      fbPatch('hold/'+fk,{STATUS:'HOLD'},function(err){
-        if(err){showAlert('Failed','error');return;}
-        _store.hold.rows[ri][sIdx]='HOLD';
-        showAlert('STATUS = HOLD ✓','success');loadHoldReq();
-      });return;
+  // If not in store, fetch from Firebase first
+  function doUpdate(){
+    var bidIdx=H.HOLD.indexOf('BOOKING ID'),sIdx=H.HOLD.indexOf('STATUS');
+    for(var i=0;i<_store.hold.rows.length;i++){
+      if((_store.hold.rows[i][bidIdx]||'').toString().trim()===bid.toString().trim()){
+        var fk=_store.hold.rows[i]._fbKey,ri=i;
+        fbPatch('hold/'+fk,{STATUS:'HOLD'},function(err){
+          if(err){showAlert('Failed: '+err.message,'error');return;}
+          _store.hold.rows[ri][sIdx]='HOLD';
+          showAlert('✅ STATUS = HOLD set for '+bid,'success');
+          loadHoldReq();
+        });return;
+      }
     }
+    // Not in store - search Firebase directly
+    fbGet('hold/'+bid.replace(/[.#$[\]\/]/g,'_'),function(err,data){
+      if(err||!data){showAlert('Booking ID not found: '+bid,'error');return;}
+      fbPatch('hold/'+bid.replace(/[.#$[\]\/]/g,'_'),{STATUS:'HOLD'},function(err2){
+        if(err2){showAlert('Failed','error');return;}
+        showAlert('✅ STATUS = HOLD set for '+bid,'success');
+        loadHoldReq();
+      });
+    });
   }
-  showAlert('Not found','error');
+  if(!_store.hold||!_store.hold.rows){
+    fbGet('hold',function(err,data){
+      if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};
+      doUpdate();
+    });
+  } else { doUpdate(); }
 }
 
 
@@ -2109,22 +2176,29 @@ var COLS={
 function loadSh(sh,title,icon){
   _pg_title=title; _pg_icon=icon;
   var st=_ts[sh]=_ts[sh]||{page:1,pageSize:100,search:''};
-  // ── INSTANT: use _store if available and not stale ──
-  if(_store[sh]&&_store[sh].rows&&!_store[sh]._stale){
-    var r=filterStore(sh,st);
+  // Use cached store if available
+  if(_store[sh]&&_store[sh].rows&&_store[sh].rows.length>0&&!_store[sh]._stale){
+    var r=filterStoreWithCols(sh,st);
     renderSh(sh,title,icon,r);
     return;
   }
-  // ── Show skeleton while loading ──
+  // Load from Firebase
   setC(skeletonTable(title));
-  var fns={
-    hold:          'getHoldData',
-    errorpayments: 'getErrorPaymentsData',
-    recharge:      'getRechargeData',
-    disable:       'getDisableListData'
-  };
-  /* FB:unknown */;
-}
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+  var hdrs=hdrMap[sh]||H.HOLD;
+  fbGet(sh,function(err,data){
+    if(err||!data){
+      setC('<div class="ldr">Failed to load '+title+'</div>');
+      return;
+    }
+    var rows=fbObjToRows(data,hdrs);
+    _store[sh]={headers:hdrs,rows:rows};
+    saveStoreToLocal();
+    var r=filterStoreWithCols(sh,st);
+    renderSh(sh,title,icon,r);
+  });
+  }
+
 
 
 function bgSyncSheet(sh){
@@ -3079,7 +3153,7 @@ var _tktSearch='', _tktFilter='';
 
 function loadTickets(){
   var role=R();
-  var isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
+  var isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT'||role==='KEY ACCOUNT';
   var username=_user&&_user.username||'';
   // Use store if available
   if(_store.tickets&&_store.tickets.rows){
@@ -3089,8 +3163,9 @@ function loadTickets(){
     var tIdx=hdrs.indexOf('TICKET ID');
     var cIdx=hdrs.indexOf('CUSTOMER NUMBER');
     var rows=_store.tickets.rows.filter(function(row){
-      // Role filter
-      if(!isMgr&&(row[subIdx]||'').toString().trim().toUpperCase()!==username.toUpperCase()) return false;
+      // Role filter: CALLING AGENT sees only own tickets; ALL others see ALL tickets
+      var isCallAgent=role==='CALLING AGENT';
+      if(isCallAgent&&(row[subIdx]||'').toString().trim().toUpperCase()!==username.toUpperCase()) return false;
       // Status filter
       if(_tktFilter&&(row[stIdx]||'').toString().trim().toUpperCase()!==_tktFilter) return false;
       // Search filter
@@ -3941,6 +4016,30 @@ function doClearSheet(){
     showAlert('Clear failed: '+e.message,'error');
   });
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
