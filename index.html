@@ -34,6 +34,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -144,7 +145,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 
 /* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
-.scard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.scard{background:var(--bg2);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
 .scard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,#b8860b);border-radius:10px 10px 0 0}
 .sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:8px}
 .sv{font-size:28px;font-weight:800;color:var(--text)}
@@ -283,6 +284,9 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+.scard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15);border-color:var(--c,var(--gold))!important;}
+.scard:active{transform:translateY(-1px);}
 </style>
 </head>
 <body>
@@ -447,6 +451,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -795,6 +800,9 @@ function startRT(){
   _rt2 = setInterval(function(){
     if(!document.hidden) updateBadges();
   }, 60000);
+  // Start presence refresh
+  fetchPresence(null);
+  startPresenceRefresh();
 }
 
 // ── initFirebaseSDK: no-op (REST doesn't need SDK) ──
@@ -1776,7 +1784,10 @@ function renderPersonalDash(d,isAgent,isKA){
 }
 
 
-function sc(l,v,s,c){return '<div class="scard" style="--c:'+c+'"><div class="sl">'+l+'</div><div class="sv">'+v+'</div><div class="ss">'+s+'</div></div>';}
+function sc(l,v,s,c,pg){
+  var onclick=pg?'onclick="nav(\''+pg+'\')"':'';
+  return '<div class="scard" style="--c:'+c+'" '+onclick+'><div class="sl">'+l+'</div><div class="sv">'+v+'</div><div class="ss">'+s+'</div></div>';
+}
 function barC(t,d,total,c){
   var h='<div class="tcard" style="padding:14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px">'+t+'</div>';
   for(var k in d){var pct=total>0?Math.round(d[k]/total*100):0;h+='<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text2);font-weight:500">'+esc(k)+'</span><span style="color:'+c+';font-weight:700">'+d[k]+'</span></div><div style="background:var(--bg3);border-radius:3px;height:5px"><div style="background:'+c+';width:'+pct+'%;height:5px;border-radius:3px"></div></div></div>';}
@@ -1928,6 +1939,8 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
       _rc['hold::'+rowId]={row:row,hdrs:sHdrs};
       var re=rowId.replace(/'/g,"'");
+      var presenceUser=getPresenceOnRow('hold',rowId);
+      var presenceIndicator=presenceUser?'<span title="'+esc(presenceUser)+' is viewing this row" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;vertical-align:middle" aria-label="'+esc(presenceUser)+' viewing"></span>':'';
       html+='<tr'+(isKARow?' class="ka-row"':'')+'>';
       html+='<td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
       for(var c=0;c<cols.length;c++){
@@ -2534,6 +2547,8 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
       _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
       var re=rowId.replace(/'/g,"'");
+      var presenceUser=getPresenceOnRow('hold',rowId);
+      var presenceIndicator=presenceUser?'<span title="'+esc(presenceUser)+' is viewing this row" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;vertical-align:middle" aria-label="'+esc(presenceUser)+' viewing"></span>':'';
       html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
     var _cbKey=String(r.rows[i]._fbKey||i);
     html+='<td style="width:30px;text-align:center"><input type="checkbox" class="row-cb-'+sh+'" data-fbkey="'+_cbKey+'" data-sh="'+sh+'" onchange="toggleBulkRow(this.dataset.sh,this.dataset.fbkey,this)"></td>';
@@ -2660,6 +2675,8 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
       var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
       _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
       var re=rowId.replace(/'/g,"'");
+      var presenceUser=getPresenceOnRow('hold',rowId);
+      var presenceIndicator=presenceUser?'<span title="'+esc(presenceUser)+' is viewing this row" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;vertical-align:middle" aria-label="'+esc(presenceUser)+' viewing"></span>':'';
       html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
       for(var c=0;c<sHdrs.length;c++){
         var val=row[c]!==null&&row[c]!==undefined?row[c]:'';
@@ -2792,6 +2809,7 @@ function openDisEdit(rid){
 
 function openPanel(mode,sh,rowId){
   _pm=mode;_ps=sh;_pid=rowId;
+  if(mode==='edit'&&rowId) setPresence(sh,rowId);
   document.getElementById('pTitle').textContent=(mode==='add'?'Add':'Edit')+' Record';
   document.getElementById('ov').style.display='block';
   document.getElementById('panel').classList.add('open');
@@ -2991,7 +3009,7 @@ function buildDescF(status,cur){
 function onStChg(){var ss=document.querySelector('#pBody [name="STATUS"]');var dw=document.getElementById('descWrap');if(ss&&dw)dw.outerHTML=buildDescF(ss.value,'');}
 function toggleIssueOther(){var s=document.querySelector('#pBody [name="ISSUE"]');var w=document.getElementById('issueOtherWrap');if(s&&w)w.style.display=s.value==='OTHER'?'':'none';}
 
-function closePanel(){document.getElementById('ov').style.display='none';document.getElementById('panel').classList.remove('open');}
+function closePanel(){document.getElementById('ov').style.display='none';document.getElementById('panel').classList.remove('open');clearPresence();}
 function savePanel(){
   var sh=_ps,rowId=_pid,mode=_pm,btn=document.getElementById('saveBtn');
   btn.removeAttribute('onclick');btn.disabled=true;btn.textContent='Saving...';
@@ -4455,6 +4473,78 @@ window.addEventListener('load',function(){
           if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
     }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
 });
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
+
+// ══════════════════════════════════════════════
+// REAL-TIME PRESENCE - who is on which row
+// ══════════════════════════════════════════════
+var _presenceSheet=null, _presenceRow=null, _presenceTimer=null;
+
+function setPresence(sheet, rowId){
+  if(!_user||!_user.username) return;
+  var key='presence/'+(_user.username||'user').replace(/[.#$[\]]/g,'_');
+  var data={user:_user.username,sheet:sheet,row:String(rowId),ts:Date.now()};
+  fbPatch(key, data, null);
+  _presenceSheet=sheet; _presenceRow=rowId;
+  // Auto-clear after 30s of inactivity
+  if(_presenceTimer) clearTimeout(_presenceTimer);
+  _presenceTimer=setTimeout(function(){clearPresence();},30000);
+}
+
+function clearPresence(){
+  if(!_user||!_user.username) return;
+  var key='presence/'+(_user.username||'user').replace(/[.#$[\]]/g,'_');
+  fbDelete(key, null);
+  _presenceSheet=null; _presenceRow=null;
+}
+
+var _presenceData={};
+function fetchPresence(cb){
+  fbGet('presence', function(err,data){
+    if(!err&&data){
+      _presenceData={};
+      var now=Date.now();
+      Object.keys(data).forEach(function(k){
+        var p=data[k];
+        // Ignore stale presence (>60s old)
+        if(p&&p.user&&p.ts&&(now-p.ts)<60000){
+          _presenceData[p.sheet+'::'+p.row]=p.user;
+        }
+      });
+    }
+    if(cb) cb(_presenceData);
+  });
+}
+
+function getPresenceOnRow(sheet, rowId){
+  // Returns username if someone else is on this row
+  var key=sheet+'::'+String(rowId);
+  var who=_presenceData[key];
+  if(who&&who!==(_user&&_user.username)) return who;
+  return null;
+}
+
+// Refresh presence every 15s
+function startPresenceRefresh(){
+  setInterval(function(){
+    if(!document.hidden) fetchPresence(function(){
+      // Re-render current page to update indicators
+      if(_pg==='hold-main'||_pg==='hold-done') loadPg(_pg);
+    });
+  }, 15000);
+}
 
 
 window.addEventListener('load',function(){
