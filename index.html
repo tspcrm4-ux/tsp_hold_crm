@@ -27,6 +27,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -269,6 +270,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 </style>
 </head>
 <body>
@@ -433,6 +435,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -738,8 +741,13 @@ function fbLoadAllSheets(onComplete){
   loadAllSheets(onComplete);
 }
 
+var _loadingSheets=false;
 function preloadStore(){
-  fbLoadAllSheets();
+  if(_loadingSheets) return; // prevent duplicate concurrent loads
+  _loadingSheets=true;
+  fbLoadAllSheets(function(){
+    _loadingSheets=false;
+  });
 }
 
 // ── Live connection indicator (REST-based ping) ──
@@ -1165,64 +1173,124 @@ function hideLErr(){document.getElementById('lErr').style.display='none';}
 
 /* ═══ BOOT ═══ */
 function bootApp(){
-  initFirebaseSDK();
-  // Hide splash FIRST before anything else can fail
-  try{var s=document.getElementById('splash');if(s){s.style.display='none';}}catch(e){}
-  hide('loginPage');show('app');
-  document.getElementById('tbAv').textContent=(_user.username||'U')[0].toUpperCase();
-  document.getElementById('tbUn').textContent=_user.username||'—';
-  document.getElementById('tbRl').textContent=_user.role||'—';
-  document.getElementById('ddN').textContent=_user.username||'—';
-  document.getElementById('ddR').textContent=(_user.role||'')+(_user.department?' · '+_user.department:'');
+  // Hide splash
+  try{var s=document.getElementById('splash');if(s)s.style.display='none';}catch(e){}
+  hide('loginPage'); show('app');
+
+  // Set topbar user info
   var role=R();
-  // Admin nav (Users management)
-  if(role==='ADMIN'||role==='MANAGER') document.getElementById('adminNav').style.display='block';
-  // Request tabs — ACCOUNTANT excluded
-  if(role==='KEY ACCOUNT'||role==='ADMIN'||role==='MANAGER'){
-    document.getElementById('nav-hold-req').style.display='flex';
-    document.getElementById('nav-dis-req').style.display='flex';
-    document.getElementById('nav-en-req').style.display='flex';
-  }
-  // Tickets tab visible for ALL roles
-  document.getElementById('tktNav').style.display='block';
-  // Hide Dashboard nav for Calling Agent — they go straight to Pending Hold
-  if(role==='CALLING AGENT'||role==='ACCOUNTANT'){
-    // Hide dashboard for these roles
-    var dashNav=document.getElementById('nav-dashboard');
-    if(dashNav) dashNav.style.display='none';
-    var mainLbl=document.getElementById('mainNavLabel');
-    if(mainLbl) mainLbl.style.display='none';
-  }
-  if(role==='KEY ACCOUNT'){
-    document.getElementById('kaNav').style.display='block';
-  }
-  // Load agent lists + store current user's display name
-  fbGetAgentNames(function(r){if(r&&r.rows){_agents=r.data;}});
-  fbGetKAAgents(function(r){if(r&&r.rows)_kaAgents=r.data;});
-  // ── FIX A: Load localStorage BEFORE nav so first click is instant ──
-  var hadLocal = loadStoreFromLocal();
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden){if(_rt){clearInterval(_rt);_rt=null;}if(_rt2){clearInterval(_rt2);_rt2=null;}}
-    else{if(!_rt)startRT();}
+  ['tbAv','tbUn','tbRl','ddN','ddR'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    if(id==='tbAv')  el.textContent=(_user.username||'U')[0].toUpperCase();
+    else if(id==='tbUn'||id==='ddN') el.textContent=_user.username||'—';
+    else if(id==='tbRl') el.textContent=role||'—';
+    else if(id==='ddR') el.textContent=(role||'')+(_user.department?' · '+_user.department:'');
   });
-  startRT();
-  var _bootRole=R();
-  if(hadLocal){
-    // Store loaded from localStorage — navigate instantly
-    if(_bootRole==='CALLING AGENT') nav('hold-main');
-    else if(_bootRole==='ACCOUNTANT') nav('errorpayments');
-    else nav('dashboard');
-    // Sync from server silently in background
-    preloadStore();
-  } else {
-    // No local cache — navigate immediately, load data in background
-    if(_bootRole==='CALLING AGENT') nav('hold-main');
-    else if(_bootRole==='ACCOUNTANT') nav('errorpayments');
-    else nav('dashboard');
-    // startRT() already called above — don't call twice
-    preloadStore();
+
+  // ── NAV VISIBILITY RULES ──
+  // Default: all sheet tabs visible, requests hidden, admin hidden
+  // ADMIN:          all tabs + users + dashboard + requests
+  // MANAGER:        all tabs + dashboard + requests (NO users)
+  // ACCOUNTANT:     hold + errorpayments + recharge only (NO dashboard, NO disable, NO requests)
+  // CALLING AGENT:  hold + errorpayments + recharge + disable (NO dashboard, NO requests)
+  // KEY ACCOUNT:    all tabs + dashboard + requests (NO users)
+
+  var allNavIds=['nav-dashboard','nav-hold-main','nav-hold-done',
+    'nav-errorpayments','nav-recharge','nav-disable',
+    'nav-hold-req','nav-dis-req','nav-en-req',
+    'nav-top-agents','nav-tickets','nav-users'];
+
+  // Hide everything first
+  allNavIds.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  // Hide section labels too
+  ['mainNavLabel','sheetsNavLabel','requestsNavLabel','supportNavLabel','adminNav','kaNav','tktNav'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+
+  // Show based on role
+  var show_ids=[];
+  if(role==='ADMIN'){
+    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+      'nav-errorpayments','nav-recharge','nav-disable',
+      'nav-hold-req','nav-dis-req','nav-en-req',
+      'nav-tickets','nav-users'];
+    var an=document.getElementById('adminNav'); if(an) an.style.display='block';
+  } else if(role==='MANAGER'){
+    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+      'nav-errorpayments','nav-recharge','nav-disable',
+      'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
+  } else if(role==='ACCOUNTANT'){
+    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-tickets'];
+  } else if(role==='CALLING AGENT'){
+    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
+  } else if(role==='KEY ACCOUNT'){
+    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+      'nav-errorpayments','nav-recharge','nav-disable',
+      'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
+    var kan=document.getElementById('kaNav'); if(kan) kan.style.display='block';
   }
+
+  show_ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display='flex';
+  });
+  // Tickets uses block not flex
+  var tktEl=document.getElementById('nav-tickets');
+  if(tktEl) tktEl.style.display='flex';
+  var tktNav=document.getElementById('tktNav');
+  if(tktNav) tktNav.style.display='block';
+
+  // Show section labels that have visible items
+  var sheetsLbl=document.getElementById('sheetsNavLabel');
+  if(sheetsLbl) sheetsLbl.style.display='block';
+  var supLbl=document.getElementById('supportNavLabel');
+  if(supLbl) supLbl.style.display='block';
+  if(role==='ADMIN'||role==='MANAGER'||role==='KEY ACCOUNT'){
+    var reqLbl=document.getElementById('requestsNavLabel');
+    if(reqLbl) reqLbl.style.display='block';
+  }
+  if(role==='ADMIN'||role==='MANAGER'||role==='KEY ACCOUNT'||role==='CALLING AGENT'){
+    var mainLbl=document.getElementById('mainNavLabel');
+    if(mainLbl && (role==='ADMIN'||role==='MANAGER'||role==='KEY ACCOUNT')) mainLbl.style.display='block';
+  }
+
+  // Load agents
+  fbGetAgentNames(function(r){if(r&&r.success)_agents=r.data;});
+  fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});
+
+  // Load store from cache then start
+  var hadLocal=loadStoreFromLocal();
+
+  // Start timers (only once)
+  if(_rt2) clearInterval(_rt2);
+  startRT();
+
+  // Handle tab visibility changes
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){
+      if(_rt){clearInterval(_rt);_rt=null;}
+      if(_rt2){clearInterval(_rt2);_rt2=null;}
+    } else {
+      if(!_rt2) startRT();
+    }
+  });
+
+  // Navigate to first page
+  var firstPage;
+  if(role==='CALLING AGENT') firstPage='hold-main';
+  else if(role==='ACCOUNTANT') firstPage='hold-main';
+  else firstPage='dashboard';
+
+  nav(firstPage);
+
+  // Load data in background
+  preloadStore();
 }
+
 
 var _holdRowCount=0, _holdTs='0';
 
@@ -2960,7 +3028,7 @@ function openUserPanel(u){
   btn.onclick=function(){
     var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
     btn.disabled=true;btn.textContent='Saving...';
-    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.rows){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r){if(r&&r.rows){_agents=r.data;}});fbGetKAAgents(function(r){if(r&&r.rows)_kaAgents=r.data;});}else showAlert(r?r.error:'Failed.','error');};
+    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.rows){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r){if(r&&r.success)_agents=r.data;});fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});}else showAlert(r?r.error:'Failed.','error');};
     var fail=function(e){btn.disabled=false;btn.textContent='Save User';showAlert(e.message,'error');};
     if(!u) fbSaveUser(d,true,ok);
     else{d.userId=u.USER_ID;fbSaveUser(d,false,ok);}
@@ -4273,6 +4341,18 @@ window.addEventListener('load',function(){
 });
 
 }
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
+
 
 window.addEventListener('load',function(){
   try{var sp=document.getElementById('splash');
