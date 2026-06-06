@@ -17,6 +17,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -249,6 +250,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 </style>
 </head>
 <body>
@@ -423,6 +425,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 // ══════════════════════════════════════════════════
 // FIREBASE AUTH - REST API (no SDK needed)
 // Signs user into Firebase Auth after CRM login
@@ -578,55 +581,55 @@ function getDaysAgoDate(days){
 }
 
 function parseDDMMYYYY(str){
+  // Parses any common date format and returns a Date object
   if(!str) return null;
   var s = str.toString().trim();
-  if(!s || s==='-' || s==='—' || s==='null') return null;
+  if(!s || s==='-' || s==='—' || s==='null' || s==='undefined') return null;
 
-  // Format: dd/MM/yyyy or d/M/yyyy (Indian format - most common)
   var parts = s.split('/');
   if(parts.length === 3){
-    var dd=parseInt(parts[0]),mm=parseInt(parts[1]),yyyy=parseInt(parts[2]);
-    // Validate: day 1-31, month 1-12, year 2000-2099
-    if(dd>=1&&dd<=31&&mm>=1&&mm<=12&&yyyy>=2000&&yyyy<=2099){
-      var d=new Date(yyyy, mm-1, dd);
-      if(!isNaN(d.getTime())) return d;
+    var p0=parseInt(parts[0]), p1=parseInt(parts[1]), p2=parseInt(parts[2]);
+    if(isNaN(p0)||isNaN(p1)||isNaN(p2)) return null;
+    var yyyy = p2>=100 ? p2 : (p2+2000); // handle 2-digit year
+
+    // MM/DD/YYYY (US format - primary as per your data)
+    if(p0>=1&&p0<=12&&p1>=1&&p1<=31&&yyyy>=2000&&yyyy<=2099){
+      var d1=new Date(yyyy, p0-1, p1);
+      if(!isNaN(d1.getTime())) return d1;
     }
-    // Try MM/dd/yyyy (US format) as fallback
-    if(mm>=1&&mm<=31&&dd>=1&&dd<=12&&yyyy>=2000&&yyyy<=2099){
-      var d2=new Date(yyyy, dd-1, mm);
+    // DD/MM/YYYY (Indian format - fallback)
+    if(p1>=1&&p1<=12&&p0>=1&&p0<=31&&yyyy>=2000&&yyyy<=2099){
+      var d2=new Date(yyyy, p1-1, p0);
       if(!isNaN(d2.getTime())) return d2;
     }
   }
 
-  // Format: dd-MM-yyyy
+  // DD-MM-YYYY or YYYY-MM-DD
   parts = s.split('-');
-  if(parts.length === 3 && parts[0].length <= 2){
-    var dd2=parseInt(parts[0]),mm2=parseInt(parts[1]),yyyy2=parseInt(parts[2]);
-    if(dd2>=1&&dd2<=31&&mm2>=1&&mm2<=12&&yyyy2>=2000&&yyyy2<=2099){
-      var d3=new Date(yyyy2, mm2-1, dd2);
+  if(parts.length === 3){
+    if(parts[0].length === 4){
+      // YYYY-MM-DD (ISO)
+      var d3=new Date(s);
       if(!isNaN(d3.getTime())) return d3;
+    } else {
+      // DD-MM-YYYY
+      var d4=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+      if(!isNaN(d4.getTime())) return d4;
     }
   }
 
-  // Format: yyyy-MM-dd (ISO)
-  if(parts.length === 3 && parts[0].length === 4){
-    var d4=new Date(s);
-    if(!isNaN(d4.getTime())) return d4;
-  }
-
-  // Last resort: try native Date parse
+  // Native parse as last resort
   var d5=new Date(s);
   return isNaN(d5.getTime()) ? null : d5;
 }
 
 function isWithinDays(dateStr, days){
-  if(!dateStr || dateStr==='' || dateStr==='-' || dateStr==='—') return false;
+  // Returns true if date is within last N days
+  // Returns false if date is older than N days
+  // Returns true if date is empty/unparseable (include by default)
+  if(!dateStr || dateStr==='' || dateStr==='-' || dateStr==='—') return true; // include if no date
   var d = parseDDMMYYYY(dateStr);
-  if(!d) return false; // Cannot parse - exclude from date filter
-  // Sanity check: reject dates before 2020 or in future
-  var now = new Date();
-  if(d > now) return false; // Future date - data error
-  if(d.getFullYear() < 2020) return false; // Too old - data error
+  if(!d) return true; // Cannot parse - include by default
   return d >= getDaysAgoDate(days);
 }
 
@@ -4016,6 +4019,18 @@ function doClearSheet(){
     showAlert('Clear failed: '+e.message,'error');
   });
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
