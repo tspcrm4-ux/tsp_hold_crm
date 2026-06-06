@@ -14,6 +14,7 @@
 
 
 
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -243,6 +244,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
 </style>
 </head>
 <body>
@@ -407,6 +409,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
+
 
 
 
@@ -609,48 +612,64 @@ function loadAllSheets(onComplete){
   var loaded = 0, total = 5;
   function done(){ if(++loaded === total && onComplete) onComplete(); }
 
-  // Hold: ALL (filter pending/done client-side)
+  // Hold: ALL
   fbLoadSheet('hold', H.HOLD, {all: true}, function(rows){
     _store.hold = {headers: H.HOLD, rows: rows};
     saveStoreToLocal();
     updateBadges();
-    if(_pg === 'hold-main' || _pg === 'hold-done' || _pg === 'hold-req') loadPg(_pg);
+    if(_pg==='hold-main'||_pg==='hold-done'||_pg==='hold-req') loadPg(_pg);
     done();
   });
 
-  // Error Payments: last 7 days
-  fbLoadSheet('errorpayments', H.ERR, {days: 7, dateCol: 'DATE'}, function(rows){
+  // Error Payments: AmtStatus=PENDING (always) + last 7 days
+  fbLoadSheet('errorpayments', H.ERR, {all: true}, function(rows){
+    var asIdx = H.ERR.indexOf('AmtStatus');
+    var dtIdx = H.ERR.indexOf('DATE');
+    rows = rows.filter(function(r){
+      var as = (r[asIdx]||'').toUpperCase().trim();
+      var pending = as==='PENDING' || as==='';
+      var recent  = isWithinDays(r[dtIdx], 7);
+      return pending || recent;
+    });
     _store.errorpayments = {headers: H.ERR, rows: rows};
-    if(_pg === 'errorpayments') loadPg(_pg);
+    if(_pg==='errorpayments') loadPg(_pg);
     done();
   });
 
-  // Recharge: last 7 days
-  fbLoadSheet('recharge', H.RECH, {days: 7, dateCol: 'Payment date'}, function(rows){
+  // Recharge: Payment status=PENDING (always) + last 7 days
+  fbLoadSheet('recharge', H.RECH, {all: true}, function(rows){
+    var psIdx = H.RECH.indexOf('Payment status');
+    var dtIdx = H.RECH.indexOf('Payment date');
+    rows = rows.filter(function(r){
+      var ps = (r[psIdx]||'').toUpperCase().trim();
+      var pending = ps==='PENDING' || ps==='';
+      var recent  = isWithinDays(r[dtIdx], 7);
+      return pending || recent;
+    });
     _store.recharge = {headers: H.RECH, rows: rows};
-    if(_pg === 'recharge') loadPg(_pg);
+    if(_pg==='recharge') loadPg(_pg);
     done();
   });
 
-  // Disable: active + last 3 days
+  // Disable: ACTION = DISABLE KARNA HAI or ENABLE KARNA HAI (always) + last 3 days
   fbLoadSheet('disable', H.DIS, {all: true}, function(rows){
-    var actIdx = H.DIS.indexOf('ACTION');
+    var actIdx  = H.DIS.indexOf('ACTION');
     var dateIdx = H.DIS.indexOf('DATE');
     rows = rows.filter(function(r){
       var act = (r[actIdx]||'').toUpperCase().trim();
-      var active = act==='DISABLED'||act==='DISABLE KARNA HAI'||act==='ENABLE KARNA HAI';
-      var recent = isWithinDays(r[dateIdx], 3);
-      return active || recent;
+      var pending = act==='DISABLE KARNA HAI' || act==='ENABLE KARNA HAI';
+      var recent  = isWithinDays(r[dateIdx], 3);
+      return pending || recent;
     });
     _store.disable = {headers: H.DIS, rows: rows};
-    if(_pg === 'disable') loadPg(_pg);
+    if(_pg==='disable') loadPg(_pg);
     done();
   });
 
   // Tickets: ALL
   fbLoadSheet('tickets', H.TKT, {all: true}, function(rows){
     _store.tickets = {headers: H.TKT, rows: rows};
-    if(_pg === 'tickets') loadTickets();
+    if(_pg==='tickets') loadTickets();
     done();
   });
 }
@@ -3922,6 +3941,18 @@ function doClearSheet(){
     showAlert('Clear failed: '+e.message,'error');
   });
 }
+
+
+window.addEventListener('load',function(){
+  try{var sp=document.getElementById('splash');
+    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
+    else{if(sp)sp.style.display='none';show('loginPage');
+      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
+        sel.innerHTML='<option value="">-- Select User --</option>';
+        if(!err&&data)Object.keys(data).forEach(function(k){
+          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
+    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
+});
 
 
 window.addEventListener('load',function(){
