@@ -2597,8 +2597,9 @@ function renderSh(sh,title,icon,r){
     html+='</div>';
   }
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
+  html+='<th style="width:34px">#</th>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
+  for(var h=0;h<sHdrs.length;h++) html+='<th>'+esc(String(sHdrs[h]))+'</th>';
   html+='<th>Actions</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){
@@ -2608,7 +2609,7 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
     if(dayLimit){
       filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
     }
-    html+='<tr><td colspan="'+(sHdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
+    html+='<tr><td colspan="'+(sHdrs.length+3)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
   }
   else{
     for(var i=0;i<r.rows.length;i++){
@@ -2644,132 +2645,6 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='</div></div></div>';
   setC(html);
 
-  var st=_ts[sh]||{page:1,pageSize:50};
-  var role=R(),isAdmin=role==='ADMIN',isMgr=isAdmin||role==='MANAGER';
-  var kaSet={};for(var ki=0;ki<_kaAgents.length;ki++){var _ka=_kaAgents[ki];kaSet[(typeof _ka==='string'?_ka:(_ka.name||_ka.agentName||'')).toLowerCase()]=1;}
-  var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
-  html+='<div style="display:flex;gap:7px">';
-  html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
-  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
-  html+='</div></div>';
-  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" placeholder="Filter rows..." oninput="onSrch(this.value)"></div>';
-  if(sh==='hold'){
-    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateFrom||'')+'" onchange="_ts.hold.dateFrom=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
-    html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateTo||'')+'" onchange="_ts.hold.dateTo=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
-    html+='<select class="fs" onchange="_ts.hold.statusFilter=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')"><option value="">All Status</option><option>HOLD</option><option>CBD</option><option>TO BE HOLD BY SENIOR</option></select>';
-  }
-  var pgSzHtml='<select class="fs" style="width:75px" onchange="chgPgSz(\''+sh+'\',\''+title+'\',\''+icon+'\',this.value)">';
-  [50,100,200,500].forEach(function(n){pgSzHtml+='<option value="'+n+'"'+(parseInt(st.pageSize)===n?' selected':'')+'>'+n+'/pg</option>';});
-  pgSzHtml+='</select>';
-  html+=pgSzHtml;
-  html+='<span class="f-m">'+(r&&r.total!==undefined?r.total:0)+' records</span></div>';
-  // r from filterStoreWithCols - always valid if we get here
-  var hdrs=HDRS[sh]||[],cols=COLS[sh]||[],idKey=sh==='hold'?'BOOKING ID':sh==='recharge'?'Complaint Id':'id';
-  var sHdrs=r.headers,startN=(st.page-1)*st.pageSize+1,attIdx=sHdrs.indexOf('ATTEND BY');
-  
-  // ── Column filter bar ──
-  var hdrs=r.headers||[];
-  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:0 2px">';
-  html+='<span style="font-size:11px;color:var(--text3);align-self:center;font-weight:600">FILTER:</span>';
-  // Filterable columns for each sheet
-  var filterCols={
-    hold:['STATUS','AmtStatus','HOLD BY','ATTEND BY','FINAL BY','key manager status'],
-    errorpayments:['STATUS','AmtStatus','SUBMITTED BY','Rel To -'],
-    recharge:['Payment status','Submitted by'],
-    disable:['ACTION','TYPE','DISABLED BY','ENABLED BY']
-  };
-  var cols=filterCols[sh]||hdrs.slice(0,6);
-  cols.forEach(function(col){
-    // Get unique values for this column
-    var ci=hdrs.indexOf(col);
-    if(ci<0)return;
-    var vals={};
-    (r.allRows||r.rows||[]).forEach(function(row){var v=(row[ci]||'').toString().trim();if(v)vals[v]=1;});
-    var options=Object.keys(vals).sort();
-    // For name-based columns, enrich with agent display names
-    var nameColsMap={};
-    (_agents||[]).forEach(function(a){if(a)nameColsMap[a.toUpperCase()]=a;});
-    if(!options.length)return;
-    html+='<div style="display:flex;align-items:center;gap:4px">';
-    html+='<span style="font-size:10px;color:var(--text3)">'+esc(col)+':</span>';
-    html+='<select style="padding:3px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px" onchange="applyColFilter(\''+sh+'\',\''+col+'\',this.value)" data-col="'+esc(col)+'">';
-    html+='<option value="">All</option>';
-    var nameCols=['HOLD BY','ATTEND BY','FINAL BY','DISABLED BY','ENABLED BY','SUBMITTED BY','Submitted by','PAYMENT BY'];
-    var isNameCol=nameCols.indexOf(col)>=0;
-    options.forEach(function(v){
-      var disp=isNameCol?(nameColsMap[v.toUpperCase()]||v):v;
-      html+='<option value="'+esc(v)+'">'+esc(disp)+'</option>';
-    });
-    html+='</select></div>';
-  });
-  html+='<button class="btn btn-s btn-xs" style="margin-left:auto" onclick="clearColFilters(\''+sh+'\')" title="Clear filters">✕ Clear</button>';
-  html+='</div>';
-
-  // ── Bulk edit bar (Admin/Manager/Accountant only) ──
-  if(isMgr||role==='ACCOUNTANT'){
-    html+='<div id="bulkBar_'+sh+'" style="display:none;background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:7px;padding:8px 12px;margin-bottom:10px;display:none;align-items:center;gap:8px;flex-wrap:wrap">';
-    html+='<span style="font-size:12px;font-weight:600;color:var(--gold)">✏️ Bulk Edit:</span>';
-    html+='<span id="bulkCount_'+sh+'" style="font-size:11px;color:var(--text3)">0 selected</span>';
-    // AmtStatus quick change
-    // Dynamic field selector based on sheet
-    var bulkFields={hold:['AmtStatus','STATUS','key manager status','Rel To:-','PAYMENT BY','ATTEND BY'],errorpayments:['AmtStatus','STATUS','Rel To -'],recharge:['Payment status'],disable:['ACTION']};
-    var bFields=bulkFields[sh]||['AmtStatus','STATUS'];
-    html+='<select id="bulkField_'+sh+'" data-sh="'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)" onchange="updateBulkVals(this.dataset.sh)">';
-    bFields.forEach(function(f){html+='<option value="'+f+'">'+f+'</option>';});
-    html+='</select>';
-    html+='<select id="bulkVal_'+sh+'" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)">';
-    html+='<option value="PENDING">PENDING</option><option value="OK">OK</option><option value="DONE">DONE</option><option value="HOLD">HOLD</option><option value="CBD">CBD</option><option value="ENABLED">ENABLED</option><option value="DISABLED">DISABLED</option>';
-    html+='</select>';
-    html+='<input id="bulkCustomVal_'+sh+'" type="text" placeholder="Or type custom value..." style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text);width:150px">';
-    html+='<button class="btn btn-p btn-xs" onclick="doBulkEdit(\''+sh+'\')">Apply to Selected</button>';
-    html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
-    html+='</div>';
-  }
-html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
-  html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
-  html+='<th>Actions</th>';
-  html+='</tr></thead><tbody>';
-  if(!r.rows.length){
-    var filterMsg='';
-    var dayRules={errorpayments:7,recharge:7,disable:3};
-    var dayLimit=dayRules[sh];
-    if(dayLimit){
-      filterMsg='<div style="margin-top:8px"><button class="btn btn-s btn-sm" data-sh="'+sh+'" onclick="loadSheetAll(this.dataset.sh)">📂 Load all records</button> <span style="font-size:11px;color:var(--text3);margin-left:8px">Showing last '+dayLimit+' days only</span></div>';
-    }
-    html+='<tr><td colspan="'+(sHdrs.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">No records found in last '+(dayLimit||'')+' days'+( dayLimit?'':'')+filterMsg+'</td></tr>';
-  }
-  else{
-    for(var i=0;i<r.rows.length;i++){
-      var row=r.rows[i];
-      var attVal=attIdx>=0?(row[attIdx]||''):'';
-      var isKARow=attVal&&kaSet[String(attVal).toLowerCase()];
-      var idIdx=sHdrs.indexOf(idKey),rowId=idIdx>=0?String(row[idIdx]):'';
-      _rc[sh+'::'+rowId]={row:row,hdrs:sHdrs};
-      var re=rowId.replace(/'/g,"'");
-      var presenceUser=getPresenceOnRow('hold',rowId);
-      var presenceIndicator=presenceUser?'<span title="'+esc(presenceUser)+' is viewing this row" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;vertical-align:middle" aria-label="'+esc(presenceUser)+' viewing"></span>':'';
-      html+='<tr'+(isKARow?' class="ka-row"':'')+'><td style="color:var(--text3);font-size:11px">'+(startN+i)+'</td>';
-      for(var c=0;c<sHdrs.length;c++){
-        var val=row[c]!==null&&row[c]!==undefined?row[c]:'';
-        var cv=rCell(sHdrs[c],val);
-        if(sHdrs[c]==='BOOKING ID'&&isKARow) cv+='<span class="ka-ic">🔑</span>';
-        html+='<td title="'+esc(String(val))+'">'+cv+'</td>';
-      }
-      html+='<td style="white-space:nowrap"><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\''+sh+'\',\''+re+'\')">Edit</button> ';
-      if(isMgr) html+='<button class="btn btn-d btn-xs" onclick="confirmDel(\''+sh+'\',\''+re+'\')">Del</button>';
-      html+='</td></tr>';
-    }
-  }
-  html+='</tbody></table></div>';
-  var tp=r.totalPages||1;
-  html+='<div class="pager"><span>Showing '+(r.rows.length>0?(startN)+'–'+(startN+r.rows.length-1):0)+' of '+r.total+'</span><div class="pbtns">';
-  html+='<button class="pb" '+(st.page<=1?'disabled':'')+' onclick="chgPg(\''+sh+'\',' +(st.page-1)+')">‹</button>';
-  var pf=Math.max(1,st.page-2),pt2=Math.min(tp,st.page+2);
-  for(var p=pf;p<=pt2;p++) html+='<button class="pb '+(p===st.page?'cur':'')+'" onclick="chgPg(\''+sh+'\','+p+')">'+p+'</button>';
-  html+='<button class="pb" '+(st.page>=tp?'disabled':'')+' onclick="chgPg(\''+sh+'\',' +(st.page+1)+')">›</button>';
-  html+='</div></div></div>';
-  setC(html);
 }
 function chgPgSz(sh,title,icon,sz){ _ts[sh].pageSize=parseInt(sz)||100; _ts[sh].page=1; loadSh(sh,title,icon); }
 function chgPg(sh,p){
@@ -3127,8 +3002,31 @@ function confirmDel(sh,rowId){_del={sh:sh,rowId:rowId};document.getElementById('
 function closeDel(){document.getElementById('delMov').classList.remove('show');}
 function execDel(){
   var t=_del;if(!t)return;closeDel();
-  var delF={hold:'deleteHoldRow',errorpayments:'deleteErrorPaymentRow',recharge:'deleteRechargeRow',disable:'deleteDisableListRow'};
-  /* FB:unknown */;
+  var sh=t.sh,rowId=t.rowId;
+  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
+  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
+  var path=pathMap[sh];
+  if(!path){showAlert('Unknown sheet: '+sh,'error');return;}
+  var hdrs=hdrMap[sh],keyCol=keyMap[sh];
+  // Resolve the Firebase key for this row from the in-memory store
+  var fk=rowId,ri=-1;
+  if(_store[sh]&&_store[sh].rows){
+    var ki=hdrs.indexOf(keyCol);
+    for(var j=0;j<_store[sh].rows.length;j++){
+      if((_store[sh].rows[j][ki]||'').toString().trim()===rowId.toString().trim()){
+        fk=_store[sh].rows[j]._fbKey||rowId;ri=j;break;
+      }
+    }
+  }
+  showAlert('Deleting...','info');
+  fbDelete(path+'/'+fk,function(err){
+    if(err){showAlert('Delete failed: '+(err.message||err),'error');return;}
+    if(ri>=0&&_store[sh])_store[sh].rows.splice(ri,1);
+    if(sh==='hold'){_holdRowCount=0;_holdTs='0';}
+    showAlert('🗑 Record deleted','success');
+    loadPg(_pg);updateBadges();
+  });
 }
 
 /* ═══ USERS ═══ */
