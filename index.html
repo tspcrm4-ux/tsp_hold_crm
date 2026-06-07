@@ -1989,12 +1989,11 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   html+='</div>';
 
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
-  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
-  html+='<th>Actions</th>';
+  for(var h=0;h<hdrs.length;h++) html+='<th'+(h===0?' style="width:34px"':'')+'>'+esc(String(hdrs[h]))+'</th>';
   html+='</tr></thead><tbody>';
 
   if(!r.rows.length){
-    html+='<tr><td colspan="'+hdrs.length+'" style="text-align:center;padding:32px;color:var(--text3)">';
+    html+='<tr><td colspan="'+(cols.length+2)+'" style="text-align:center;padding:32px;color:var(--text3)">';
     html+=isDone?'No completed records found':'No pending records — all clear! ✅';
     html+='</td></tr>';
   } else {
@@ -2128,7 +2127,9 @@ function renderUniversalResults(r, query){
       var val=ci>=0?(row[ci]!==null&&row[ci]!==undefined?row[ci]:''):'';
       html+='<td title="'+esc(String(val))+'">'+rCell(col,val)+'</td>';
     }
-    html+='<td><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\''+re2+'\')">Edit</button></td>';
+    html+='<td><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\'hold\',\''+re2+'\')">Edit</button>';
+    if(R()==='ADMIN'||R()==='MANAGER') html+=' <button class="btn btn-d btn-xs" onclick="confirmDel(\'hold\',\''+re2+'\')" title="Delete">🗑</button>';
+    html+='</td>';
     html+='</tr>';
   }
   html+='</tbody></table></div></div>';
@@ -2226,6 +2227,7 @@ function renderHoldReq(r){
     if(isKA||role==='ADMIN'||role==='MANAGER'){
       html+='<button class="btn btn-p btn-xs" onclick="quickHold(\''+bidEsc+'\')" title="Set STATUS=HOLD">→ HOLD</button>';
     }
+    if(role==='ADMIN'||role==='MANAGER') html+='<button class="btn btn-d btn-xs" onclick="confirmDel(\'hold\',\''+bidEsc+'\')" title="Delete">🗑</button>';
     html+='</td></tr>';
   }
   html+='</tbody></table></div>';
@@ -2409,6 +2411,7 @@ function renderDisEnReq(r, type){
     html+='<td style="display:flex;gap:4px">';
     html+='<button class="btn btn-s btn-xs" onclick="openDisEdit(\''+ridEsc+'\')">Edit</button>';
     html+='<button class="btn '+(isEnable?'btn-g':'btn-d')+' btn-xs" onclick="doQuickDisable(\''+ridEsc+'\',\''+quickBtnAction+'\',\''+type+'\')">'+quickBtnLabel+'</button>';
+    if(R()==='ADMIN'||R()==='MANAGER') html+='<button class="btn btn-d btn-xs" onclick="confirmDel(\'disable\',\''+ridEsc+'\')" title="Delete">🗑</button>';
     html+='</td>';
     html+='</tr>';
   }
@@ -3003,9 +3006,9 @@ function closeDel(){document.getElementById('delMov').classList.remove('show');}
 function execDel(){
   var t=_del;if(!t)return;closeDel();
   var sh=t.sh,rowId=t.rowId;
-  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
-  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
-  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
+  var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable',tickets:'tickets'};
+  var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS,tickets:H.TKT};
+  var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id',tickets:'TICKET ID'};
   var path=pathMap[sh];
   if(!path){showAlert('Unknown sheet: '+sh,'error');return;}
   var hdrs=hdrMap[sh],keyCol=keyMap[sh];
@@ -3442,6 +3445,7 @@ function renderTickets(r, isMgr){
     if(isMgr){
       html+='<td style="white-space:nowrap">';
       html+='<button class="btn btn-s btn-xs" onclick="openTktUpdate(\''+tktEsc+'\',\''+esc(st)+'\',\''+esc(String(row[anI]||'').replace(/'/g,"'"))+'\')">Update</button>';
+      html+='<button class="btn btn-d btn-xs" onclick="confirmDel(\'tickets\',\''+tktEsc+'\')" title="Delete">🗑</button>';
       html+='</td>';
     }
     html+='</tr>';
