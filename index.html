@@ -424,6 +424,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
       <div class="ni" id="nav-errorpayments" onclick="nav('errorpayments')"><span class="ni-ic">⚠️</span>Error Payments</div>
       <div class="ni" id="nav-recharge" onclick="nav('recharge')"><span class="ni-ic">📱</span>Recharge</div>
       <div class="ni" id="nav-disable" onclick="nav('disable')"><span class="ni-ic">🚫</span>Disable List</div>
+      <div class="ni" id="nav-payments" onclick="nav('payments')"><span class="ni-ic">💵</span>Payments</div>
       <div class="sb-s">Requests</div>
       <div class="ni" id="nav-hold-req" onclick="nav('hold-req')" style="display:none">
         <span class="ni-ic">📋</span>Hold Requests
@@ -1297,7 +1298,7 @@ function bootApp(){
   // KEY ACCOUNT:    all tabs + dashboard + requests (NO users)
 
   var allNavIds=['nav-dashboard','nav-hold-main','nav-hold-done',
-    'nav-errorpayments','nav-recharge','nav-disable',
+    'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
     'nav-hold-req','nav-dis-req','nav-en-req',
     'nav-top-agents','nav-tickets','nav-users'];
 
@@ -1316,16 +1317,16 @@ function bootApp(){
   var show_ids=[];
   if(role==='ADMIN'){
     show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
-      'nav-errorpayments','nav-recharge','nav-disable',
+      'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req',
       'nav-tickets','nav-users'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
     show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
-      'nav-errorpayments','nav-recharge','nav-disable',
+      'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
   } else if(role==='ACCOUNTANT'){
-    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-tickets'];
+    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-payments','nav-tickets'];
   } else if(role==='CALLING AGENT'){
     show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
     // Explicitly hide dashboard for calling agent
@@ -1499,6 +1500,7 @@ function loadPg(pg){
     case 'errorpayments':loadSh('errorpayments','Error Payments','⚠️');break;
     case 'recharge':    loadSh('recharge','Recharge Data','📱');break;
     case 'disable':     loadSh('disable','Disable List','🚫');break;
+    case 'payments':    loadPayments();break;
     case 'hold-req':    loadHoldReq();break;
     case 'top-agents':  loadTopAgents();break;
     case 'tickets':     loadTickets();break;
@@ -3075,13 +3077,13 @@ function openUserPanel(u){
   btn.onclick=function(){
     var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
     btn.disabled=true;btn.textContent='Saving...';
-    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.rows){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r){if(r&&r.success)_agents=r.data;});fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});}else showAlert(r?r.error:'Failed.','error');};
+    var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.success){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r){if(r&&r.success)_agents=r.data;});fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});}else showAlert(r?r.error:'Failed.','error');};
     var fail=function(e){btn.disabled=false;btn.textContent='Save User';showAlert(e.message,'error');};
     if(!u) fbSaveUser(d,true,ok);
     else{d.userId=u.USER_ID;fbSaveUser(d,false,ok);}
   };
 }
-function delUser(uid){if(!confirm('Delete?'))return;fbDeleteUser(uid,function(r){if(r&&r.rows){showAlert('User deleted','success');loadUsers();}else showAlert(r?r.error:'Failed','error');});}
+function delUser(uid){if(!confirm('Delete?'))return;fbDeleteUser(uid,function(r){if(r&&r.success){showAlert('User deleted','success');loadUsers();}else showAlert(r?r.error:'Failed','error');});}
 
 /* ═══ EXPORT ═══ */
 function exportCSV(sh){
@@ -3117,6 +3119,8 @@ function hideAlert(){document.getElementById('alb').className='alb';}
 var _eiSh='', _eiTitle='';
 
 function showExportImport(sh, title){
+  var navPg=sh; // original nav route (Back button)
+  sh=({'hold-main':'hold','hold-done':'hold'})[sh]||sh; // normalize to data-store key
   var role=R();
   var isAdmin=role==='ADMIN';
   var canExport=role==='ADMIN'||role==='ACCOUNTANT'||role==='MANAGER';
@@ -3131,7 +3135,7 @@ function showExportImport(sh, title){
 
   var html='<div class="pg-head">';
   html+='<div class="pg-t">'+icon+' Export / Import — <span class="hl">'+esc(title)+'</span></div>';
-  html+='<button class="btn btn-s btn-sm" onclick="loadPg(\''+sh+'\')">← Back</button>';
+  html+='<button class="btn btn-s btn-sm" onclick="loadPg(\''+navPg+'\')">← Back</button>';
   html+='</div>';
 
   // ── EXPORT SECTION ──
@@ -3339,6 +3343,144 @@ function doImport(){
 
 
 
+/* ═══ PAYMENTS / PAYOUT ═══ */
+/* Mirrors the GAS payout logic, mapped onto the Firebase HOLD structure (H.HOLD).
+   Source rows: AmtStatus === 'OK', split by 'Rel To:-'.
+   DRIVER → full T AMT. AGENT → T AMT − 3.5%. A+D → parse 'AMT T B REL.' (xA+yD):
+   agent gets x−3.5%, driver gets y (100%); if unparseable, split T AMT 50/50. */
+var _payoutData=null; // cached computed payout for export
+
+function _payPhone(txt){
+  var raw=String(txt==null?'':txt);
+  var s=raw.replace(/[\s\-]/g,'');
+  var m=s.match(/(?:91)?([6-9]\d{9})/);
+  return m?m[1]:raw.trim();
+}
+function _payParseAD(s){
+  s=String(s==null?'':s).replace(/\s/g,'').toUpperCase();
+  var m=s.match(/(\d+\.?\d*)A\+(\d+\.?\d*)D/);
+  return m?[parseFloat(m[1]),parseFloat(m[2])]:[null,null];
+}
+function _payAgentNet(a){return Math.round((parseFloat(a)||0)*0.965*100)/100;}
+function _payMoney(n){return '₹'+(Math.round((parseFloat(n)||0)*100)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function computePayout(){
+  var h=H.HOLD;
+  var iBid=h.indexOf('BOOKING ID'),iAgent=h.indexOf('AGENT NUMBER'),iDriver=h.indexOf('DRIVER'),
+      iTamt=h.indexOf('T AMT'),iAmtRel=h.indexOf('AMT T B REL.'),iAmtSt=h.indexOf('AmtStatus'),iRel=h.indexOf('Rel To:-');
+  var rows=(_store.hold&&_store.hold.rows)||[];
+  var driver=[],agent=[],ad=[];
+  rows.forEach(function(r){
+    if(String(r[iAmtSt]||'').trim().toUpperCase()!=='OK')return;
+    var rel=String(r[iRel]||'').trim().toUpperCase();
+    var bid=r[iBid],tamt=parseFloat(r[iTamt])||0;
+    if(rel==='DRIVER'){
+      driver.push({bid:bid,number:_payPhone(r[iDriver]),amount:tamt});
+    } else if(rel==='AGENT'){
+      agent.push({bid:bid,number:_payPhone(r[iAgent]),amount:_payAgentNet(tamt)});
+    } else if(rel==='A+D'){
+      var parsed=_payParseAD(r[iAmtRel]),aAmt=parsed[0],dAmt=parsed[1];
+      if(aAmt===null){aAmt=tamt/2;dAmt=tamt/2;}
+      ad.push({bid:bid,number:_payPhone(r[iAgent]),type:'AGENT',amount:_payAgentNet(aAmt)});
+      ad.push({bid:bid,number:_payPhone(r[iDriver]),type:'DRIVER',amount:dAmt});
+    }
+  });
+  return {driver:driver,agent:agent,ad:ad};
+}
+
+function loadPayments(){
+  var role=R();
+  if(role!=='ADMIN'&&role!=='MANAGER'&&role!=='ACCOUNTANT'){setC('<div class="ldr">Access denied</div>');return;}
+  setC('<div class="ldr"><span class="sp"></span>Computing payouts...</div>');
+  function go(){_payoutData=computePayout();renderPayments(_payoutData);}
+  if(_store.hold&&_store.hold.rows){go();}
+  else{
+    fbGet('hold',function(err,data){
+      if(!err&&data)_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};
+      go();
+    });
+  }
+}
+
+function _payCard(title,sub,amount,color){
+  return '<div style="flex:1;min-width:150px;background:var(--bg2);border:1px solid var(--border);border-left:4px solid '+color+';border-radius:9px;padding:12px 14px">'+
+    '<div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">'+esc(title)+'</div>'+
+    '<div style="font-size:20px;font-weight:800;color:var(--text);margin:3px 0">'+amount+'</div>'+
+    '<div style="font-size:11px;color:var(--text3)">'+esc(sub)+'</div></div>';
+}
+function _paySection(title,color,cols,rows,totLabel,totVal){
+  var html='<div class="tcard" style="margin-bottom:14px"><div class="tscroll"><table>';
+  html+='<thead><tr><th colspan="'+cols.length+'" style="background:'+color+';color:#fff;text-align:center;font-size:12px;padding:8px">'+esc(title)+'</th></tr><tr>';
+  cols.forEach(function(c){html+='<th>'+esc(c)+'</th>';});
+  html+='</tr></thead><tbody>';
+  if(!rows.length){html+='<tr><td colspan="'+cols.length+'" style="text-align:center;padding:18px;color:var(--text3)">No records</td></tr>';}
+  rows.forEach(function(r){
+    html+='<tr>';
+    r.forEach(function(c,i){
+      var align=(i===r.length-1)?'right':(i===0?'left':'center');
+      html+='<td style="text-align:'+align+'">'+esc(String(c))+'</td>';
+    });
+    html+='</tr>';
+  });
+  html+='<tr style="background:var(--gold-bg);font-weight:700"><td style="text-align:left">'+esc(totLabel)+'</td>';
+  if(cols.length>2) html+='<td colspan="'+(cols.length-2)+'"></td>';
+  html+='<td style="text-align:right">'+totVal+'</td></tr>';
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+function renderPayments(p){
+  var sum=function(arr){return arr.reduce(function(s,x){return s+(x.amount||0);},0);};
+  var dT=sum(p.driver),aT=sum(p.agent),adT=sum(p.ad),grand=dT+aT+adT;
+  var html='<div class="pg-head"><div><div class="pg-t">💵 <span class="hl">Payments / Payout</span></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">From HOLD records where Amt Status = OK · Agent payout = T AMT − 3.5%</div></div>';
+  html+='<div style="display:flex;gap:7px">';
+  html+='<button class="btn btn-s btn-sm" onclick="loadPayments()">↻ Refresh</button>';
+  html+='<button class="btn btn-p btn-sm" onclick="exportPayments()">⬇ Export CSV</button>';
+  html+='</div></div>';
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">';
+  html+=_payCard('Driver',p.driver.length+' payouts',_payMoney(dT),'#1F4E79');
+  html+=_payCard('Agent',p.agent.length+' payouts',_payMoney(aT),'#1E6B2E');
+  html+=_payCard('A+D',p.ad.length+' lines',_payMoney(adT),'#7B2C2C');
+  html+=_payCard('Grand Total','all payouts',_payMoney(grand),'#2C3E50');
+  html+='</div>';
+  if(p.driver.length+p.agent.length+p.ad.length===0){
+    html+='<div class="tcard"><div class="req-empty">No OK records to pay out yet.</div></div>';
+    setC(html);return;
+  }
+  html+=_paySection('DRIVER PAYOUT','#1F4E79',['BOOKING ID','DRIVER NUMBER','AMOUNT'],
+    p.driver.map(function(x){return [x.bid,x.number,_payMoney(x.amount)];}),'TOTAL DRIVER',_payMoney(dT));
+  html+=_paySection('AGENT PAYOUT (T AMT − 3.5%)','#1E6B2E',['BOOKING ID','AGENT NUMBER','AMOUNT'],
+    p.agent.map(function(x){return [x.bid,x.number,_payMoney(x.amount)];}),'TOTAL AGENT',_payMoney(aT));
+  html+=_paySection('A+D SPLIT (Agent −3.5% | Driver 100%)','#7B2C2C',['BOOKING ID','NUMBER','TYPE','AMOUNT'],
+    p.ad.map(function(x){return [x.bid,x.number,x.type,_payMoney(x.amount)];}),'TOTAL A+D',_payMoney(adT));
+  setC(html);
+}
+
+function exportPayments(){
+  var p=_payoutData||computePayout();
+  var lines=[['SECTION','BOOKING ID','NUMBER','TYPE','AMOUNT']];
+  p.driver.forEach(function(x){lines.push(['DRIVER',x.bid,x.number,'DRIVER',x.amount]);});
+  p.agent.forEach(function(x){lines.push(['AGENT',x.bid,x.number,'AGENT',x.amount]);});
+  p.ad.forEach(function(x){lines.push(['A+D',x.bid,x.number,x.type,x.amount]);});
+  if(lines.length===1){showAlert('No payout data to export','error');return;}
+  var csv=lines.map(function(row){
+    return row.map(function(cell){
+      var s=String(cell==null?'':cell);
+      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)s='"'+s.replace(/"/g,'""')+'"';
+      return s;
+    }).join(',');
+  }).join('\r\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='PAYOUT_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showAlert('Payout exported ('+(lines.length-1)+' rows) ✓','success');
+}
+
+
 /* ═══ TICKETS ═══ */
 var _tktSearch='', _tktFilter='';
 
@@ -3378,7 +3520,7 @@ function loadTickets(){
 
 function renderTickets(r, isMgr){
   var role=R();
-  var role=R(),isMgr=role==='ADMIN'||role==='MANAGER';
+  var role=R(),isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
   var html='<div class="pg-head">';
   html+='<div><div class="pg-t">🎫 <span class="hl">'+(isMgr?'All Tickets':'My Tickets')+'</span></div>';
   html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(isMgr?'All agents tickets':'Your support tickets')+'</div>';
@@ -3518,7 +3660,7 @@ function openRaiseTicket(){
     if(!d['CUSTOMER NUMBER']||!d['CUSTOMER NUMBER'].trim()){showAlert('Customer number required','error');return;}
     if(!d['ISSUE']||!d['ISSUE'].trim()){showAlert('Issue description required','error');return;}
     btn.disabled=true; btn.textContent='Submitting...';
-    fbAddTicket(d,function(r){btn.disabled=false;btn.textContent='Submit Ticket';if(r&&r.rows){closePanel();_tktSearch='';_tktFilter='';loadTickets();updateBadges();showTicketConfirm(r.ticketId,d['CUSTOMER NUMBER']);}else showAlert(r?r.error:'Failed','error');});
+    fbAddTicket(d,function(r){btn.disabled=false;btn.textContent='Submit Ticket';if(r&&r.success){closePanel();_tktSearch='';_tktFilter='';loadTickets();updateBadges();showTicketConfirm(r.ticketId,d['CUSTOMER NUMBER']);}else showAlert(r?r.error:'Failed','error');});
   };
 }
 
@@ -3621,7 +3763,7 @@ function openTktUpdate(tktId, curStatus, curNote){
     var st=document.querySelector('#pBody [name="tktStatus"]').value;
     var note=document.querySelector('#pBody [name="tktNote"]').value;
     btn.disabled=true; btn.textContent='Updating...';
-    fbUpdateTicketStatus(tktId,st,note,function(r){btn.disabled=false;btn.textContent='Update Ticket';if(r&&r.rows){showAlert('Updated ✓','success');closePanel();loadTickets();updateBadges();}else showAlert(r?r.error:'Failed','error');});
+    fbUpdateTicketStatus(tktId,st,note,function(r){btn.disabled=false;btn.textContent='Update Ticket';if(r&&r.success){showAlert('Updated ✓','success');closePanel();loadTickets();updateBadges();}else showAlert(r?r.error:'Failed','error');});
   };
 }
 
