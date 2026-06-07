@@ -45,6 +45,10 @@
 
 
 
+
+
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;
@@ -307,6 +311,10 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
+
+
+
+
 </style>
 </head>
 <body>
@@ -471,9 +479,6 @@ tr.ka-row:hover td{background:#fef9c3!important}
   </div>
 </div>
 <script>
-
-
-
 
 
 
@@ -1982,9 +1987,10 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   });
   html+='<button class="btn btn-s btn-xs" data-vk="'+viewKey+'" onclick="clearHoldFilters(this.dataset.vk)" title="Clear filters" style="margin-left:auto">✕ Clear</button>';
   html+='</div>';
-for(var h=0;h<hdrs.length;h++) html+='<th>'+hdrs[h]+'</th>';
+
 html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
-  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
+  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
+  html+='<th>Actions</th>';
   html+='</tr></thead><tbody>';
 
   if(!r.rows.length){
@@ -2590,9 +2596,10 @@ function renderSh(sh,title,icon,r){
     html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
     html+='</div>';
   }
-for(var h=0;h<cols.length;h++) html+='<th>'+cols[h]+'</th>';
+html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
+  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
+  html+='<th>Actions</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){
     var filterMsg='';
@@ -2718,9 +2725,10 @@ for(var h=0;h<cols.length;h++) html+='<th>'+cols[h]+'</th>';
     html+='<button class="btn btn-s btn-xs" onclick="clearBulkSel(\''+sh+'\')">Clear Selection</button>';
     html+='</div>';
   }
-for(var h=0;h<cols.length;h++) html+='<th>'+cols[h]+'</th>';
+html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   html+='<th style="width:30px"><input type="checkbox" title="Select all" onchange="selectAllRows(\''+sh+'\',this)"></th>';
-  for(var h=0;h<sHdrs.length;h++) html+='<th>'+sHdrs[h]+'</th>';
+  for(var h=0;h<dispCols.length;h++) html+='<th>'+dispCols[h]+'</th>';
+  html+='<th>Actions</th>';
   html+='</tr></thead><tbody>';
   if(!r.rows.length){
     var filterMsg='';
@@ -3603,7 +3611,7 @@ function openRaiseTicket(){
     if(!d['CUSTOMER NUMBER']||!d['CUSTOMER NUMBER'].trim()){showAlert('Customer number required','error');return;}
     if(!d['ISSUE']||!d['ISSUE'].trim()){showAlert('Issue description required','error');return;}
     btn.disabled=true; btn.textContent='Submitting...';
-    fbAddTicket(d,function(r){btn.disabled=false;btn.textContent='Submit Ticket';if(r&&r.success){closePanel();_tktSearch='';_tktFilter='';loadTickets();updateBadges();showTicketConfirm(r.ticketId,d['CUSTOMER NUMBER']);}else showAlert(r?r.error:'Failed','error');});
+    fbAddTicket(d,function(r){btn.disabled=false;btn.textContent='Submit Ticket';if(r&&r.rows){closePanel();_tktSearch='';_tktFilter='';loadTickets();updateBadges();showTicketConfirm(r.ticketId,d['CUSTOMER NUMBER']);}else showAlert(r?r.error:'Failed','error');});
   };
 }
 
@@ -4624,42 +4632,6 @@ function startPresenceRefresh(){
     if(!document.hidden) fetchPresence(null); // fetch only, no re-render
   }, 30000); // every 30s not 15s
 }
-
-
-window.addEventListener('load',function(){
-  try{var sp=document.getElementById('splash');
-    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
-    else{if(sp)sp.style.display='none';show('loginPage');
-      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
-        sel.innerHTML='<option value="">-- Select User --</option>';
-        if(!err&&data)Object.keys(data).forEach(function(k){
-          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
-    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
-});
-
-
-window.addEventListener('load',function(){
-  try{var sp=document.getElementById('splash');
-    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
-    else{if(sp)sp.style.display='none';show('loginPage');
-      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
-        sel.innerHTML='<option value="">-- Select User --</option>';
-        if(!err&&data)Object.keys(data).forEach(function(k){
-          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
-    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
-});
-
-
-window.addEventListener('load',function(){
-  try{var sp=document.getElementById('splash');
-    if(tryRestoreSession()){if(sp)sp.style.display='none';bootApp();}
-    else{if(sp)sp.style.display='none';show('loginPage');
-      fbGet('users',function(err,data){var sel=document.getElementById('selUser');if(!sel)return;
-        sel.innerHTML='<option value="">-- Select User --</option>';
-        if(!err&&data)Object.keys(data).forEach(function(k){
-          if(data[k]&&data[k].USERNAME)sel.innerHTML+='<option value="'+data[k].USERNAME+'">'+data[k].USERNAME+'</option>';});});
-    }}catch(e){try{document.getElementById('splash').style.display='none';}catch(e2){}show('loginPage');}
-});
 
 
 window.addEventListener('load',function(){
