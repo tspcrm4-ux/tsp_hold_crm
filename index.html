@@ -1213,8 +1213,12 @@ function resetDeptSelect(){
     department: localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',
     userId:   localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||''
   };
-  // Show app immediately — no server round trip
-  bootApp();
+  // Show app immediately — no server round trip.
+  // Defer to next tick so all top-level globals defined below (HDRS, COLS,
+  // _colFilters, etc.) are initialized before bootApp's render path runs.
+  // Without this, a refresh with a saved session boots before those vars
+  // exist and crashes ("Cannot read properties of undefined").
+  setTimeout(bootApp, 0);
 })();
 
 document.getElementById('inpPass').onkeydown=function(e){if(e.key==='Enter')doLogin();};
@@ -2025,12 +2029,13 @@ html+='<div class="tcard"><div class="tscroll"><table><thead><tr>';
   }
   html+='</tbody></table></div>';
   var tp=r.totalPages||1;
+  var _reloadFn=isDone?'loadHoldDone()':'loadHoldMain()';
   html+='<div class="pager"><span>Showing '+(r.rows.length>0?(startN)+'–'+(startN+r.rows.length-1):0)+' of '+r.total+'</span>';
   html+='<div class="pbtns">';
-  html+='<button class="pb" '+(st.page<=1?'disabled':'')+' onclick="_ts[\'\'+viewKey+\'\'].page=\'+(st.page-1)+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">‹</button>';
+  html+='<button class="pb" '+(st.page<=1?'disabled':'')+' onclick="_ts[\''+viewKey+'\'].page='+(st.page-1)+';'+_reloadFn+'">‹</button>';
   var pf2=Math.max(1,st.page-2),pt3=Math.min(tp,st.page+2);
-  for(var p=pf2;p<=pt3;p++) html+='<button class="pb '+(p===st.page?'cur':'')+'" onclick="_ts[\'\'+viewKey+\'\'].page=\'+p+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">'+p+'</button>';
-  html+='<button class="pb" '+(st.page>=tp?'disabled':'')+' onclick="_ts[\'\'+viewKey+\'\'].page=\'+(st.page+1)+\';\'+(isDone?\'loadHoldDone()\':\'loadHoldMain()\')+\'">›</button>';
+  for(var p=pf2;p<=pt3;p++) html+='<button class="pb '+(p===st.page?'cur':'')+'" onclick="_ts[\''+viewKey+'\'].page='+p+';'+_reloadFn+'">'+p+'</button>';
+  html+='<button class="pb" '+(st.page>=tp?'disabled':'')+' onclick="_ts[\''+viewKey+'\'].page='+(st.page+1)+';'+_reloadFn+'">›</button>';
   html+='</div></div></div>';
   setC(html);
 }
