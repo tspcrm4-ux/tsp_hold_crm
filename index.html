@@ -1430,10 +1430,7 @@ function bootApp(){
   // Show based on role
   var show_ids=[];
   if(role==='ADMIN'){
-    show_ids=['nav-dashboard','nav-hold-main',
-      'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
-      'nav-hold-req','nav-dis-req','nav-en-req',
-      'nav-tickets','nav-users','nav-showall','nav-impexp'];
+    show_ids=['nav-dashboard','nav-payments','nav-tickets','nav-users','nav-showall','nav-impexp'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
     show_ids=['nav-dashboard','nav-hold-main',
@@ -1502,7 +1499,7 @@ function bootApp(){
 
   // Navigate to first page
   var firstPage;
-  firstPage='hold-main'; // everyone lands on the light Hold search tab; dashboard loads its data only when opened
+  firstPage=(R()==='ADMIN')?'dashboard':'hold-main'; // admin -> dashboard (no data tabs); others -> Hold
 
   nav(firstPage);
 
