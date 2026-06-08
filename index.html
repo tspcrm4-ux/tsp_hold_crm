@@ -466,6 +466,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 <div class="panel" id="panel">
   <div class="ph"><span class="ph-t" id="pTitle">Record</span><button class="ph-x" onclick="closePanel()">✕</button></div>
   <div class="pb2" id="pBody"></div>
+  <div id="pErr" style="display:none;margin:0 16px 10px;padding:10px 12px;border-radius:8px;background:#fdecea;border:1px solid #f5b5ad;color:#9b2c1e;font-size:13px;font-weight:600;line-height:1.4"></div>
   <div class="pft">
     <button class="btn btn-s" onclick="closePanel()">Cancel</button>
     <button class="btn btn-p" id="saveBtn">Save Record</button>
@@ -2648,7 +2649,8 @@ function renderSh(sh,title,icon,r){
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
   var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
   html+='</div></div>';
-  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" placeholder="Filter rows..." oninput="onSrch(this.value)"></div>';
+  var srchPH={errorpayments:'Search by Booking ID…',recharge:'Search by Mobile Number…',disable:'Search by Mobile Number…'}[sh]||'Filter rows…';
+  html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" placeholder="'+srchPH+'" oninput="onSrch(this.value)"></div>';
   if(sh==='hold'){
     html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateFrom||'')+'" onchange="_ts.hold.dateFrom=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
     html+='<input type="date" class="fi" style="width:128px" value="'+(st.dateTo||'')+'" onchange="_ts.hold.dateTo=this.value;_ts.hold.page=1;loadSh(\'hold\',\'HOLD Records\',\'📌\')">';
@@ -2881,6 +2883,7 @@ function openDisEdit(rid){
 
 function openPanel(mode,sh,rowId){
   _pm=mode;_ps=sh;_pid=rowId;
+  clearPanelErr();
   if(mode==='edit'&&rowId) setPresence(sh,rowId);
   document.getElementById('pTitle').textContent=(mode==='add'?'Add':'Edit')+' Record';
   document.getElementById('ov').style.display='block';
@@ -3110,6 +3113,10 @@ function _attachCleanPhones(sh, record, d){
   if(sh==='hold'){
     record.driverPhone=_extractPhone(d['DRIVER']);
     record.agentPhone=_extractPhone(d['AGENT NUMBER']);
+  } else if(sh==='recharge'){
+    record.mobilePhone=_extractPhone(d['Mobile number']);
+  } else if(sh==='disable'){
+    record.mobilePhone=_extractPhone(d['NUMBER']);
   }
 }
 function _keyInStore(sh, kv){
@@ -3122,6 +3129,14 @@ function _checkDuplicateKey(sh, kv, cb){
     if(_fbDb){ _fbDb.ref(sh+'/'+kv).once('value').then(function(s){ cb(!!(s&&s.exists())); }).catch(function(){ cb(_keyInStore(sh,kv)); }); return; }
   }catch(e){}
   cb(_keyInStore(sh,kv));
+}
+function showPanelErr(msg){
+  var e=document.getElementById('pErr'); if(!e)return;
+  e.textContent='⚠ '+msg; e.style.display='block';
+  try{ e.scrollIntoView({block:'nearest'}); }catch(_){}
+}
+function clearPanelErr(){
+  var e=document.getElementById('pErr'); if(e){ e.textContent=''; e.style.display='none'; }
 }
 
 function savePanel(){
@@ -3139,7 +3154,7 @@ function savePanel(){
   var done2=function(err){btn.disabled=false;btn.textContent='Save Record';if(err){showAlert('Save failed: '+err.message,'error');return;}showAlert('Saved!','success');closePanel();if(sh==='hold'){_holdRowCount=0;_holdTs='0';}loadPg(sh);updateBadges();};
   if(mode==='add'){
     var kv=(d[keyCol]||'').toString().replace(/[.#$[\]\/]/g,'_')||'r_'+Date.now();
-    (function(){var _go=function(){fbSet(path+'/'+kv,record,function(err){if(!err&&_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=kv;_store[sh].rows.push(row);}done2(err);});};if(sh==='hold'&&(d[keyCol]||'').toString().trim()){var _sb=document.getElementById('saveBtn');_sb.disabled=true;_sb.textContent='Checking...';_checkDuplicateKey('hold',kv,function(ex){if(ex){_sb.disabled=false;_sb.textContent='Save Record';showAlert('Booking ID '+(d[keyCol])+' already exists — not saved (would overwrite the existing record).','error');}else{_go();}});}else{_go();}})();
+    (function(){var _go=function(){fbSet(path+'/'+kv,record,function(err){if(!err&&_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=kv;_store[sh].rows.push(row);}done2(err);});};if(sh==='hold'&&(d[keyCol]||'').toString().trim()){var _sb=document.getElementById('saveBtn');_sb.disabled=true;_sb.textContent='Checking...';_checkDuplicateKey('hold',kv,function(ex){if(ex){_sb.disabled=false;_sb.textContent='Save Record';showPanelErr('Booking ID '+(d[keyCol])+' already exists — not saved (it would overwrite the existing record). Change the Booking ID to save.');showAlert('Duplicate Booking ID — not saved','error');}else{clearPanelErr();_go();}});}else{_go();}})();
   }else{
     var fk=rowId;if(_store[sh]){var ki=hdrs.indexOf(keyCol);for(var j=0;j<_store[sh].rows.length;j++){if((_store[sh].rows[j][ki]||'').toString().trim()===rowId.toString().trim()){fk=_store[sh].rows[j]._fbKey||rowId;break;}}}
     fbPatch(path+'/'+fk,record,function(err){if(!err&&_store[sh]){var ki2=hdrs.indexOf(keyCol);for(var j2=0;j2<_store[sh].rows.length;j2++){if((_store[sh].rows[j2][ki2]||'').toString().trim()===rowId.toString().trim()){hdrs.forEach(function(h,ix){_store[sh].rows[j2][ix]=record[h.replace(/[.#$[\]\/]/g,'_')]||'';});break;}}}done2(err);});
