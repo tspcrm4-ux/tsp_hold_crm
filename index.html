@@ -3591,6 +3591,7 @@ function savePanel(){
     if(mode==='edit'&&_store[sh]&&_store[sh].rows){var _asI=hdrs.indexOf('AmtStatus'),_kI=hdrs.indexOf(keyCol);for(var _oi=0;_oi<_store[sh].rows.length;_oi++){if((_store[sh].rows[_oi][_kI]||'').toString().trim()===String(rowId).trim()){_oldAs=(_store[sh].rows[_oi][_asI]||'').toString().trim().toUpperCase();break;}}}
     if(_newAs==='OK'&&_oldAs!=='OK') record.okAt=Date.now();
     if(_newAs==='DONE'&&_oldAs!=='DONE') record.doneAt=Date.now();
+    record.seKey=((record['STATUS']||'').toString().trim().toUpperCase())+':'+_newAs;
   }
   var done2=function(err){btn.disabled=false;btn.textContent='Save Record';if(err){showAlert('Save failed: '+err.message,'error');return;}showAlert('Saved!','success');closePanel();if(sh==='hold'){_holdRowCount=0;_holdTs='0';}loadPg(sh);updateBadges();};
   if(mode==='add'){
