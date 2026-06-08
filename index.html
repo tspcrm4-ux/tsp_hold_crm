@@ -452,6 +452,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
           <span class="rbadge" id="tktBadge" style="display:none">0</span>
         </div>
       </div>
+      <div class="ni" id="nav-impexp" onclick="nav('impexp')" style="display:none"><span class="ni-ic">📤</span>Import / Export</div>
       <div id="adminNav" style="display:none">
         <div class="sb-s">Admin</div>
         <div class="ni" id="nav-showall" onclick="nav('showall')"><span class="ni-ic">🗂️</span>Data Manager</div>
@@ -1413,7 +1414,7 @@ function bootApp(){
   var allNavIds=['nav-dashboard','nav-hold-main','nav-hold-done',
     'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
     'nav-hold-req','nav-dis-req','nav-en-req',
-    'nav-top-agents','nav-tickets','nav-users','nav-showall'];
+    'nav-top-agents','nav-tickets','nav-users','nav-showall','nav-impexp'];
 
   // Hide everything first
   allNavIds.forEach(function(id){
@@ -1432,14 +1433,14 @@ function bootApp(){
     show_ids=['nav-dashboard','nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req',
-      'nav-tickets','nav-users','nav-showall'];
+      'nav-tickets','nav-users','nav-showall','nav-impexp'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
     show_ids=['nav-dashboard','nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
   } else if(role==='ACCOUNTANT'){
-    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-payments','nav-tickets'];
+    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-payments','nav-tickets','nav-impexp'];
   } else if(role==='CALLING AGENT'){
     show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
     // Explicitly hide dashboard for calling agent
@@ -1619,6 +1620,7 @@ function loadPg(pg){
     case 'en-req':      loadEnReq();break;
     case 'users':       loadUsers();break;
     case 'showall':     renderDataManager();break;
+    case 'impexp':      renderImpExp();break;
   }
 }
 function manualRefresh(){loadPg(_pg);}
@@ -2053,7 +2055,7 @@ function renderHoldFiltered(viewKey,title,icon,r,st){
   html+='</div>';
   html+='<div style="display:flex;gap:7px">';
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\'hold\',null)">+ Add</button>';
-  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+viewKey+'\',\''+title+'\')">📤 Export/Import</button>';
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';
   html+='</div></div>';
 
   // Search bar with booking ID search note
@@ -2579,7 +2581,7 @@ function renderOnDemandSearch(sh,title,icon){
   }
   var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';
   var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+esc(title)+'</span></div>';
-  if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+esc(title)+'\')">\ud83d\udce4 Export/Import</button>';
+  
   html+='</div>';
   // Big, obvious add button
   html+='<button onclick="openPanel(\'add\',\''+sh+'\',null)" style="width:100%;padding:16px;margin-bottom:12px;font-size:16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#c9a227,#b8860b);border:none;border-radius:12px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.15)">+  Add New '+esc(cfg.noun)+'</button>';
@@ -2712,7 +2714,7 @@ function dmBarHtml(){
   h+='<button class="btn btn-s btn-sm" onclick="dmSelectAllFiltered()">\u2611 Select all '+filtered.length+' filtered</button>';
   h+='<button class="btn btn-s btn-sm" onclick="dmClearSel()">Clear</button>';
   h+='<button class="btn btn-d btn-sm" onclick="dmDelete()" '+(selCount?'':'disabled')+'>\ud83d\uddd1 Delete selected ('+selCount+')</button>';
-  h+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+_dmSheet+'\',\''+esc(dmLabel())+'\')">\ud83d\udce4 Export/Import</button>';
+  
   return h;
 }
 function dmBodyHtml(){
@@ -2818,6 +2820,172 @@ function dmDelete(){
   });
 }
 
+/* ═══ IMPORT / EXPORT TAB (Admin + Accountant) ═══ */
+var _ieImpTable='', _iePlan=null;
+var _ieTables={
+  hold:         {label:'Hold',           node:'hold',          hdr:H.HOLD, keyCol:'BOOKING ID',   sanitize:true},
+  errorpayments:{label:'Error Payments', node:'errorpayments', hdr:H.ERR,  keyCol:'id',           sanitize:false},
+  recharge:     {label:'Recharge',       node:'recharge',      hdr:H.RECH, keyCol:'Complaint Id', sanitize:true},
+  disable:      {label:'Disable',        node:'disable',       hdr:H.DIS,  keyCol:'id',           sanitize:false},
+  tickets:      {label:'Tickets',        node:'tickets',       hdr:H.TKT,  keyCol:'TICKET ID',    sanitize:true},
+  users:        {label:'Users',          node:'users',         hdr:H.USR,  keyCol:'USER_ID',      sanitize:true, prefix:'u_', exportOnly:true},
+  agents:       {label:'Agents',         node:'agents',        generic:true, exportOnly:true}
+};
+function _ieAccess(){
+  var role=R();
+  if(role==='ADMIN') return {exp:['hold','errorpayments','recharge','disable','tickets','users','agents'], imp:['hold','errorpayments','recharge','disable','tickets'], mode:'sync'};
+  if(role==='ACCOUNTANT') return {exp:['hold','errorpayments'], imp:['hold','errorpayments'], mode:'update'};
+  return null;
+}
+function _ieSan(s){ return String(s==null?'':s).replace(/[.#$[\]\/]/g,'_'); }
+function _ieKey(t,obj){ var v=obj[t.keyCol]; if(v==null||String(v).trim()==='') return ''; v=String(v).trim(); return (t.prefix||'')+(t.sanitize?_ieSan(v):v); }
+function _ieCSV(headers,rows){
+  function cell(s){ s=String(s==null?'':s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+  var out=[headers.map(cell).join(',')];
+  rows.forEach(function(r){ out.push(headers.map(function(h){return cell(r[h]);}).join(',')); });
+  return '\ufeff'+out.join('\r\n');
+}
+function _ieDownload(name,csv){
+  var b=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+}
+function _ieParseCSV(text){
+  text=String(text||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var rows=[],row=[],f='',q=false,i,c;
+  for(i=0;i<text.length;i++){ c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f='';} else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';} else f+=c; }
+  }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  if(rows.length&&rows[0].length) rows[0][0]=String(rows[0][0]).replace(/^\ufeff/,'');
+  return rows;
+}
+function _ieBuildRecord(t,obj){
+  var rec={};
+  if(t.generic){ Object.keys(obj).forEach(function(h){ if(h==='_key')return; rec[h]=obj[h]; }); return rec; }
+  t.hdr.forEach(function(h){ if(h==='id'||h==='ID') return; rec[_ieSan(h)]=(obj[h]!=null?obj[h]:''); });
+  if(typeof _attachCleanPhones==='function') _attachCleanPhones(t.node,rec,obj);
+  return rec;
+}
+function _ieSame(existing,rec){ for(var k in rec){ if(k==='ts')continue; if(String(existing[k]==null?'':existing[k])!==String(rec[k]==null?'':rec[k])) return false; } return true; }
+
+function ieExport(tk){
+  var acc=_ieAccess(); if(!acc||acc.exp.indexOf(tk)<0){ showAlert('Not allowed','error'); return; }
+  var t=_ieTables[tk]; showAlert('Exporting '+t.label+'\u2026','info');
+  fbGet(t.node,function(err,data){
+    if(err){ showAlert('Export failed','error'); return; }
+    var headers,rows=[];
+    if(t.generic){
+      var keys={}; Object.keys(data||{}).forEach(function(k){ var rec=data[k]||{}; if(typeof rec==='object') Object.keys(rec).forEach(function(f){keys[f]=1;}); });
+      headers=['_key'].concat(Object.keys(keys));
+      Object.keys(data||{}).forEach(function(k){ var rec=data[k]||{},o={_key:k}; Object.keys(keys).forEach(function(f){o[f]=rec[f];}); rows.push(o); });
+    } else {
+      headers=t.hdr.slice();
+      fbObjToRows(data,t.hdr).forEach(function(r){ var o={}; t.hdr.forEach(function(h,i){o[h]=r[i];}); rows.push(o); });
+    }
+    _ieDownload(t.label.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv', _ieCSV(headers,rows));
+    showAlert('Exported '+rows.length+' rows \u2713','success');
+  });
+}
+
+function ieImportFile(tk,input){
+  var file=input.files&&input.files[0]; if(!file) return;
+  var t=_ieTables[tk], acc=_ieAccess();
+  if(!acc||acc.imp.indexOf(tk)<0){ showAlert('Not allowed','error'); return; }
+  var reader=new FileReader();
+  reader.onload=function(){
+    var grid=_ieParseCSV(reader.result);
+    if(grid.length<2){ showAlert('Empty or invalid CSV','error'); return; }
+    var heads=grid[0].map(function(s){return String(s).trim();});
+    var imp=[];
+    for(var r=1;r<grid.length;r++){ if(grid[r].every(function(x){return !String(x).trim();})) continue; var o={}; heads.forEach(function(h,ci){o[h]=grid[r][ci]!==undefined?grid[r][ci]:'';}); imp.push(o); }
+    var impMap={},noKey=0;
+    imp.forEach(function(o){
+      var k=_ieKey(t,o);
+      if(!k){ if(acc.mode==='sync'&&t.keyCol==='id'){ k='r_'+Date.now()+'_'+((Math.random()*1e6)|0); impMap[k]=o; } else { noKey++; } return; }
+      impMap[k]=o;
+    });
+    fbGet(t.node,function(err,data){
+      if(err){ showAlert('Could not read existing data to compare','error'); return; }
+      var existing=data||{}, updates=[],adds=[],deletes=[];
+      Object.keys(impMap).forEach(function(k){
+        var rec=_ieBuildRecord(t,impMap[k]);
+        if(existing[k]!==undefined){ if(!_ieSame(existing[k],rec)) updates.push({k:k,rec:rec}); }
+        else adds.push({k:k,rec:rec});
+      });
+      if(acc.mode==='sync'){ Object.keys(existing).forEach(function(k){ if(impMap[k]===undefined) deletes.push(k); }); }
+      _iePlan={tk:tk,mode:acc.mode,updates:updates,adds:(acc.mode==='sync'?adds:[]),deletes:deletes,skippedAdds:(acc.mode==='update'?adds.length:0),noKey:noKey};
+      ieRenderPlan();
+    });
+  };
+  reader.readAsText(file);
+}
+
+function ieRenderPlan(){
+  var p=_iePlan,el=document.getElementById('ieplan'); if(!el||!p) return;
+  var h='<div class="tcard" style="padding:12px;margin-top:8px">';
+  h+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">Preview \u2014 '+esc(_ieTables[p.tk].label)+'</div>';
+  h+='<div style="font-size:13px;line-height:1.8">';
+  h+='\u270f\ufe0f Update changed rows: <b>'+p.updates.length+'</b><br>';
+  h+='\u2795 Add new rows: <b>'+p.adds.length+'</b>'+(p.skippedAdds?' <span style="color:var(--text3)">('+p.skippedAdds+' new rows in file skipped \u2014 update-only mode)</span>':'')+'<br>';
+  h+='\ud83d\uddd1 Delete rows not in file: <b style="color:'+(p.deletes.length?'var(--red,#ef4444)':'var(--text)')+'">'+p.deletes.length+'</b>';
+  if(p.noKey) h+='<br><span style="color:var(--warn,#f59e0b)">\u26a0 '+p.noKey+' file row(s) had no key value \u2014 skipped.</span>';
+  h+='</div>';
+  h+='<div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-p btn-sm" onclick="ieApply()">Apply changes</button><button class="btn btn-s btn-sm" onclick="_iePlan=null;renderImpExp()">Cancel</button></div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function ieApply(){
+  var p=_iePlan; if(!p) return;
+  var t=_ieTables[p.tk], wr=p.updates.length+p.adds.length, del=p.deletes.length;
+  if(!wr&&!del){ showAlert('Nothing to apply','info'); return; }
+  var msg='Apply to "'+t.label+'":\n  Update: '+p.updates.length+'\n  Add: '+p.adds.length+'\n  Delete: '+del;
+  if(del) msg+='\n\n\u26a0 '+del+' record(s) not present in the file will be PERMANENTLY DELETED.';
+  if(!confirm(msg+'\n\nContinue?')) return;
+  if(del){ var ty=prompt('Type DELETE to confirm permanently removing '+del+' record(s) not in the file:'); if((ty||'').trim().toUpperCase()!=='DELETE'){ showAlert('Cancelled','error'); return; } }
+  var all={};
+  p.updates.concat(p.adds).forEach(function(u){ u.rec.ts=Date.now(); all[u.k]=u.rec; });
+  p.deletes.forEach(function(k){ all[k]=null; });
+  var keys=Object.keys(all),BATCH=200,idx=0;
+  setC('<div class="ldr"><span class="sp"></span>Applying import\u2026</div>');
+  function next(){
+    if(idx>=keys.length){ if(_store[t.node]) _store[t.node]=null; showAlert('Import done \u2014 '+p.updates.length+' updated, '+p.adds.length+' added, '+del+' deleted \u2713','success'); _iePlan=null; renderImpExp(); return; }
+    var slice=keys.slice(idx,idx+BATCH); idx+=BATCH; var body={}; slice.forEach(function(k){body[k]=all[k];});
+    fetch(FB_URL+'/'+t.node+'.json'+fbGetAuthParam(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ next(); }).catch(function(e){ showAlert('Stopped: '+e.message,'error'); });
+  }
+  next();
+}
+
+function iePickImport(tk){ _ieImpTable=tk; _iePlan=null; renderImpExp(); }
+
+function renderImpExp(){
+  var acc=_ieAccess();
+  if(!acc){ setC('<div class="ldr">Access denied</div>'); return; }
+  var html='<div class="pg-head"><div class="pg-t">\ud83d\udce4 <span class="hl">Import / Export</span></div></div>';
+  html+='<div class="tcard" style="padding:16px;margin-bottom:14px"><div style="font-weight:700;margin-bottom:4px">\u2b07\ufe0f Export</div>';
+  html+='<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Download all rows of a table as CSV (includes the key column so it can be re-imported).</div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  acc.exp.forEach(function(tk){ html+='<button class="btn btn-s btn-sm" onclick="ieExport(\''+tk+'\')">'+esc(_ieTables[tk].label)+'</button>'; });
+  html+='</div></div>';
+  html+='<div class="tcard" style="padding:16px"><div style="font-weight:700;margin-bottom:4px">\u2b06\ufe0f Import</div>';
+  html+='<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+(acc.mode==='sync'
+    ? 'Admin import = full sync: updates changed rows, adds new rows, and <b style="color:var(--warn,#f59e0b)">deletes rows not in the file</b>. Matched by key column.'
+    : 'Updates existing rows only (matched by key). New rows are skipped and nothing is deleted.')+'</div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+  acc.imp.forEach(function(tk){ html+='<button class="btn '+(_ieImpTable===tk?'btn-p':'btn-s')+' btn-sm" onclick="iePickImport(\''+tk+'\')">'+esc(_ieTables[tk].label)+'</button>'; });
+  html+='</div>';
+  if(_ieImpTable){
+    html+='<label class="btn btn-s btn-sm" style="cursor:pointer;display:inline-block">\ud83d\udcc1 Choose CSV for '+esc(_ieTables[_ieImpTable].label)+'<input type="file" accept=".csv,text/csv" style="display:none" onchange="ieImportFile(\''+_ieImpTable+'\',this)"></label>';
+  } else {
+    html+='<div style="font-size:12px;color:var(--text3)">Pick a table above, then choose a CSV file.</div>';
+  }
+  html+='<div id="ieplan"></div></div>';
+  setC(html);
+}
+
 function loadSh(sh,title,icon){
   _pg_title=title; _pg_icon=icon;
   if(_onDemandSheets[sh]){ renderOnDemandSearch(sh,title,icon); return; }
@@ -2909,7 +3077,7 @@ function renderSh(sh,title,icon,r){
   var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+title+'</span></div>';
   html+='<div style="display:flex;gap:7px">';
   html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
-  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+title+'\')">📤 Export/Import</button>';
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';
   html+='</div></div>';
   var srchPH={errorpayments:'Search by Booking ID…',recharge:'Search by Mobile Number…',disable:'Search by Mobile Number…'}[sh]||'Filter rows…';
   html+='<div class="fbar"><div class="fsw"><span class="fsi">🔍</span><input class="fi fi-m" placeholder="'+srchPH+'" oninput="onSrch(this.value)"></div>';
