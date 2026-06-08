@@ -159,8 +159,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 
 /* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
-.scard{background:var(--bg2);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
-.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,#b8860b);border-radius:10px 10px 0 0}
+.scard{background:linear-gradient(150deg,var(--bg2) 0%,rgba(127,127,127,.04) 100%);cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease,border-color .2s ease;border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08),0 6px 16px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,.06)}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--c,#b8860b);border-radius:14px 14px 0 0;box-shadow:0 1px 9px var(--c,#b8860b)}
 .sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:8px}
 .sv{font-size:28px;font-weight:800;color:var(--text)}
 .ss{font-size:11px;color:var(--text3);margin-top:3px}
@@ -299,7 +299,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 
-.scard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.15);border-color:var(--c,var(--gold))!important;}
+.scard:hover{transform:translateY(-5px) scale(1.01);box-shadow:0 16px 32px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.08);border-color:var(--c,var(--gold))!important;}
 .scard:active{transform:translateY(-1px);}
 
 
@@ -1137,7 +1137,7 @@ function getDashboardStatsFB(dateFrom,dateTo,cb){
       getDashboardStatsFB(dateFrom,dateTo,cb);
     });
     return;
-  }var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD')agentMap[hb].hold++;if(s==='CBD')agentMap[hb].cbd++;}if(fb&&(as==='OK'||as==='DONE')){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,pending:0,solved:0};kaMap[at].attempts++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
+  }var h=H.HOLD,sIdx=h.indexOf('STATUS'),asIdx=h.indexOf('AmtStatus'),hbIdx=h.indexOf('HOLD BY'),atIdx=h.indexOf('ATTEND BY'),dIdx=h.indexOf('DATE'),fbIdx=h.indexOf('FINAL BY');var rows=_store.hold.rows;if(dateFrom||dateTo)rows=rows.filter(function(r){var d=r[dIdx]?new Date(r[dIdx].split('/').reverse().join('-')):null;if(!d||isNaN(d.getTime()))return true;if(dateFrom&&d<new Date(dateFrom))return false;if(dateTo&&d>new Date(dateTo))return false;return true;});var holdPend=0,cbdPend=0,solved=0,agentMap={},kaMap={};rows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim();if(s==='HOLD'&&(as==='PENDING'||as===''))holdPend++;if(s==='CBD'&&(as==='PENDING'||as===''))cbdPend++;if(as==='OK'||as==='DONE')solved++;});var reportRows=rows;if(!dateFrom&&!dateTo){var _td=new Date();_td.setHours(0,0,0,0);reportRows=rows.filter(function(r){var _dt=parseDDMMYYYY(r[dIdx],'hold');return _dt&&_dt>=_td;});}reportRows.forEach(function(r){var s=(r[sIdx]||'').toUpperCase().trim(),as=(r[asIdx]||'').toUpperCase().trim(),hb=(r[hbIdx]||'').trim(),at=(r[atIdx]||'').trim(),fb=(r[fbIdx]||'').trim();var resolved=(s==='HOLD'||s==='CBD')&&(as==='OK'||as==='DONE');if(hb){agentMap[hb]=agentMap[hb]||{name:hb,hold:0,cbd:0,solved:0};if(s==='HOLD'&&(as==='PENDING'||as===''))agentMap[hb].hold++;if(s==='CBD'&&(as==='PENDING'||as===''))agentMap[hb].cbd++;}if(fb&&resolved){agentMap[fb]=agentMap[fb]||{name:fb,hold:0,cbd:0,solved:0};agentMap[fb].solved++;}if(at){kaMap[at]=kaMap[at]||{name:at,attempts:0,solved:0};kaMap[at].attempts++;if(resolved)kaMap[at].solved++;}});var rechPend=0,disCnt=0,disReq=0,enReq=0;if(_store.recharge){var psIdx=H.RECH.indexOf('Payment status');_store.recharge.rows.forEach(function(r){if((r[psIdx]||'').toUpperCase().trim()==='PENDING')rechPend++;});}if(_store.disable){var actIdx=H.DIS.indexOf('ACTION');_store.disable.rows.forEach(function(r){var act=(r[actIdx]||'').toUpperCase().trim();if(act==='DISABLED')disCnt++;if(act==='DISABLE KARNA HAI')disReq++;if(act==='ENABLE KARNA HAI')enReq++;});}// errorPending from store
   var errorPend=0;
   if(_store.errorpayments){var asIdx2=H.ERR.indexOf('AmtStatus');_store.errorpayments.rows.forEach(function(r){if((r[asIdx2]||'').toUpperCase().trim()==='PENDING'||!(r[asIdx2]||'').trim())errorPend++;});}
   var holdTotal=rows.length;
@@ -1221,7 +1221,7 @@ function doExport(filteredOnly){
   showAlert('Exported '+rows.length+' rows ✓','success');
 }
 
-function filterStoreTkt(){if(!_store.tickets)return {headers:H.TKT,rows:[],total:0};var rows=_store.tickets.rows;var role=R();if(role!=='ADMIN'&&role!=='MANAGER'&&role!=='ACCOUNTANT'){var sbIdx=H.TKT.indexOf('SUBMITTED BY');var uname=(_user.username||'').toUpperCase();rows=rows.filter(function(r){return(r[sbIdx]||'').toUpperCase()===uname;});}if(_tktSearch){var tl=_tktSearch.toLowerCase();rows=rows.filter(function(r){return r.some(function(c){return String(c).toLowerCase().indexOf(tl)>=0;});});}if(_tktFilter){var stIdx=H.TKT.indexOf('STATUS');rows=rows.filter(function(r){return(r[stIdx]||'').toUpperCase()===_tktFilter.toUpperCase();});}return {headers:H.TKT,rows:rows,total:rows.length};}
+function filterStoreTkt(){if(!_store.tickets)return {headers:H.TKT,rows:[],total:0};var rows=_store.tickets.rows;if(_tktSearch){var tl=_tktSearch.toLowerCase();rows=rows.filter(function(r){return r.some(function(c){return String(c).toLowerCase().indexOf(tl)>=0;});});}if(_tktFilter){var stIdx=H.TKT.indexOf('STATUS');rows=rows.filter(function(r){return(r[stIdx]||'').toUpperCase()===_tktFilter.toUpperCase();});}return {headers:H.TKT,rows:rows,total:rows.length};}
 
 
 // Hard fallback: if splash still showing after 5s, force show login
@@ -1851,7 +1851,7 @@ function drawPie(canvas,labels,vals,colors){
   });
 }
 function renderAgentTab(d,fv,tv,container){
-  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')'  :'(all-time)';
+  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')'  :'(today)';
   var agents=[];
   for(var k in d.agentReport){var a=d.agentReport[k];agents.push({name:a.name,hp:a.holdPend||0,cp:a.cbdPend||0,s:a.solved||0});}
   agents.sort(function(a,b){return b.hp-a.hp||b.cp-a.cp;});
@@ -1887,7 +1887,7 @@ function filterAgTab(q){
   if(c)c.textContent=f.length+(t?' of '+all.length:'')+' agents';
 }
 function renderKATab(d,fv,tv,container){
-  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')':'(all-time)';
+  var fl=fv||tv?' ('+( fv||'All')+' → '+(tv||'Today')+')':'(today)';
   var kal=[];
   for(var k in d.kaReport){var a=d.kaReport[k];kal.push({name:a.name,att:a.attempts||0,pend:a.pending||0,solv:a.solved||0});}
   kal.sort(function(a,b){return b.att-a.att;});
@@ -1895,21 +1895,20 @@ function renderKATab(d,fv,tv,container){
   html+='<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Based on ATTEND BY column in HOLD sheet</div>';
   if(!kal.length){html+='<div class="tcard"><div class="req-empty">No KA data — fill ATTEND BY column in HOLD sheet</div></div>';container.innerHTML=html;return;}
   var tA=0,tP=0,tS=0;
-  html+='<div class="tcard"><div class="tscroll"><table><thead><tr><th>#</th><th>KEY ACCOUNT NAME</th><th style="color:#7c3aed">TOTAL ATTEMPTS</th><th style="color:#b8860b">HOLD PENDING</th><th style="color:#15803d">TOTAL SOLVED</th><th>SUCCESS RATE</th></tr></thead><tbody>';
+  html+='<div class="tcard"><div class="tscroll"><table><thead><tr><th>#</th><th>KEY ACCOUNT NAME</th><th style="color:#7c3aed">TOTAL ATTEMPTS</th><th style="color:#15803d">TOTAL SOLVED</th><th>SUCCESS RATE</th></tr></thead><tbody>';
   for(var i=0;i<kal.length;i++){
     var ka=kal[i],rate=ka.att>0?Math.round((ka.solv/ka.att)*100):0;
     tA+=ka.att;tP+=ka.pend;tS+=ka.solv;
     html+='<tr><td style="color:var(--text3)">'+(i+1)+'</td>';
     html+='<td style="font-weight:600;color:var(--text)">'+esc(ka.name||'—')+'</td>';
     html+='<td><span class="badge b-senior">'+ka.att+'</span></td>';
-    html+='<td><span class="badge b-pending">'+ka.pend+'</span></td>';
     html+='<td><span class="badge b-ok">'+ka.solv+'</span></td>';
     html+='<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;background:var(--bg3);border-radius:4px;height:8px"><div style="background:#15803d;width:'+rate+'%;height:8px;border-radius:4px;transition:width .3s"></div></div><span style="font-size:11px;font-weight:600;min-width:32px">'+rate+'%</span></div></td>';
     html+='</tr>';
   }
   var tr=tA>0?Math.round((tS/tA)*100):0;
   html+='<tr style="background:var(--gold-bg);font-weight:700"><td></td><td style="color:var(--gold)">TOTAL</td>';
-  html+='<td><span class="badge b-senior">'+tA+'</span></td><td><span class="badge b-pending">'+tP+'</span></td>';
+  html+='<td><span class="badge b-senior">'+tA+'</span></td>';
   html+='<td><span class="badge b-ok">'+tS+'</span></td><td style="color:var(--text);font-weight:700">'+tr+'% avg</td></tr>';
   html+='</tbody></table></div></div>';
   container.innerHTML=html;
@@ -2282,14 +2281,22 @@ function onBidSearch(v,viewKey){
 }
 
 /* ═══ HOLD REQUESTS ═══ */
+function _holdReqRows(allRows,hdrs){
+  var sidx=hdrs.indexOf('STATUS'),asidx=hdrs.indexOf('AmtStatus'),out=[];
+  (allRows||[]).forEach(function(r){
+    if((r[sidx]||'').toString().trim().toUpperCase()!=='TO BE HOLD BY SENIOR') return;
+    var as=(r[asidx]||'').toString().trim().toUpperCase();
+    if(as==='OK'||as==='DONE'){ var fk=r._fbKey; if(fk){ fbPatch('hold/'+fk,{STATUS:'HOLD'},function(){}); r[sidx]='HOLD'; } return; }
+    out.push(r);
+  });
+  return out;
+}
 function loadHoldReq(){
   // Check store first
   if(_store.hold&&_store.hold.rows){
     var hdrs=_store.hold.headers;
     var sidx=hdrs.indexOf('STATUS');
-    var rows=_store.hold.rows.filter(function(r){
-      return (r[sidx]||'').toString().trim().toUpperCase()==='TO BE HOLD BY SENIOR';
-    });
+    var rows=_holdReqRows(_store.hold.rows,hdrs);
     renderHoldReq({success:true,headers:hdrs,rows:rows,total:rows.length});
     
     if(_store.hold&&_store.hold._stale){ _store.hold._stale=false; bgSyncSheet('hold'); }return;
@@ -2299,9 +2306,7 @@ function loadHoldReq(){
     if(!err&&data){_store.hold={headers:H.HOLD,rows:fbObjToRows(data,H.HOLD)};}
     var hdrs=_store.hold?_store.hold.headers:H.HOLD;
     var sidx=hdrs.indexOf('STATUS');
-    var rows=(_store.hold?_store.hold.rows:[]).filter(function(r){
-      return (r[sidx]||'').toString().trim().toUpperCase()==='TO BE HOLD BY SENIOR';
-    });
+    var rows=_holdReqRows(_store.hold?_store.hold.rows:[],hdrs);
     renderHoldReq({success:true,headers:hdrs,rows:rows,total:rows.length});
   });
 }
@@ -2669,18 +2674,32 @@ function searchDataTab(sh,term){
 
 /* ═══ DATA MANAGER (ADMIN only): load any sheet, filter by column, bulk-delete from Firebase ═══ */
 var _dmSheet='', _dmRows=[], _dmHdr=[], _dmFilters={}, _dmSel={}, _dmCap=500;
+var _dmDateFrom='', _dmDateTo='';
 var _dmSheets=[
-  {sh:'hold',          label:'Hold',           hdr:H.HOLD},
-  {sh:'errorpayments', label:'Error Payments', hdr:H.ERR},
-  {sh:'recharge',      label:'Recharge',       hdr:H.RECH},
-  {sh:'disable',       label:'Disable',        hdr:H.DIS},
-  {sh:'tickets',       label:'Tickets',        hdr:H.TKT}
+  {sh:'hold',          label:'Hold',           hdr:H.HOLD, dcol:'DATE',         dfmt:'hold'},
+  {sh:'errorpayments', label:'Error Payments', hdr:H.ERR,  dcol:'DATE',         dfmt:'errorpayments'},
+  {sh:'recharge',      label:'Recharge',       hdr:H.RECH, dcol:'Payment date', dfmt:'recharge'},
+  {sh:'disable',       label:'Disable',        hdr:H.DIS,  dcol:'DATE',         dfmt:'disable'},
+  {sh:'tickets',       label:'Tickets',        hdr:H.TKT,  dcol:'DATE',         dfmt:'hold'}
 ];
+function _dmCfg(){ for(var i=0;i<_dmSheets.length;i++) if(_dmSheets[i].sh===_dmSheet) return _dmSheets[i]; return null; }
 function dmLabel(){ for(var i=0;i<_dmSheets.length;i++) if(_dmSheets[i].sh===_dmSheet) return _dmSheets[i].label; return _dmSheet; }
 function dmFiltered(){
   var fk=Object.keys(_dmFilters).filter(function(i){ return (_dmFilters[i]||'').trim(); });
-  if(!fk.length) return _dmRows;
-  return _dmRows.filter(function(r){
+  var rows=_dmRows;
+  if(_dmDateFrom||_dmDateTo){
+    var cfg=_dmCfg(), dci=cfg?_dmHdr.indexOf(cfg.dcol):-1;
+    if(dci>=0){
+      var from=_dmDateFrom?new Date(_dmDateFrom):null, to=_dmDateTo?new Date(_dmDateTo):null;
+      if(to) to.setHours(23,59,59,999);
+      rows=rows.filter(function(r){
+        var dt=parseDDMMYYYY(r[dci], cfg.dfmt); if(!dt) return false;
+        if(from&&dt<from) return false; if(to&&dt>to) return false; return true;
+      });
+    }
+  }
+  if(!fk.length) return rows;
+  return rows.filter(function(r){
     return fk.every(function(i){
       return String(r[i]==null?'':r[i]).toLowerCase().indexOf(_dmFilters[i].toLowerCase().trim())>=0;
     });
@@ -2716,6 +2735,8 @@ function dmToggle(el,k){ _dmSel[k]=el.checked; var bar=document.getElementById('
 function dmSetFilter(i,v){ _dmFilters[i]=v; dmRefresh(); }
 function dmSelectAllFiltered(){ dmFiltered().forEach(function(r){ _dmSel[String(r._fbKey)]=true; }); dmRefresh(); }
 function dmClearSel(){ _dmSel={}; dmRefresh(); }
+function dmSetDateFilter(){ var f=document.getElementById('dmFrom'),t=document.getElementById('dmTo'); _dmDateFrom=f?f.value:''; _dmDateTo=t?t.value:''; renderDataManager(); }
+function dmClearDate(){ _dmDateFrom=''; _dmDateTo=''; renderDataManager(); }
 
 function renderDataManager(){
   if(R()!=='ADMIN'){ setC('<div class="ldr">Access denied</div>'); return; }
@@ -2727,6 +2748,15 @@ function renderDataManager(){
   html+='</div></div>';
   if(!_dmSheet){ html+='<div class="tcard"><div class="req-empty">Pick a sheet above to load and manage its data.</div></div>'; setC(html); return; }
   html+='<div id="dmBar" class="tcard" style="padding:12px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+dmBarHtml()+'</div>';
+  var _cfgD=_dmCfg();
+  html+='<div class="tcard" style="padding:10px 12px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+  html+='<span style="font-size:12px;color:var(--text3)">\ud83d\udcc5 '+esc(_cfgD?_cfgD.dcol:'Date')+' from</span>';
+  html+='<input type="date" id="dmFrom" class="fi" style="width:150px" value="'+esc(_dmDateFrom)+'" onchange="dmSetDateFilter()">';
+  html+='<span style="font-size:12px;color:var(--text3)">to</span>';
+  html+='<input type="date" id="dmTo" class="fi" style="width:150px" value="'+esc(_dmDateTo)+'" onchange="dmSetDateFilter()">';
+  if(_dmDateFrom||_dmDateTo) html+='<button class="btn btn-s btn-sm" onclick="dmClearDate()">Clear date</button>';
+  html+='<span style="font-size:11px;color:var(--text3)">(type below each column for text filters)</span>';
+  html+='</div>';
   html+='<div class="tcard"><div class="tscroll"><table><thead>';
   html+='<tr><th style="width:34px"></th>';
   _dmHdr.forEach(function(h,i){
@@ -2742,7 +2772,7 @@ function renderDataManager(){
 }
 
 function dmLoad(sh){
-  _dmSheet=sh; _dmFilters={}; _dmSel={}; _dmRows=[];
+  _dmSheet=sh; _dmFilters={}; _dmSel={}; _dmRows=[]; _dmDateFrom=''; _dmDateTo='';
   for(var i=0;i<_dmSheets.length;i++) if(_dmSheets[i].sh===sh) _dmHdr=_dmSheets[i].hdr;
   setC('<div class="ldr"><span class="sp"></span>Loading '+esc(dmLabel())+'\u2026</div>');
   fbGet(sh,function(err,data){
@@ -3221,7 +3251,7 @@ function buildForm(sh,data){
     html+=fiS('ISSUE TYPE','ISSUE',issueVal,issueOpts,'req','toggleIssueOther()');
     html+='<div class="fr" id="issueOtherWrap" style="'+(issueVal==='OTHER'?'':'display:none')+'">';
     html+='<label class="fl">OTHER ISSUE DETAILS<span class="freq">*</span></label>';
-    html+='<textarea class="fta" name="ISSUE_OTHER">'+esc(String(otherVal))+'</textarea></div>';
+    html+='<textarea class="fta" name="ISSUE_OTHER" data-req="1">'+esc(String(otherVal))+'</textarea></div>';
     html+=fi('AGENT DETAILS','Agent Details',d['Agent Details']||'','text');
     html+=fi('DRIVER DETAILS','Driver Details',d['Driver Details']||'','text');
     html+=fi('T AMT','T AMT',d['T AMT']||'','number');
@@ -3236,7 +3266,8 @@ function buildForm(sh,data){
     html+=fi('UTR','UTR',d.UTR||'','text');
     html+=fi('PAYMENT DATE','Payment_date',d.Payment_date||'','date');
   } else if(sh==='recharge'){
-    html+=fi('COMPLAINT ID','Complaint Id',d['Complaint Id']||'','text');
+    var _cid=d['Complaint Id']||_genComplaintId();
+    html+=fi('COMPLAINT ID','Complaint Id',_cid,'readonly');
     html+=fi('MOBILE NUMBER','Mobile number',d['Mobile number']||'','text','req');
     html+=fi('CUSTOMER NAME','Customer name',d['Customer name']||'','text');
     html+=fi('ISSUE','Issue',d.Issue||'','textarea','req');
@@ -3291,21 +3322,24 @@ function buildForm(sh,data){
 function fs(l){return '<div class="fsect">'+l+'</div>';}
 function fi(label,name,val,type,extra){
   var req=extra==='req'?'<span class="freq">*</span>':'';
+  var rq=extra==='req'?' data-req="1"':'';
   var v=String(val===null||val===undefined?'':val);
   var h='<div class="fr"><label class="fl">'+label+req+'</label>';
   if(type==='agent'){
     var agVal=v||(_user&&(_user.agentName||_user.username))||'';
-    return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(agVal)+'" placeholder="Enter name"></div>';
+    return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(agVal)+'"'+rq+' placeholder="Enter name"></div>';
   }
-  if(type==='textarea') return h+'<textarea class="fta" name="'+name+'">'+esc(v)+'</textarea></div>';
-  if(type==='date') return h+'<input class="fi2" type="date" name="'+name+'" value="'+esc(v?v.substring(0,10):'')+'"></div>';
-  if(type==='number') return h+'<input class="fi2" type="number" name="'+name+'" value="'+esc(v)+'" step="0.01"></div>';
-  return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(v)+'"></div>';
+  if(type==='textarea') return h+'<textarea class="fta" name="'+name+'"'+rq+'>'+esc(v)+'</textarea></div>';
+  if(type==='date') return h+'<input class="fi2" type="date" name="'+name+'" value="'+esc(v?v.substring(0,10):'')+'"'+rq+'></div>';
+  if(type==='number') return h+'<input class="fi2" type="number" name="'+name+'" value="'+esc(v)+'" step="0.01"'+rq+'></div>';
+  if(type==='readonly') return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(v)+'" readonly style="opacity:.65;cursor:not-allowed;background:rgba(0,0,0,.15)"></div>';
+  return h+'<input class="fi2" type="text" name="'+name+'" value="'+esc(v)+'"'+rq+'></div>';
 }
 function fiS(label,name,val,opts,extra,onchange){
   var req=extra==='req'?'<span class="freq">*</span>':'';
+  var rq=extra==='req'?' data-req="1"':'';
   var oc=onchange?' onchange="'+onchange+'"':'';
-  var h='<div class="fr"><label class="fl">'+label+req+'</label><select class="fse" name="'+name+'"'+oc+'><option value="">-- Select --</option>';
+  var h='<div class="fr"><label class="fl">'+label+req+'</label><select class="fse" name="'+name+'"'+rq+oc+'><option value="">-- Select --</option>';
   for(var i=0;i<opts.length;i++) h+='<option value="'+esc(opts[i])+'"'+(String(val)===opts[i]?' selected':'')+'>'+esc(opts[i])+'</option>';
   return h+'</select></div>';
 }
@@ -3335,6 +3369,7 @@ function onStChg(){var ss=document.querySelector('#pBody [name="STATUS"]');var d
 function toggleIssueOther(){var s=document.querySelector('#pBody [name="ISSUE"]');var w=document.getElementById('issueOtherWrap');if(s&&w)w.style.display=s.value==='OTHER'?'':'none';}
 
 function closePanel(){document.getElementById('ov').style.display='none';document.getElementById('panel').classList.remove('open');clearPresence();}
+function _genComplaintId(){var n=new Date();var p=function(x){return String(x).padStart(2,'0');};return 'RCH-'+n.getFullYear()+p(n.getMonth()+1)+p(n.getDate())+'-'+(Date.now()%100000);}
 function _extractPhone(txt){
   var s=String(txt==null?'':txt).replace(/[\s\-]/g,'');
   var m=s.match(/(?:91)?([6-9]\d{9})/);
@@ -3376,6 +3411,9 @@ function savePanel(){
   btn.removeAttribute('onclick');btn.disabled=true;btn.textContent='Saving...';
   var inputs=document.querySelectorAll('#pBody [name]'),d={};
   for(var i=0;i<inputs.length;i++)d[inputs[i].name]=inputs[i].value;
+  var reqEls=document.querySelectorAll('#pBody [data-req]'),missing=[];
+  for(var rqi=0;rqi<reqEls.length;rqi++){var rel=reqEls[rqi];if(rel.offsetParent===null)continue;if(!String(rel.value||'').trim()){var frx=rel.closest?rel.closest('.fr'):null,flx=frx?frx.querySelector('.fl'):null;missing.push(flx?flx.textContent.replace('*','').trim():rel.name);}}
+  if(missing.length){showPanelErr('Please fill required field(s): '+missing.join(', '));btn.disabled=false;btn.textContent='Save Record';return;}
   var pathMap={hold:'hold',errorpayments:'errorpayments',recharge:'recharge',disable:'disable'};
   var hdrMap={hold:H.HOLD,errorpayments:H.ERR,recharge:H.RECH,disable:H.DIS};
   var keyMap={hold:'BOOKING ID',errorpayments:'id',recharge:'Complaint Id',disable:'id'};
@@ -3885,7 +3923,6 @@ function loadTickets(){
     var rows=_store.tickets.rows.filter(function(row){
       // Role filter: CALLING AGENT sees only own tickets; ALL others see ALL tickets
       var isCallAgent=role==='CALLING AGENT';
-      if(isCallAgent&&(row[subIdx]||'').toString().trim().toUpperCase()!==username.toUpperCase()) return false;
       // Status filter
       if(_tktFilter&&(row[stIdx]||'').toString().trim().toUpperCase()!==_tktFilter) return false;
       // Search filter
@@ -3909,8 +3946,8 @@ function renderTickets(r, isMgr){
   var role=R();
   var role=R(),isMgr=role==='ADMIN'||role==='MANAGER'||role==='ACCOUNTANT';
   var html='<div class="pg-head">';
-  html+='<div><div class="pg-t">🎫 <span class="hl">'+(isMgr?'All Tickets':'My Tickets')+'</span></div>';
-  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(isMgr?'All agents tickets':'Your support tickets')+'</div>';
+  html+='<div><div class="pg-t">🎫 <span class="hl">'+'All Tickets'+'</span></div>';
+  html+='<div style="font-size:11px;color:var(--text3);margin-top:3px">'+'All agents tickets'+'</div>';
   html+='</div>';
   if(!isMgr) html+='<button class="btn btn-p btn-sm" onclick="openRaiseTicket()">+ Raise Ticket</button>';
   html+='</div>';
