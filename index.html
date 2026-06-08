@@ -454,6 +454,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
       </div>
       <div id="adminNav" style="display:none">
         <div class="sb-s">Admin</div>
+        <div class="ni" id="nav-showall" onclick="nav('showall')"><span class="ni-ic">🗂️</span>Data Manager</div>
         <div class="ni" id="nav-users" onclick="nav('users')"><span class="ni-ic">👥</span>Users</div>
       </div>
     </div>
@@ -1412,7 +1413,7 @@ function bootApp(){
   var allNavIds=['nav-dashboard','nav-hold-main','nav-hold-done',
     'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
     'nav-hold-req','nav-dis-req','nav-en-req',
-    'nav-top-agents','nav-tickets','nav-users'];
+    'nav-top-agents','nav-tickets','nav-users','nav-showall'];
 
   // Hide everything first
   allNavIds.forEach(function(id){
@@ -1431,7 +1432,7 @@ function bootApp(){
     show_ids=['nav-dashboard','nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req',
-      'nav-tickets','nav-users'];
+      'nav-tickets','nav-users','nav-showall'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
     show_ids=['nav-dashboard','nav-hold-main',
@@ -1617,6 +1618,7 @@ function loadPg(pg){
     case 'dis-req':     loadDisReq();break;
     case 'en-req':      loadEnReq();break;
     case 'users':       loadUsers();break;
+    case 'showall':     renderDataManager();break;
   }
 }
 function manualRefresh(){loadPg(_pg);}
@@ -2663,6 +2665,127 @@ function searchDataTab(sh,term){
       if(rows.length) done(rows); else fallback();
     }).catch(fallback);
   }catch(e){ fallback(); }
+}
+
+/* ═══ DATA MANAGER (ADMIN only): load any sheet, filter by column, bulk-delete from Firebase ═══ */
+var _dmSheet='', _dmRows=[], _dmHdr=[], _dmFilters={}, _dmSel={}, _dmCap=500;
+var _dmSheets=[
+  {sh:'hold',          label:'Hold',           hdr:H.HOLD},
+  {sh:'errorpayments', label:'Error Payments', hdr:H.ERR},
+  {sh:'recharge',      label:'Recharge',       hdr:H.RECH},
+  {sh:'disable',       label:'Disable',        hdr:H.DIS},
+  {sh:'tickets',       label:'Tickets',        hdr:H.TKT}
+];
+function dmLabel(){ for(var i=0;i<_dmSheets.length;i++) if(_dmSheets[i].sh===_dmSheet) return _dmSheets[i].label; return _dmSheet; }
+function dmFiltered(){
+  var fk=Object.keys(_dmFilters).filter(function(i){ return (_dmFilters[i]||'').trim(); });
+  if(!fk.length) return _dmRows;
+  return _dmRows.filter(function(r){
+    return fk.every(function(i){
+      return String(r[i]==null?'':r[i]).toLowerCase().indexOf(_dmFilters[i].toLowerCase().trim())>=0;
+    });
+  });
+}
+function dmBarHtml(){
+  var filtered=dmFiltered();
+  var selCount=Object.keys(_dmSel).filter(function(k){ return _dmSel[k]; }).length;
+  var h='<span style="font-size:13px">'+_dmRows.length+' total \u00b7 <b>'+filtered.length+' after filter</b></span>';
+  h+='<button class="btn btn-s btn-sm" onclick="dmSelectAllFiltered()">\u2611 Select all '+filtered.length+' filtered</button>';
+  h+='<button class="btn btn-s btn-sm" onclick="dmClearSel()">Clear</button>';
+  h+='<button class="btn btn-d btn-sm" onclick="dmDelete()" '+(selCount?'':'disabled')+'>\ud83d\uddd1 Delete selected ('+selCount+')</button>';
+  h+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+_dmSheet+'\',\''+esc(dmLabel())+'\')">\ud83d\udce4 Export/Import</button>';
+  return h;
+}
+function dmBodyHtml(){
+  var show=dmFiltered().slice(0,_dmCap), h='';
+  show.forEach(function(r){
+    var k=String(r._fbKey).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    h+='<tr><td><input type="checkbox" '+(_dmSel[String(r._fbKey)]?'checked':'')+' onclick="dmToggle(this,\''+k+'\')"></td>';
+    for(var c=0;c<_dmHdr.length;c++) h+='<td>'+esc(String(r[c]==null?'':r[c]))+'</td>';
+    h+='</tr>';
+  });
+  return h;
+}
+function dmRefresh(){
+  var bar=document.getElementById('dmBar'); if(bar) bar.innerHTML=dmBarHtml();
+  var body=document.getElementById('dmBody'); if(body) body.innerHTML=dmBodyHtml();
+  var fl=dmFiltered().length, cap=document.getElementById('dmCapNote');
+  if(cap){ cap.style.display=fl>_dmCap?'block':'none'; cap.textContent='Showing first '+_dmCap+' of '+fl+' filtered rows \u2014 "Select all filtered" still selects all '+fl+'.'; }
+}
+function dmToggle(el,k){ _dmSel[k]=el.checked; var bar=document.getElementById('dmBar'); if(bar) bar.innerHTML=dmBarHtml(); }
+function dmSetFilter(i,v){ _dmFilters[i]=v; dmRefresh(); }
+function dmSelectAllFiltered(){ dmFiltered().forEach(function(r){ _dmSel[String(r._fbKey)]=true; }); dmRefresh(); }
+function dmClearSel(){ _dmSel={}; dmRefresh(); }
+
+function renderDataManager(){
+  if(R()!=='ADMIN'){ setC('<div class="ldr">Access denied</div>'); return; }
+  var html='<div class="pg-head"><div class="pg-t">\ud83d\uddc2\ufe0f <span class="hl">Data Manager</span></div></div>';
+  html+='<div class="tcard" style="padding:14px;margin-bottom:12px"><div style="font-size:12px;color:var(--text3);margin-bottom:8px">Select a sheet to load all its records, then filter by any column and delete what you don\u2019t need. Deletes are permanent.</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
+  _dmSheets.forEach(function(s){
+    html+='<button class="btn '+(_dmSheet===s.sh?'btn-p':'btn-s')+' btn-sm" onclick="dmLoad(\''+s.sh+'\')">'+esc(s.label)+'</button>';
+  });
+  html+='</div></div>';
+  if(!_dmSheet){ html+='<div class="tcard"><div class="req-empty">Pick a sheet above to load and manage its data.</div></div>'; setC(html); return; }
+  html+='<div id="dmBar" class="tcard" style="padding:12px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+dmBarHtml()+'</div>';
+  html+='<div class="tcard"><div class="tscroll"><table><thead>';
+  html+='<tr><th style="width:34px"></th>';
+  _dmHdr.forEach(function(h,i){
+    html+='<th style="padding:4px"><input class="fi" style="width:100%;min-width:90px;font-size:11px;padding:4px" placeholder="filter '+esc(h)+'" value="'+esc(_dmFilters[i]||'')+'" oninput="dmSetFilter('+i+',this.value)"></th>';
+  });
+  html+='</tr><tr><th style="width:34px">\u2713</th>';
+  _dmHdr.forEach(function(h){ html+='<th>'+esc(h)+'</th>'; });
+  html+='</tr></thead><tbody id="dmBody">'+dmBodyHtml()+'</tbody></table></div>';
+  html+='<div id="dmCapNote" style="padding:8px 12px;font-size:12px;color:var(--warn);display:none"></div>';
+  html+='</div>';
+  setC(html);
+  dmRefresh();
+}
+
+function dmLoad(sh){
+  _dmSheet=sh; _dmFilters={}; _dmSel={}; _dmRows=[];
+  for(var i=0;i<_dmSheets.length;i++) if(_dmSheets[i].sh===sh) _dmHdr=_dmSheets[i].hdr;
+  setC('<div class="ldr"><span class="sp"></span>Loading '+esc(dmLabel())+'\u2026</div>');
+  fbGet(sh,function(err,data){
+    if(err){ setC('<div class="ldr">Failed to load '+esc(dmLabel())+'. Try again.</div>'); return; }
+    _dmRows=fbObjToRows(data,_dmHdr);
+    renderDataManager();
+  });
+}
+
+function dmBulkDelete(sh,keys,cb){
+  var BATCH=200, idx=0, done=0;
+  function next(){
+    if(idx>=keys.length){ cb(null,done); return; }
+    var slice=keys.slice(idx,idx+BATCH); idx+=BATCH;
+    var body={}; slice.forEach(function(k){ body[k]=null; });
+    fetch(FB_URL+'/'+sh+'.json'+fbGetAuthParam(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){ done+=slice.length; next(); })
+      .catch(function(e){ cb(e,done); });
+  }
+  next();
+}
+
+function dmDelete(){
+  if(R()!=='ADMIN') return;
+  var keys=Object.keys(_dmSel).filter(function(k){ return _dmSel[k]; });
+  if(!keys.length){ showAlert('Nothing selected','error'); return; }
+  var msg='Permanently DELETE '+keys.length+' record'+(keys.length>1?'s':'')+' from "'+dmLabel()+'"?\n\nThis removes them from the Firebase database and CANNOT be undone.';
+  if(!confirm(msg)) return;
+  if(keys.length>=50){
+    var typed=prompt('Large delete \u2014 type DELETE to confirm removing '+keys.length+' records:');
+    if((typed||'').trim().toUpperCase()!=='DELETE'){ showAlert('Cancelled','error'); return; }
+  }
+  setC('<div class="ldr"><span class="sp"></span>Deleting '+keys.length+'\u2026</div>');
+  dmBulkDelete(_dmSheet,keys,function(err,doneCount){
+    var ks={}; keys.slice(0,doneCount).forEach(function(k){ ks[k]=1; });
+    _dmRows=_dmRows.filter(function(r){ return !ks[String(r._fbKey)]; });
+    if(_store[_dmSheet]&&_store[_dmSheet].rows) _store[_dmSheet].rows=_store[_dmSheet].rows.filter(function(r){ return !ks[String(r._fbKey)]; });
+    _dmSel={};
+    if(err) showAlert('Stopped after '+doneCount+' \u2014 '+err.message,'error');
+    else showAlert('Deleted '+doneCount+' records \u2713','success');
+    renderDataManager();
+  });
 }
 
 function loadSh(sh,title,icon){
