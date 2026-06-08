@@ -869,8 +869,6 @@ var _liveAttached=false;
 function _liveSheetDefs(){
   return [
     {sh:'hold',          hdr:H.HOLD},
-    {sh:'errorpayments', hdr:H.ERR},
-    {sh:'recharge',      hdr:H.RECH},
     {sh:'disable',       hdr:H.DIS},
     {sh:'tickets',       hdr:H.TKT}
   ];
@@ -2557,8 +2555,85 @@ var COLS={
   disable:['DATE','NUMBER','NAME','TYPE','APP STATUS','DISABLED BY','ISSUE','DISABLE DAYS','ENABLED BY','ACTION']
 };
 
+/* ── On-demand search tabs (Error Payments, Recharge): not preloaded; a search
+   fetches only the matching rows. Self-contained — does not affect other tabs. ── */
+var _onDemandSheets={
+  errorpayments:{field:'BOOKING ID',  label:'Booking ID',     phone:false, hdr:H.ERR},
+  recharge:     {field:'mobilePhone', label:'Mobile Number',  phone:true,  hdr:H.RECH}
+};
+
+function renderOnDemandSearch(sh,title,icon){
+  var cfg=_onDemandSheets[sh]; var st=_ts[sh]=_ts[sh]||{page:1,pageSize:100};
+  var term=st._odTerm||'';
+  var active=!!(_store[sh]&&_store[sh]._odActive);
+  var rows=active?_store[sh].rows:null;
+  var canEI=R()==='ADMIN'||R()==='ACCOUNTANT'||R()==='MANAGER';
+  var html='<div class="pg-head"><div class="pg-t">'+icon+' <span class="hl">'+esc(title)+'</span></div><div style="display:flex;gap:7px">';
+  html+='<button class="btn btn-p btn-sm" onclick="openPanel(\'add\',\''+sh+'\',null)">+ Add</button>';
+  if(canEI) html+='<button class="btn btn-s btn-sm" onclick="showExportImport(\''+sh+'\',\''+esc(title)+'\')">\ud83d\udce4 Export/Import</button>';
+  html+='</div></div>';
+  html+='<div class="tcard" style="padding:14px;margin-bottom:12px"><div style="display:flex;gap:8px;align-items:center">';
+  html+='<span style="font-size:18px">\ud83d\udd0d</span>';
+  html+='<input id="odSearch" class="fi" style="flex:1" value="'+esc(term)+'" placeholder="Search by '+cfg.label+' and press Enter\u2026" onkeydown="if(event.key===\'Enter\')searchDataTab(\''+sh+'\',this.value)">';
+  html+='<button class="btn btn-p btn-sm" onclick="searchDataTab(\''+sh+'\',document.getElementById(\'odSearch\').value)">Search</button>';
+  if(active||term) html+='<button class="btn btn-s btn-sm" onclick="clearODSearch(\''+sh+'\')">Clear</button>';
+  html+='</div><div style="font-size:11px;color:var(--text3);margin-top:6px">This tab loads on demand to save data \u2014 search by '+cfg.label+' to view records, or use + Add to enter a new one.</div></div>';
+  if(rows===null){
+    html+='<div class="tcard"><div class="req-empty">Search by '+cfg.label+' above to find records.</div></div>';
+  } else if(!rows.length){
+    html+='<div class="tcard"><div class="req-empty">No records found for "'+esc(term)+'".</div></div>';
+  } else {
+    html+=_odResultsTable(sh,cfg.hdr,rows,term);
+  }
+  setC(html);
+}
+
+function _odResultsTable(sh,hdr,rows,term){
+  var role=R(); var canDel=role==='ADMIN'||role==='MANAGER';
+  var html='<div class="tcard"><div style="padding:8px 12px;font-size:12px;color:var(--text3)">'+rows.length+' record'+(rows.length===1?'':'s')+' for "'+esc(term)+'"</div><div class="tscroll"><table><thead><tr><th style="width:34px">#</th>';
+  hdr.forEach(function(h){ html+='<th>'+esc(h)+'</th>'; });
+  html+='<th>Actions</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    html+='<tr><td style="color:var(--text3)">'+(i+1)+'</td>';
+    for(var c=0;c<hdr.length;c++) html+='<td>'+esc(String(r[c]==null?'':r[c]))+'</td>';
+    var rid=String(r._fbKey||'');
+    html+='<td><button class="btn btn-s btn-xs" onclick="openPanel(\'edit\',\''+sh+'\',\''+rid+'\')">Edit</button>';
+    if(canDel) html+=' <button class="btn btn-d btn-xs" onclick="confirmDel(\''+sh+'\',\''+rid+'\')" title="Delete">\ud83d\uddd1</button>';
+    html+='</td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+function clearODSearch(sh){
+  var st=_ts[sh]=_ts[sh]||{}; st._odTerm='';
+  if(_store[sh]) _store[sh]._odActive=false;
+  renderOnDemandSearch(sh,_pg_title||sh,_pg_icon||'');
+}
+
+function searchDataTab(sh,term){
+  term=(term||'').trim();
+  var cfg=_onDemandSheets[sh]; var st=_ts[sh]=_ts[sh]||{};
+  var title=_pg_title||sh, icon=_pg_icon||'';
+  st._odTerm=term;
+  if(!term){ if(_store[sh])_store[sh]._odActive=false; renderOnDemandSearch(sh,title,icon); return; }
+  setC('<div class="ldr"><span class="sp"></span>Searching\u2026</div>');
+  var hdr=cfg.hdr;
+  var done=function(rows){ _store[sh]={headers:hdr,rows:rows||[],_odActive:true}; renderOnDemandSearch(sh,title,icon); };
+  var fallback=function(){ searchOldRecord(term,sh,function(rows){ done(rows); }); };
+  if(!_fbDb){ fallback(); return; }
+  var val=cfg.phone?(_extractPhone(term)||term):term;
+  try{
+    _fbDb.ref(sh).orderByChild(cfg.field).equalTo(val).once('value').then(function(snap){
+      var rows=fbObjToRows(snap.val(),hdr);
+      if(rows.length) done(rows); else fallback();
+    }).catch(fallback);
+  }catch(e){ fallback(); }
+}
+
 function loadSh(sh,title,icon){
   _pg_title=title; _pg_icon=icon;
+  if(_onDemandSheets[sh]){ renderOnDemandSearch(sh,title,icon); return; }
   var st=_ts[sh]=_ts[sh]||{page:1,pageSize:100,search:''};
   // Use cached store if available
   if(_store[sh]&&_store[sh].rows&&_store[sh].rows.length>0&&!_store[sh]._stale){
