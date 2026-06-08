@@ -3100,6 +3100,30 @@ function onStChg(){var ss=document.querySelector('#pBody [name="STATUS"]');var d
 function toggleIssueOther(){var s=document.querySelector('#pBody [name="ISSUE"]');var w=document.getElementById('issueOtherWrap');if(s&&w)w.style.display=s.value==='OTHER'?'':'none';}
 
 function closePanel(){document.getElementById('ov').style.display='none';document.getElementById('panel').classList.remove('open');clearPresence();}
+function _extractPhone(txt){
+  var s=String(txt==null?'':txt).replace(/[\s\-]/g,'');
+  var m=s.match(/(?:91)?([6-9]\d{9})/);
+  return m?m[1]:'';
+}
+function _attachCleanPhones(sh, record, d){
+  // Additive clean phone fields for cheap exact-number search. Existing fields untouched.
+  if(sh==='hold'){
+    record.driverPhone=_extractPhone(d['DRIVER']);
+    record.agentPhone=_extractPhone(d['AGENT NUMBER']);
+  }
+}
+function _keyInStore(sh, kv){
+  if(!_store[sh]||!_store[sh].rows) return false;
+  for(var i=0;i<_store[sh].rows.length;i++){ if(_store[sh].rows[i]._fbKey===kv) return true; }
+  return false;
+}
+function _checkDuplicateKey(sh, kv, cb){
+  try{
+    if(_fbDb){ _fbDb.ref(sh+'/'+kv).once('value').then(function(s){ cb(!!(s&&s.exists())); }).catch(function(){ cb(_keyInStore(sh,kv)); }); return; }
+  }catch(e){}
+  cb(_keyInStore(sh,kv));
+}
+
 function savePanel(){
   var sh=_ps,rowId=_pid,mode=_pm,btn=document.getElementById('saveBtn');
   btn.removeAttribute('onclick');btn.disabled=true;btn.textContent='Saving...';
@@ -3111,10 +3135,11 @@ function savePanel(){
   var path=pathMap[sh];if(!path){showAlert('Unknown: '+sh,'error');btn.disabled=false;btn.textContent='Save Record';return;}
   var hdrs=hdrMap[sh],keyCol=keyMap[sh],record={};
   hdrs.forEach(function(h){record[h.replace(/[.#$[\]\/]/g,'_')]=d[h]||'';});
+  _attachCleanPhones(sh, record, d);
   var done2=function(err){btn.disabled=false;btn.textContent='Save Record';if(err){showAlert('Save failed: '+err.message,'error');return;}showAlert('Saved!','success');closePanel();if(sh==='hold'){_holdRowCount=0;_holdTs='0';}loadPg(sh);updateBadges();};
   if(mode==='add'){
     var kv=(d[keyCol]||'').toString().replace(/[.#$[\]\/]/g,'_')||'r_'+Date.now();
-    fbSet(path+'/'+kv,record,function(err){if(!err&&_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=kv;_store[sh].rows.push(row);}done2(err);});
+    (function(){var _go=function(){fbSet(path+'/'+kv,record,function(err){if(!err&&_store[sh]){var row=hdrs.map(function(h){return record[h.replace(/[.#$[\]\/]/g,'_')]||'';});row._fbKey=kv;_store[sh].rows.push(row);}done2(err);});};if(sh==='hold'&&(d[keyCol]||'').toString().trim()){var _sb=document.getElementById('saveBtn');_sb.disabled=true;_sb.textContent='Checking...';_checkDuplicateKey('hold',kv,function(ex){if(ex){_sb.disabled=false;_sb.textContent='Save Record';showAlert('Booking ID '+(d[keyCol])+' already exists — not saved (would overwrite the existing record).','error');}else{_go();}});}else{_go();}})();
   }else{
     var fk=rowId;if(_store[sh]){var ki=hdrs.indexOf(keyCol);for(var j=0;j<_store[sh].rows.length;j++){if((_store[sh].rows[j][ki]||'').toString().trim()===rowId.toString().trim()){fk=_store[sh].rows[j]._fbKey||rowId;break;}}}
     fbPatch(path+'/'+fk,record,function(err){if(!err&&_store[sh]){var ki2=hdrs.indexOf(keyCol);for(var j2=0;j2<_store[sh].rows.length;j2++){if((_store[sh].rows[j2][ki2]||'').toString().trim()===rowId.toString().trim()){hdrs.forEach(function(h,ix){_store[sh].rows[j2][ix]=record[h.replace(/[.#$[\]\/]/g,'_')]||'';});break;}}}done2(err);});
