@@ -316,6 +316,10 @@ tr.ka-row:hover td{background:#fef9c3!important}
 
 
 </style>
+<!-- Firebase SDK (compat) — enables real-time live listeners. If these fail to
+     load (offline/blocked), the app falls back to the existing REST data path. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 <!-- SPLASH -->
@@ -628,6 +632,21 @@ function startTokenRefresh(){
 
 var FB_URL = "https://taxisanchalakcrm-712af-default-rtdb.asia-southeast1.firebasedatabase.app";
 
+// Initialize the Firebase SDK for real-time listeners. Derives config from FB_URL
+// (and _fbApiKey above), so switching FB_URL to the production project moves this too.
+// _fbDb stays null if the SDK didn't load — callers fall back to REST.
+var _fbDb = null;
+(function initFbSdk(){
+  try{
+    if(typeof firebase==='undefined' || !firebase.initializeApp) return;
+    var pid=((FB_URL.match(/https:\/\/([^.]+)/)||[])[1]||'').replace(/-default-rtdb$/,'');
+    if(!firebase.apps || !firebase.apps.length){
+      firebase.initializeApp({ apiKey:_fbApiKey, databaseURL:FB_URL, projectId:pid });
+    }
+    _fbDb = firebase.database();
+  }catch(e){ _fbDb = null; }
+})();
+
 function fbGet(path, cb){
   fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam())
     .then(function(r){ return r.json(); })
@@ -649,6 +668,7 @@ function fbSet(path, data, cb){
 }
 
 function fbPatch(path, data, cb){
+  if(data && typeof data==='object') data.ts = Date.now(); // stamp edits for live/delta sync
   fetch(FB_URL + '/' + path + '.json' + fbGetAuthParam(), {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
@@ -836,6 +856,96 @@ function preloadStore(){
   });
 }
 
+/* ══════════════════════════════════════════════════
+   REAL-TIME LIVE SYNC (Firebase SDK listeners)
+   One persistent connection per sheet. Firebase pushes only the changed bytes
+   the instant any agent adds / edits / deletes a row, so all screens update in
+   ~under a second with almost no data. Deletes are handled automatically (each
+   update carries the full current set). Falls back to REST preload if the SDK
+   isn't available.
+   ══════════════════════════════════════════════════ */
+var _liveAttached=false;
+function _liveSheetDefs(){
+  return [
+    {sh:'hold',          hdr:H.HOLD},
+    {sh:'errorpayments', hdr:H.ERR},
+    {sh:'recharge',      hdr:H.RECH},
+    {sh:'disable',       hdr:H.DIS},
+    {sh:'tickets',       hdr:H.TKT}
+  ];
+}
+
+// Mirror the same filtering loadAllSheets() applied, so the live store matches old behavior.
+function applyStoreFilter(sh, hdr, rows){
+  if(sh==='errorpayments'){
+    var asIdx=hdr.indexOf('AmtStatus'), dtIdx=hdr.indexOf('DATE');
+    return rows.filter(function(r){
+      var as=(r[asIdx]||'').toString().toUpperCase().trim();
+      if(as==='PENDING'||as==='OK'||as==='') return true;
+      return isWithinDays(r[dtIdx],7,'errorpayments');
+    });
+  }
+  if(sh==='recharge'){
+    var psIdx=hdr.indexOf('Payment status'), dtIdx2=hdr.indexOf('Payment date');
+    return rows.filter(function(r){
+      var ps=(r[psIdx]||'').toString().toUpperCase().trim();
+      if(ps==='PENDING'||ps==='OK'||ps==='') return true;
+      return isWithinDays(r[dtIdx2],3,'recharge');
+    });
+  }
+  if(sh==='disable'){
+    var dtIdx3=hdr.indexOf('DATE');
+    rows.sort(function(a,b){
+      var da=parseDDMMYYYY(a[dtIdx3],'disable'), db=parseDDMMYYYY(b[dtIdx3],'disable');
+      if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return db-da;
+    });
+    return rows.slice(0,200);
+  }
+  return rows; // hold, tickets: keep all
+}
+
+// Does the currently-shown page draw from this sheet's store?
+function sheetMatchesPage(sh){
+  var p=_pg||'';
+  if(sh==='hold')          return p==='hold-main'||p==='hold-done'||p==='hold-req'||p==='dashboard'||p==='payments';
+  if(sh==='disable')       return p==='disable'||p==='dis-req'||p==='en-req';
+  if(sh==='errorpayments') return p==='errorpayments';
+  if(sh==='recharge')      return p==='recharge';
+  if(sh==='tickets')       return p==='tickets';
+  return false;
+}
+
+function startLiveSync(){
+  if(!_fbDb){ preloadStore(); return; } // SDK unavailable → REST fallback
+  if(_liveAttached) return;
+  _liveAttached=true;
+  _liveSheetDefs().forEach(function(s){
+    try{
+      _fbDb.ref(s.sh).on('value', function(snap){
+        try{
+          var rows=fbObjToRows(snap.val(), s.hdr);
+          rows=applyStoreFilter(s.sh, s.hdr, rows);
+          _store[s.sh]={headers:s.hdr, rows:rows};
+          saveStoreToLocal();
+          if(sheetMatchesPage(s.sh) && !_searchActive) loadPg(_pg);
+          updateBadges();
+          setLiveStatus(true);
+        }catch(inner){}
+      }, function(err){ /* listener cancelled (rules/network) — REST stays usable */ });
+    }catch(e){}
+  });
+}
+
+// Manual full refresh — detaches and re-attaches listeners (forces a clean resync).
+function fullResync(){
+  if(!_fbDb){ preloadStore(); return; }
+  try{ _liveSheetDefs().forEach(function(s){ _fbDb.ref(s.sh).off(); }); }catch(e){}
+  _liveAttached=false;
+  startLiveSync();
+  showAlert('Re-syncing all data…','info');
+}
+
+
 // ── Live connection indicator (REST-based ping) ──
 function setLiveStatus(online){
   try{
@@ -873,7 +983,12 @@ function startRT(){
 // ── initFirebaseSDK: no-op (REST doesn't need SDK) ──
 function initFirebaseSDK(){}
 function attachListeners(){}
-function detachListeners(){}
+function detachListeners(){
+  try{
+    if(_fbDb){ _liveSheetDefs().forEach(function(s){ _fbDb.ref(s.sh).off(); }); }
+  }catch(e){}
+  _liveAttached=false;
+}
 
 // ── On-demand old record search ──
 function searchOldRecord(term, sheet, cb){
@@ -1394,8 +1509,8 @@ function bootApp(){
 
   nav(firstPage);
 
-  // Load data in background
-  preloadStore();
+  // Start real-time data sync (falls back to one-time REST preload if SDK absent)
+  startLiveSync();
 }
 
 
