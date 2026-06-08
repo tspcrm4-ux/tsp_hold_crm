@@ -423,7 +423,7 @@ tr.ka-row:hover td{background:#fef9c3!important}
       <div class="ni active" id="nav-dashboard" onclick="nav('dashboard')"><span class="ni-ic">📊</span>Dashboard</div>
       <div class="sb-s">Sheets</div>
       <div class="ni-section-icon">📌</div>
-      <div class="ni" id="nav-hold-main" onclick="nav('hold-main')"><span class="ni-ic">🔴</span>Pending Hold</div>
+      <div class="ni" id="nav-hold-main" onclick="nav('hold-main')"><span class="ni-ic">🔴</span>Hold</div>
       <div class="ni" id="nav-hold-done" onclick="nav('hold-done')"><span class="ni-ic">✅</span>Done Hold</div>
       <div class="ni" id="nav-errorpayments" onclick="nav('errorpayments')"><span class="ni-ic">⚠️</span>Error Payments</div>
       <div class="ni" id="nav-recharge" onclick="nav('recharge')"><span class="ni-ic">📱</span>Recharge</div>
@@ -868,7 +868,6 @@ function preloadStore(){
 var _liveAttached=false;
 function _liveSheetDefs(){
   return [
-    {sh:'hold',          hdr:H.HOLD},
     {sh:'tickets',       hdr:H.TKT}
   ];
 }
@@ -1429,26 +1428,26 @@ function bootApp(){
   // Show based on role
   var show_ids=[];
   if(role==='ADMIN'){
-    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+    show_ids=['nav-dashboard','nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req',
       'nav-tickets','nav-users'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
-    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+    show_ids=['nav-dashboard','nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
       'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
   } else if(role==='ACCOUNTANT'){
-    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-payments','nav-tickets'];
+    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-payments','nav-tickets'];
   } else if(role==='CALLING AGENT'){
-    show_ids=['nav-hold-main','nav-hold-done','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
+    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
     // Explicitly hide dashboard for calling agent
     var dashEl=document.getElementById('nav-dashboard');
     if(dashEl) dashEl.style.display='none';
     var mainEl=document.getElementById('mainNavLabel');
     if(mainEl) mainEl.style.display='none';
   } else if(role==='KEY ACCOUNT'){
-    show_ids=['nav-dashboard','nav-hold-main','nav-hold-done',
+    show_ids=['nav-hold-main',
       'nav-errorpayments','nav-recharge','nav-disable',
       'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
     var kan=document.getElementById('kaNav'); if(kan) kan.style.display='block';
@@ -1501,9 +1500,7 @@ function bootApp(){
 
   // Navigate to first page
   var firstPage;
-  if(role==='CALLING AGENT') firstPage='hold-main';
-  else if(role==='ACCOUNTANT') firstPage='hold-main';
-  else firstPage='dashboard';
+  firstPage='hold-main'; // everyone lands on the light Hold search tab; dashboard loads its data only when opened
 
   nav(firstPage);
 
@@ -1980,6 +1977,7 @@ function barC(t,d,total,c){
 
 /* ═══ HOLD MAIN & HOLD DONE ═══ */
 function loadHoldMain(){
+  loadSh('hold','Hold','🔴'); return;
   var st=_ts['hold-main']=_ts['hold-main']||{page:1,pageSize:100,search:''};
   if(_store.hold&&_store.hold.rows){
     var r=filterHoldView('main',st);
@@ -2558,6 +2556,7 @@ var COLS={
    a search fetches only matching rows. Results are UPSERTED into the shared store
    (never dropping rows the request tabs rely on). Self-contained. ── */
 var _onDemandSheets={
+  hold:         {field:'BOOKING ID',  label:'Booking ID or Mobile', phone:false, hdr:H.HOLD, noun:'Hold', custom:true},
   errorpayments:{field:'BOOKING ID',  label:'Booking ID',    phone:false, hdr:H.ERR,  noun:'Error Payment'},
   recharge:     {field:'mobilePhone', label:'Mobile Number', phone:true,  hdr:H.RECH, noun:'Recharge'},
   disable:      {field:'mobilePhone', label:'Mobile Number', phone:true,  hdr:H.DIS,  noun:'Disable Entry'}
@@ -2637,6 +2636,26 @@ function searchDataTab(sh,term){
   };
   var fallback=function(){ searchOldRecord(term,sh,function(rows){ done(rows); }); };
   if(!_fbDb){ fallback(); return; }
+  if(sh==='hold'){
+    var ph=_extractPhone(term);
+    if(ph){
+      Promise.all([
+        _fbDb.ref('hold').orderByChild('driverPhone').equalTo(ph).once('value'),
+        _fbDb.ref('hold').orderByChild('agentPhone').equalTo(ph).once('value')
+      ]).then(function(snaps){
+        var merged={}; snaps.forEach(function(s){ var v=s.val(); if(v) Object.keys(v).forEach(function(k){ merged[k]=v[k]; }); });
+        var rows=fbObjToRows(merged,hdr);
+        if(rows.length) done(rows); else fallback();
+      }).catch(fallback);
+    } else {
+      var hk=term.replace(/[.#$[\]\/]/g,'_');
+      _fbDb.ref('hold/'+hk).once('value').then(function(s){
+        var v=s.val();
+        if(v){ var o={}; o[hk]=v; done(fbObjToRows(o,hdr)); } else fallback();
+      }).catch(fallback);
+    }
+    return;
+  }
   var val=cfg.phone?(_extractPhone(term)||term):term;
   try{
     _fbDb.ref(sh).orderByChild(cfg.field).equalTo(val).once('value').then(function(snap){
