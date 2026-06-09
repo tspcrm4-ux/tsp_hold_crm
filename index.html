@@ -452,6 +452,10 @@ tr.ka-row:hover td{background:#fef9c3!important}
           <span class="rbadge" id="tktBadge" style="display:none">0</span>
         </div>
       </div>
+      <div id="mgrNav" style="display:none">
+        <div class="sb-s">Team</div>
+        <div class="ni" id="nav-attendance" onclick="nav('attendance')"><span class="ni-ic">🗓️</span>Attendance</div>
+      </div>
       <div class="ni" id="nav-impexp" onclick="nav('impexp')" style="display:none"><span class="ni-ic">📤</span>Import / Export</div>
       <div id="adminNav" style="display:none">
         <div class="sb-s">Admin</div>
@@ -1114,7 +1118,7 @@ function tryRestoreSession(){var t=localStorage.getItem('crm_t')||sessionStorage
   _fbAuthToken=sessionStorage.getItem('crm_fbt')||null;
   if(_fbAuthToken) startTokenRefresh();_tok=t;_user={username:localStorage.getItem('crm_un')||sessionStorage.getItem('crm_un')||'',role:localStorage.getItem('crm_ro')||sessionStorage.getItem('crm_ro')||'',department:localStorage.getItem('crm_dp')||sessionStorage.getItem('crm_dp')||'',userId:localStorage.getItem('crm_id')||sessionStorage.getItem('crm_id')||'',agentName:localStorage.getItem('crm_an')||sessionStorage.getItem('crm_an')||''};return !!_user.username;}
 function fbGetAgentNames(cb){fbGet('agents',function(err,data){var n=[];if(!err&&data)Object.keys(data).forEach(function(k){if(data[k]&&data[k].name)n.push(data[k].name);});cb({success:true,data:n});});}
-function fbGetKAAgents(cb){fbGet('agents',function(err,data){var a=[];var myN=(_user&&(_user.agentName||_user.username)||'').toUpperCase();if(!err&&data)Object.keys(data).forEach(function(k){var ag=data[k];if(!ag)return;if(!myN||(ag.assigned||'').toUpperCase()===myN)a.push(ag);});cb({success:true,data:a});});}
+function fbGetKAAgents(cb){fbGet('agents',function(err,data){var a=[];var myN=(_user&&(_user.agentName||_user.username)||'').toUpperCase();if(!err&&data)Object.keys(data).forEach(function(k){var ag=data[k];if(!ag)return;if(!myN||(ag.assigned||'').toUpperCase()===myN)a.push(ag);});cb({success:true,agents:a,myAgentName:(_user&&(_user.agentName||_user.username))||''});});}
 function fbGetUsers(cb){fbGet('users',function(err,data){if(err||!data){cb({success:false,error:'Failed'});return;}var u=Object.keys(data).map(function(k){var x=data[k];if(x)x._fbKey=k;return x;}).filter(Boolean);cb({success:true,data:u});});}
 function fbSaveUser(d,isNew,cb){var uid=(d.USER_ID||'').toString().trim();fbSet('users/u_'+uid,{USER_ID:uid,USERNAME:d.USERNAME||'',PASSWORD:d.PASSWORD||'',ROLE:d.ROLE||'',DEPARTMENT:d.DEPARTMENT||'',CREATED_BY:d.CREATED_BY||'',Agent_Name:d.Agent_Name||''},function(err){cb(err?{success:false,error:err.message}:{success:true});});}
 function fbDeleteUser(uid,cb){fbDelete('users/u_'+uid,function(err){cb(err?{success:false,error:err.message}:{success:true});});}
@@ -1414,7 +1418,7 @@ function bootApp(){
   var allNavIds=['nav-dashboard','nav-hold-main','nav-hold-done',
     'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
     'nav-hold-req','nav-dis-req','nav-en-req',
-    'nav-top-agents','nav-tickets','nav-users','nav-showall','nav-impexp'];
+    'nav-top-agents','nav-tickets','nav-users','nav-showall','nav-impexp','nav-attendance'];
 
   // Hide everything first
   allNavIds.forEach(function(id){
@@ -1430,28 +1434,26 @@ function bootApp(){
   // Show based on role
   var show_ids=[];
   if(role==='ADMIN'){
-    show_ids=['nav-dashboard','nav-payments','nav-tickets','nav-users','nav-showall','nav-impexp'];
+    show_ids=['nav-tickets','nav-users','nav-attendance'];
     var an=document.getElementById('adminNav'); if(an) an.style.display='block';
   } else if(role==='MANAGER'){
-    show_ids=['nav-dashboard','nav-hold-main',
-      'nav-errorpayments','nav-recharge','nav-disable','nav-payments',
-      'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
+    show_ids=['nav-tickets','nav-attendance'];
   } else if(role==='ACCOUNTANT'){
-    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-payments','nav-tickets','nav-impexp'];
+    show_ids=['nav-tickets'];
   } else if(role==='CALLING AGENT'){
-    show_ids=['nav-hold-main','nav-errorpayments','nav-recharge','nav-disable','nav-tickets'];
+    show_ids=['nav-tickets'];
     // Explicitly hide dashboard for calling agent
     var dashEl=document.getElementById('nav-dashboard');
     if(dashEl) dashEl.style.display='none';
     var mainEl=document.getElementById('mainNavLabel');
     if(mainEl) mainEl.style.display='none';
   } else if(role==='KEY ACCOUNT'){
-    show_ids=['nav-hold-main',
-      'nav-errorpayments','nav-recharge','nav-disable',
-      'nav-hold-req','nav-dis-req','nav-en-req','nav-tickets'];
+    show_ids=['nav-tickets','nav-top-agents'];
     var kan=document.getElementById('kaNav'); if(kan) kan.style.display='block';
   }
 
+  var _tn=document.getElementById('tktNav'); if(_tn) _tn.style.display='block';
+  if(show_ids.indexOf('nav-attendance')>=0){var _mn=document.getElementById('mgrNav'); if(_mn) _mn.style.display='block';}
   show_ids.forEach(function(id){
     var el=document.getElementById(id);
     if(el) el.style.display='flex';
@@ -1499,7 +1501,7 @@ function bootApp(){
 
   // Navigate to first page
   var firstPage;
-  firstPage=(R()==='ADMIN')?'dashboard':'hold-main'; // admin -> dashboard (no data tabs); others -> Hold
+  firstPage='tickets'; // admin -> dashboard (no data tabs); others -> Hold
 
   nav(firstPage);
 
@@ -1611,6 +1613,7 @@ function loadPg(pg){
     case 'disable':     loadSh('disable','Disable List','🚫');break;
     case 'payments':    loadPayments();break;
     case 'hold-req':    loadHoldReq();break;
+    case 'attendance':  loadAttendance();break;
     case 'top-agents':  loadTopAgents();break;
     case 'tickets':     loadTickets();break;
     case 'dis-req':     loadDisReq();break;
@@ -4363,6 +4366,166 @@ function openTktUpdate(tktId, curStatus, curNote){
   };
 }
 
+
+/* ═══ ATTENDANCE (Manager / Admin) — roster + monthly register ═══ */
+var _attMonth=null,_attRoster={},_attPeople={},_attMarks={};
+var ATT_COLOR={P:'#15803d',A:'#be185d',WO:'#c2410c'};
+var ATT_BG={P:'#dcfce7',A:'#fce7f3',WO:'#ffedd5'};
+var ATT_MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var ATT_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var ATT_DEPTS=['Calling Agent','Manager','TL','Accountant','Key Account','Insurance','Tech Department','Administration'];
+function _attYM(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function _attDays(ym){var p=ym.split('-');return new Date(+p[0],+p[1],0).getDate();}
+function _attLabel(ym){var p=ym.split('-');return ATT_MON[(+p[1])-1]+' '+p[0];}
+function _attFmtT(t){if(!t)return'';var p=String(t).split(':');var h=+p[0],m=p[1]||'00';if(isNaN(h))return String(t);var ap=h<12?'AM':'PM',h12=h%12||12;return h12+':'+m+' '+ap;}
+function _attShift(o){var a=_attFmtT(o.sf),b=_attFmtT(o.st);return (a||b)?((a||'?')+' – '+(b||'?')):'—';}
+
+/* ---- entry / month open ---- */
+function loadAttendance(){ if(!_attMonth)_attMonth=_attYM(new Date()); _attOpenMonth(_attMonth); }
+function _attOpenMonth(ym){
+  _attMonth=ym;
+  setC('<div class="ldr"><span class="sp"></span>Loading register…</div>');
+  fbGet('attendance/'+ym,function(err,data){
+    data=data||{}; _attPeople=data.people||{}; _attMarks=data.marks||{};
+    renderAttendance();
+  });
+}
+function _attChangeMonth(delta){var p=_attMonth.split('-');_attOpenMonth(_attYM(new Date(+p[0],(+p[1]-1)+delta,1)));}
+function _attSetMonth(v){if(v)_attOpenMonth(v);}
+
+/* ---- Load Users: snapshot current roster into this month (keeps existing marks) ---- */
+function _attLoadUsers(){
+  fbGet('att_roster',function(err,data){
+    var r=data||{},keys=Object.keys(r);
+    if(!keys.length){ showAlert('Roster is empty — add users first (Manage Roster)','error'); return; }
+    var people={}; keys.forEach(function(k){var o=r[k]||{};people[k]={name:o.name||'',dept:o.dept||'',sf:o.sf||'',st:o.st||''};});
+    fbSet('attendance/'+_attMonth+'/people',people,function(e2){
+      if(e2){showAlert('Load failed','error');return;}
+      fbSet('attendance/'+_attMonth+'/created',Date.now(),function(){});
+      showAlert(keys.length+' users loaded for '+_attLabel(_attMonth),'success');
+      _attOpenMonth(_attMonth);
+    });
+  });
+}
+
+/* ---- register grid ---- */
+function _attSelHTML(rid,day,v,canEdit){
+  if(!canEdit) return '<div style="min-width:30px;height:24px;line-height:24px;border-radius:5px;font-weight:700;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+(v||'·')+'</div>';
+  var o=['','P','A','WO'].map(function(s){return '<option value="'+s+'"'+(s===v?' selected':'')+'>'+(s||'·')+'</option>';}).join('');
+  return '<select class="att-sel" data-rid="'+esc(rid)+'" data-day="'+day+'" onchange="_attMark(this)" style="border:1px solid var(--border);border-radius:5px;width:38px;height:25px;font-weight:700;cursor:pointer;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+o+'</select>';
+}
+function renderAttendance(){
+  var ym=_attMonth,days=_attDays(ym),p=ym.split('-'),yr=+p[0],mo=+p[1];
+  var canEdit=(R()==='MANAGER'||R()==='ADMIN');
+  var ids=Object.keys(_attPeople);
+  ids.sort(function(a,b){var sa=(_attPeople[a].sf||'~'),sb=(_attPeople[b].sf||'~');if(sa!==sb)return sa<sb?-1:1;return String(_attPeople[a].name||'').localeCompare(String(_attPeople[b].name||''));});
+  var h='<style>.att-tbl th,.att-tbl td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:4px 6px;white-space:nowrap;font-size:11px}.att-tbl thead th{position:sticky;top:0;background:var(--bg3);z-index:2}.att-stk{position:sticky;background:var(--bg2);z-index:3}.att-tbl thead th.att-stk{z-index:4;background:var(--bg3)}</style>';
+  h+='<div class="pg-head"><div><div class="pg-t">🗓️ <span class="hl">Attendance</span></div>';
+  h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+esc(_attLabel(ym))+' · '+ids.length+' users</div></div>';
+  h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
+  h+='<button class="btn btn-s btn-sm" onclick="_attChangeMonth(-1)">‹</button>';
+  h+='<input type="month" class="fi" style="width:150px;padding:5px" value="'+ym+'" onchange="_attSetMonth(this.value)">';
+  h+='<button class="btn btn-s btn-sm" onclick="_attChangeMonth(1)">›</button>';
+  if(canEdit){h+='<button class="btn btn-p btn-sm" onclick="_attLoadUsers()">⤓ Load Users</button>';
+    h+='<button class="btn btn-s btn-sm" onclick="_attShowRoster()">👥 Manage Roster</button>';}
+  h+='</div></div>';
+  h+='<div style="display:flex;gap:14px;margin:2px 0 10px;font-size:12px;flex-wrap:wrap;align-items:center">';
+  h+='<span><b style="color:'+ATT_COLOR.P+'">●</b> P = Present</span><span><b style="color:'+ATT_COLOR.A+'">●</b> A = Absent</span><span><b style="color:'+ATT_COLOR.WO+'">●</b> WO = Week Off</span></div>';
+  if(!ids.length){
+    h+='<div class="tcard"><div style="text-align:center;padding:48px;color:var(--text3)">'
+      +'<div style="font-size:40px;margin-bottom:12px">🗓️</div>'
+      +'<div>No users loaded for <strong>'+esc(_attLabel(ym))+'</strong>.</div>'
+      +'<div style="font-size:12px;margin:10px 0">Click <b>Load Users</b> to pull your roster into this month, or add people first.</div>'
+      +(canEdit?'<button class="btn btn-p btn-sm" onclick="_attLoadUsers()">⤓ Load Users</button> <button class="btn btn-s btn-sm" onclick="_attShowRoster()">👥 Manage Roster</button>':'')
+      +'</div></div>';
+    setC(h);return;
+  }
+  h+='<div class="tcard" style="padding:0"><div class="tscroll" style="overflow:auto;max-height:72vh"><table class="att-tbl" style="border-collapse:separate;border-spacing:0;border-top:1px solid var(--border);border-left:1px solid var(--border)"><thead><tr>';
+  h+='<th class="att-stk" style="left:0;min-width:140px;text-align:left">USER</th>';
+  h+='<th class="att-stk" style="left:140px;min-width:110px;text-align:left">DEPARTMENT</th>';
+  h+='<th class="att-stk" style="left:250px;min-width:120px;text-align:left">SHIFT</th>';
+  for(var d1=1;d1<=days;d1++){var wd=new Date(yr,mo-1,d1).getDay();h+='<th style="text-align:center'+(wd===0?';background:#e0f2fe':'')+'"><div style="font-size:9px;color:var(--text3)">'+ATT_WD[wd]+'</div>'+String(d1).padStart(2,'0')+'</th>';}
+  h+='<th style="color:'+ATT_COLOR.P+'">P</th><th style="color:'+ATT_COLOR.WO+'">WO</th><th style="color:'+ATT_COLOR.A+'">A</th></tr></thead><tbody>';
+  ids.forEach(function(rid){
+    var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0;
+    h+='<tr><td class="att-stk" style="left:0;font-weight:600;text-align:left">'+esc(u.name||'—')+'</td>';
+    h+='<td class="att-stk" style="left:140px;color:var(--text2);text-align:left">'+esc(u.dept||'—')+'</td>';
+    h+='<td class="att-stk" style="left:250px;text-align:left;color:var(--text2)">'+esc(_attShift(u))+'</td>';
+    for(var d2=1;d2<=days;d2++){var v=row[d2]||row[String(d2)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;h+='<td style="text-align:center;padding:1px">'+_attSelHTML(rid,d2,v,canEdit)+'</td>';}
+    h+='<td id="attP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.P+'">'+P+'</td>';
+    h+='<td id="attWO-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.WO+'">'+WO+'</td>';
+    h+='<td id="attA-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.A+'">'+A+'</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  setC(h);
+}
+function _attMark(el){
+  var rid=el.getAttribute('data-rid'),day=el.getAttribute('data-day'),v=el.value;
+  el.style.background=v?ATT_BG[v]:'var(--bg3)';el.style.color=v?ATT_COLOR[v]:'var(--text3)';
+  if(!_attMarks[rid])_attMarks[rid]={};
+  if(v){_attMarks[rid][day]=v;fbSet('attendance/'+_attMonth+'/marks/'+rid+'/'+day,v,function(){});}
+  else{delete _attMarks[rid][day];fbDelete('attendance/'+_attMonth+'/marks/'+rid+'/'+day,function(){});}
+  _attRecount(rid);
+}
+function _attRecount(rid){
+  var row=_attMarks[rid]||{},P=0,A=0,WO=0;
+  Object.keys(row).forEach(function(d){var v=row[d];if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;});
+  var a=document.getElementById('attP-'+rid),b=document.getElementById('attWO-'+rid),c=document.getElementById('attA-'+rid);
+  if(a)a.textContent=P;if(b)b.textContent=WO;if(c)c.textContent=A;
+}
+
+/* ---- roster management ---- */
+function _attShowRoster(){ setC('<div class="ldr"><span class="sp"></span>Loading roster…</div>'); fbGet('att_roster',function(err,data){_attRoster=data||{};renderRoster();}); }
+function renderRoster(){
+  var ids=Object.keys(_attRoster);
+  ids.sort(function(a,b){return String(_attRoster[a].name||'').localeCompare(String(_attRoster[b].name||''));});
+  var h='<div class="pg-head"><div><div class="pg-t">👥 <span class="hl">Attendance Roster</span></div>';
+  h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+ids.length+' users</div></div>';
+  h+='<div style="display:flex;gap:6px"><button class="btn btn-p btn-sm" onclick="_attRosterForm()">+ Add User</button>';
+  h+='<button class="btn btn-s btn-sm" onclick="loadAttendance()">← Back to Register</button></div></div>';
+  h+='<div class="tcard" style="padding:0"><div class="tscroll"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">';
+  h+='<th style="text-align:left;padding:8px">NAME</th><th style="text-align:left;padding:8px">DEPARTMENT</th><th style="text-align:left;padding:8px">SHIFT</th><th style="padding:8px"></th></tr></thead><tbody>';
+  if(!ids.length){h+='<tr><td colspan="4" style="text-align:center;padding:34px;color:var(--text3)">No users yet — click <b>+ Add User</b></td></tr>';}
+  ids.forEach(function(rid){var u=_attRoster[rid]||{};
+    h+='<tr style="border-bottom:1px solid var(--border)">';
+    h+='<td style="padding:8px;font-weight:600">'+esc(u.name||'—')+'</td>';
+    h+='<td style="padding:8px;color:var(--text2)">'+esc(u.dept||'—')+'</td>';
+    h+='<td style="padding:8px;color:var(--text2)">'+esc(_attShift(u))+'</td>';
+    h+='<td style="padding:8px;text-align:right;white-space:nowrap">'
+      +'<button class="btn btn-s btn-xs" onclick="_attRosterForm(\''+esc(rid)+'\')">✏️ Edit</button> '
+      +'<button class="btn btn-d btn-xs" onclick="_attRosterDelete(\''+esc(rid)+'\')">🗑</button></td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  setC(h);
+}
+function _attRosterForm(rid){
+  var o=rid?_attRoster[rid]:null;
+  document.getElementById('pTitle').textContent=rid?'Edit Attendance User':'Add Attendance User';
+  var h=fi('NAME','name',o?o.name||'':'','text','req');
+  h+=fiS('DEPARTMENT','dept',o?o.dept||'':'',ATT_DEPTS,'req');
+  h+='<div class="fr"><label class="fl">SHIFT FROM</label><input class="fi2" type="time" name="sf" value="'+esc(o&&o.sf||'')+'"></div>';
+  h+='<div class="fr"><label class="fl">SHIFT TO</label><input class="fi2" type="time" name="st" value="'+esc(o&&o.st||'')+'"></div>';
+  document.getElementById('pBody').innerHTML=h;
+  document.getElementById('ov').style.display='block';document.getElementById('panel').classList.add('open');
+  var btn=document.getElementById('saveBtn');btn.disabled=false;btn.textContent='Save';
+  btn.onclick=function(){
+    var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
+    if(!(d.name||'').trim()){showAlert('Name required','error');return;}
+    if(!(d.dept||'').trim()){showAlert('Department required','error');return;}
+    var id=rid||('r_'+Date.now());
+    btn.disabled=true;btn.textContent='Saving…';
+    fbSet('att_roster/'+id,{name:d.name.trim(),dept:d.dept,sf:d.sf||'',st:d.st||''},function(err){
+      btn.disabled=false;btn.textContent='Save';
+      if(err){showAlert('Save failed','error');return;}
+      showAlert('Saved','success');closePanel();_attShowRoster();
+    });
+  };
+}
+function _attRosterDelete(rid){
+  if(!confirm('Remove this user from the roster?\n(Already-saved months keep their records — only future Load Users is affected.)'))return;
+  fbDelete('att_roster/'+rid,function(err){if(err){showAlert('Delete failed','error');return;}showAlert('Removed','success');_attShowRoster();});
+}
+/* ─── end attendance ─── */
 
 /* ═══ TOP AGENTS ═══ */
 var _topAgentsStore = null; // cached in memory — sheet rarely changes
