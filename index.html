@@ -4712,7 +4712,7 @@ function loadCallReports(){
   if(!_crFrom&&!_crTo)_crInitRange();
   setC('<div class="ldr"><span class="sp"></span>Loading call reports…</div>');
   fbGet('calling_reports',function(err,data){
-    var arr=[];Object.keys(data||{}).forEach(function(k){var o=data[k];if(o&&typeof o==='object')arr.push(o);});
+    var arr=[];Object.keys(data||{}).forEach(function(k){var o=data[k];if(o&&typeof o==='object'){o._k=k;arr.push(o);}});
     arr.sort(function(a,b){return _crEntryTs(b)-_crEntryTs(a);});
     _crAll=arr; renderCallReports();
   });
@@ -4770,8 +4770,31 @@ function renderCallReports(){
   h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'today\')">Today</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'7\')">7 Days</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'month\')">This Month</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'all\')">All</button></div>';
   // section tabs
   h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
-  h+='<button class="btn '+(_crTab==='agent'?'btn-s':'btn-p')+' btn-sm" onclick="_crSetTab(\'report\')">📈 Call Report</button>';
-  h+='<button class="btn '+(_crTab==='agent'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'agent\')">👥 Agent Report</button></div>';
+  h+='<button class="btn '+(_crTab==='report'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'report\')">📈 Call Report</button>';
+  h+='<button class="btn '+(_crTab==='agent'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'agent\')">👥 Agent Report</button>';
+  h+='<button class="btn '+(_crTab==='entries'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'entries\')">📋 Entries</button></div>';
+  if(_crTab==='entries'){
+    var canDel=(R()==='ADMIN');
+    var elist=rows.slice(0,500);
+    h+='<div class="tcard" style="padding:0"><div class="fl" style="font-weight:700;padding:12px 12px 6px">ENTRIES ('+rows.length+(rows.length>500?' — showing 500':'')+')'+(canDel?'':' · <span style="color:var(--text3);font-weight:500">delete is admin-only</span>')+'</div>';
+    h+='<div class="tscroll" style="overflow:auto;max-height:64vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
+    h+='<th style="text-align:left;padding:7px">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">ISSUE</th><th style="text-align:left;padding:7px">REMARK</th><th style="text-align:left;padding:7px">AGENT</th>'+(canDel?'<th style="padding:7px"></th>':'')+'</tr></thead><tbody>';
+    if(!elist.length)h+='<tr><td colspan="6" style="text-align:center;padding:26px;color:var(--text3)">No entries in this range</td></tr>';
+    elist.forEach(function(e){
+      var t=e.ts?new Date(e.ts):null;
+      var tl=t?(String(t.getDate()).padStart(2,'0')+'/'+String(t.getMonth()+1).padStart(2,'0')+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):(e.date||'');
+      h+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:7px;color:var(--text3);white-space:nowrap">'+esc(tl)+'</td>'
+        +'<td style="padding:7px;font-weight:600;white-space:nowrap">'+esc(e.number||'')+'</td>'
+        +'<td style="padding:7px;white-space:nowrap">'+esc(e.issue||'')+'</td>'
+        +'<td style="padding:7px;color:var(--text2)">'+esc(e.remark||'')+'</td>'
+        +'<td style="padding:7px;color:var(--text3);white-space:nowrap">'+esc(e.agentName||e.agent||'')+'</td>'
+        +(canDel?('<td style="padding:7px;text-align:right"><button class="btn btn-d btn-xs" onclick="_crDelete(\''+esc(e._k||'')+'\')">🗑</button></td>'):'')
+        +'</tr>';
+    });
+    h+='</tbody></table></div></div>';
+    setC(h);return;
+  }
 
   if(_crTab!=='agent'){
     /* ===== SECTION 1: CALL REPORT (charts + sub-issues) ===== */
@@ -4823,6 +4846,16 @@ function renderCallReports(){
     h+='</tbody></table></div></div>';
   }
   setC(h);
+}
+function _crDelete(key){
+  if(!key){showAlert('Missing entry key','error');return;}
+  if(!confirm('Delete this call report entry? This cannot be undone.'))return;
+  fbDelete('calling_reports/'+key,function(err){
+    if(err){showAlert('Delete failed','error');return;}
+    _crAll=_crAll.filter(function(e){return e._k!==key;});
+    showAlert('Entry deleted','success');
+    renderCallReports();
+  });
 }
 function _crCsv(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function _crDownload(name,csv){var b=new Blob([csv],{type:'text/csv;charset=utf-8;'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},120);}
