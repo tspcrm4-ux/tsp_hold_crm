@@ -4570,15 +4570,7 @@ var CALL_GROUPS=[
 function _callGrp(id){for(var i=0;i<CALL_GROUPS.length;i++)if(CALL_GROUPS[i].id===id)return CALL_GROUPS[i];return null;}
 function _callMe(){return (typeof _user==='object'&&_user)?_user:{};}
 
-function loadCalling(){
-  setC('<div class="ldr"><span class="sp"></span>Loading…</div>');
-  fbGet('calling_reports',function(err,data){
-    var arr=[];Object.keys(data||{}).forEach(function(k){var o=data[k];if(o&&typeof o==='object'){o._k=k;arr.push(o);}});
-    arr.sort(function(a,b){return (b.ts||0)-(a.ts||0);});
-    _callEntries=arr.slice(0,80);
-    renderCalling();
-  });
-}
+function loadCalling(){ renderCalling(); }
 function _callSetNum(v){_callNum=v;}
 function _callSetText(i,v){_callText[i]=v;}
 function _callPickGroup(id){_callGroup=(_callGroup===id?null:id);_callSubs={};_callText={};renderCalling();}
@@ -4635,14 +4627,6 @@ function renderCalling(){
     h+='<span style="color:var(--text3);font-size:12px">By: '+esc(me.agentName||me.username||'')+'</span>';
     h+='<button class="btn btn-s btn-sm" onclick="_callReset()">Clear</button></div>';
   }
-  // entries table
-  h+='<div style="margin-top:22px"><div class="fl" style="font-weight:700;margin-bottom:6px">RECENT ENTRIES</div>';
-  h+='<div class="tcard" style="padding:0"><div class="tscroll" style="overflow:auto;max-height:46vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:1px solid var(--border)">';
-  h+='<th style="text-align:left;padding:7px">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">ISSUE</th><th style="text-align:left;padding:7px">REMARK</th>';
-  if(role!=='CALLING AGENT')h+='<th style="text-align:left;padding:7px">AGENT</th>';
-  h+='</tr></thead><tbody id="callEntBody">';
-  h+=_callEntriesRows(role);
-  h+='</tbody></table></div></div></div>';
   setC(h);
   var ni=document.querySelector('.pos-num');if(ni&&!_callNum)ni.focus();
 }
@@ -4695,7 +4679,7 @@ function _callSave(){
 /* ─── end calling report ─── */
 
 /* ═══ CALL REPORTS DASHBOARD (Admin / Manager) ═══ */
-var _crAll=[],_crFrom='',_crTo='';
+var _crAll=[],_crFrom='',_crTo='',_crTab='report';
 function _crYMD(d){var p=function(x){return String(x).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 function _crInitRange(){var n=new Date();_crTo=_crYMD(n);_crFrom=_crYMD(new Date(n.getFullYear(),n.getMonth(),1));}
 function _crEntryTs(e){if(e.ts)return e.ts;if(e.date){var p=String(e.date).split('/');if(p.length===3){var d=new Date(+p[2],(+p[1])-1,+p[0]);if(!isNaN(d))return d.getTime();}}return 0;}
@@ -4723,65 +4707,100 @@ function _crPreset(p){
   else if(p==='all'){_crFrom='';_crTo='';}
   renderCallReports();
 }
+function _crSetTab(t){_crTab=t;renderCallReports();}
+function _crDonut(segs,total){
+  var r=64,cx=82,cy=82,C=2*Math.PI*r,off=0,paths='';
+  segs.forEach(function(s){if(!s.value)return;var len=(s.value/(total||1))*C;
+    paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="24" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')"></circle>';off+=len;});
+  if(!off)paths='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--bg3)" stroke-width="24"></circle>';
+  return '<svg width="164" height="164" viewBox="0 0 164 164">'+paths+'<text x="82" y="78" text-anchor="middle" font-size="26" font-weight="800" fill="var(--text)">'+total+'</text><text x="82" y="98" text-anchor="middle" font-size="11" fill="var(--text3)">calls</text></svg>';
+}
+function _crDayChart(dayCount){
+  var days=Object.keys(dayCount).sort();if(!days.length)return '';
+  var max=1;days.forEach(function(d){if(dayCount[d]>max)max=dayCount[d];});
+  var bw=Math.max(10,Math.min(38,Math.floor(620/days.length)));
+  var h='<div style="display:flex;align-items:flex-end;gap:3px;height:120px;overflow-x:auto;padding-top:6px">';
+  days.forEach(function(d){var v=dayCount[d],hh=Math.round(v/max*92)+8;
+    h+='<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:'+bw+'px">'
+      +'<div style="font-size:9px;color:var(--text2)">'+v+'</div>'
+      +'<div title="'+d+': '+v+'" style="width:72%;height:'+hh+'px;background:var(--gold);border-radius:3px 3px 0 0"></div>'
+      +'<div style="font-size:8px;color:var(--text3);margin-top:2px">'+d.slice(8)+'</div></div>';});
+  return h+'</div>';
+}
 function renderCallReports(){
   var rows=_crFiltered(),total=rows.length;
-  var issueCount={},agentMap={},remarkCount={};
-  CALL_GROUPS.forEach(function(g){issueCount[g.en]=0;});
+  var issueCount={},agentMap={},remarkCount={},subByIssue={},dayCount={};
+  CALL_GROUPS.forEach(function(g){issueCount[g.en]=0;subByIssue[g.en]={};});
   rows.forEach(function(e){
     var iss=e.issue||'(none)';issueCount[iss]=(issueCount[iss]||0)+1;
     var an=e.agentName||e.agent||'(unknown)';
     if(!agentMap[an]){agentMap[an]={total:0};CALL_GROUPS.forEach(function(g){agentMap[an][g.en]=0;});}
-    agentMap[an].total++; if(agentMap[an][iss]===undefined)agentMap[an][iss]=0; agentMap[an][iss]++;
-    String(e.remark||'').split(' | ').forEach(function(r){r=r.trim();if(r)remarkCount[r]=(remarkCount[r]||0)+1;});
+    agentMap[an].total++;if(agentMap[an][iss]===undefined)agentMap[an][iss]=0;agentMap[an][iss]++;
+    if(!subByIssue[iss])subByIssue[iss]={};
+    String(e.remark||'').split(' | ').forEach(function(r){r=r.trim();if(r){remarkCount[r]=(remarkCount[r]||0)+1;subByIssue[iss][r]=(subByIssue[iss][r]||0)+1;}});
+    var ts=_crEntryTs(e);if(ts){var dd=_crYMD(new Date(ts));dayCount[dd]=(dayCount[dd]||0)+1;}
   });
-  var maxIss=1;CALL_GROUPS.forEach(function(g){if(issueCount[g.en]>maxIss)maxIss=issueCount[g.en];});
-
   var h='<div class="pg-head"><div><div class="pg-t">📊 <span class="hl">Call Reports</span></div>';
   h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+total+' calls'+((_crFrom||_crTo)?(' · '+(_crFrom||'…')+' → '+(_crTo||'…')):' · all time')+'</div></div>';
   h+='<div style="display:flex;gap:6px"><button class="btn btn-s btn-sm" onclick="_crExportEntries()">⬇ Entries CSV</button><button class="btn btn-s btn-sm" onclick="_crExportSummary()">⬇ Agent CSV</button></div></div>';
-  // filter bar
   h+='<div class="tcard" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">';
   h+='<label class="fl">From <input type="date" class="fi" style="width:150px" value="'+_crFrom+'" onchange="_crSetFrom(this.value)"></label>';
   h+='<label class="fl">To <input type="date" class="fi" style="width:150px" value="'+_crTo+'" onchange="_crSetTo(this.value)"></label>';
   h+='<span style="flex:1"></span>';
-  h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'today\')">Today</button>';
-  h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'7\')">7 Days</button>';
-  h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'month\')">This Month</button>';
-  h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'all\')">All</button></div>';
+  h+='<button class="btn btn-s btn-xs" onclick="_crPreset(\'today\')">Today</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'7\')">7 Days</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'month\')">This Month</button><button class="btn btn-s btn-xs" onclick="_crPreset(\'all\')">All</button></div>';
+  // section tabs
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
+  h+='<button class="btn '+(_crTab==='agent'?'btn-s':'btn-p')+' btn-sm" onclick="_crSetTab(\'report\')">📈 Call Report</button>';
+  h+='<button class="btn '+(_crTab==='agent'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'agent\')">👥 Agent Report</button></div>';
 
-  // issue breakdown
-  h+='<div class="tcard"><div class="fl" style="font-weight:700;margin-bottom:8px">CALLS BY ISSUE</div>';
-  CALL_GROUPS.forEach(function(g){
-    var c=issueCount[g.en]||0,pct=total?Math.round(c/total*100):0,w=Math.round((c/maxIss)*100);
-    h+='<div style="display:flex;align-items:center;gap:10px;margin:6px 0">'
-      +'<div style="width:160px;font-size:12px;font-weight:700;color:'+g.color+'">'+g.icon+' '+esc(g.en)+'</div>'
-      +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:18px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+g.color+'"></div></div>'
-      +'<div style="width:80px;text-align:right;font-size:12px"><b>'+c+'</b> <span style="color:var(--text3)">('+pct+'%)</span></div></div>';
-  });
-  h+='</div>';
-
-  // agent report (agent x issue)
-  var agents=Object.keys(agentMap).sort(function(a,b){return agentMap[b].total-agentMap[a].total;});
-  h+='<div class="tcard" style="padding:0;margin-top:12px"><div class="fl" style="font-weight:700;padding:12px 12px 6px">AGENT REPORT — calls of each issue</div>';
-  h+='<div class="tscroll" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
-  h+='<th style="text-align:left;padding:7px;position:sticky;left:0;background:var(--bg2)">AGENT</th>';
-  CALL_GROUPS.forEach(function(g){h+='<th style="padding:7px;text-align:center;color:'+g.color+'" title="'+esc(g.en)+'">'+g.icon+'</th>';});
-  h+='<th style="padding:7px;text-align:center">TOTAL</th></tr></thead><tbody>';
-  if(!agents.length)h+='<tr><td colspan="8" style="text-align:center;padding:26px;color:var(--text3)">No calls in this range</td></tr>';
-  agents.forEach(function(an){var m=agentMap[an];
-    h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:7px;font-weight:600;position:sticky;left:0;background:var(--bg2)">'+esc(an)+'</td>';
-    CALL_GROUPS.forEach(function(g){var c=m[g.en]||0;h+='<td style="padding:7px;text-align:center'+(c?'':';color:var(--text3)')+'">'+(c||'·')+'</td>';});
-    h+='<td style="padding:7px;text-align:center;font-weight:700">'+m.total+'</td></tr>';
-  });
-  h+='</tbody></table></div></div>';
-
-  // top remarks
-  var remks=Object.keys(remarkCount).sort(function(a,b){return remarkCount[b]-remarkCount[a];}).slice(0,15);
-  if(remks.length){
-    h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:8px">TOP REMARKS</div>';
-    h+='<table style="width:100%;border-collapse:collapse;font-size:12px">';
-    remks.forEach(function(r){h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px">'+esc(r)+'</td><td style="padding:6px;text-align:right;font-weight:700;width:60px">'+remarkCount[r]+'</td></tr>';});
-    h+='</table></div>';
+  if(_crTab!=='agent'){
+    /* ===== SECTION 1: CALL REPORT (charts + sub-issues) ===== */
+    var segs=CALL_GROUPS.map(function(g){return {label:g.en,value:issueCount[g.en]||0,color:g.color};});
+    var maxIss=1;CALL_GROUPS.forEach(function(g){if(issueCount[g.en]>maxIss)maxIss=issueCount[g.en];});
+    h+='<div class="tcard"><div class="fl" style="font-weight:700;margin-bottom:8px">CALLS BY ISSUE</div>';
+    h+='<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>'+_crDonut(segs,total)+'</div><div style="flex:1;min-width:280px">';
+    CALL_GROUPS.forEach(function(g){var c=issueCount[g.en]||0,pct=total?Math.round(c/total*100):0,w=Math.round(c/maxIss*100);
+      h+='<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:150px;font-size:12px;font-weight:700;color:'+g.color+'">'+g.icon+' '+esc(g.en)+'</div>'
+        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+g.color+'"></div></div>'
+        +'<div style="width:74px;text-align:right;font-size:12px"><b>'+c+'</b> <span style="color:var(--text3)">'+pct+'%</span></div></div>';});
+    h+='</div></div></div>';
+    var dc=_crDayChart(dayCount);
+    if(dc)h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:4px">CALLS PER DAY</div>'+dc+'</div>';
+    h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:6px">SUB-ISSUE BREAKDOWN</div>';
+    var anySub=false;
+    CALL_GROUPS.forEach(function(g){var subs=subByIssue[g.en]||{},keys=Object.keys(subs);if(!keys.length)return;anySub=true;
+      var smax=1;keys.forEach(function(k){if(subs[k]>smax)smax=subs[k];});keys.sort(function(a,b){return subs[b]-subs[a];});
+      h+='<div style="margin:12px 0 4px;font-size:12px;font-weight:800;color:'+g.color+'">'+g.icon+' '+esc(g.en)+' <span style="color:var(--text3);font-weight:600">('+issueCount[g.en]+')</span></div>';
+      keys.forEach(function(k){var c=subs[k],w=Math.round(c/smax*100);
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:3px 0">'
+          +'<div style="flex:0 0 45%;background:var(--bg3);border-radius:5px;height:14px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+g.color+'cc"></div></div>'
+          +'<div style="flex:1;font-size:11px;color:var(--text2)">'+esc(k)+'</div>'
+          +'<div style="width:36px;text-align:right;font-weight:700;font-size:12px">'+c+'</div></div>';});
+    });
+    if(!anySub)h+='<div style="color:var(--text3);padding:10px">No calls in this range</div>';
+    h+='</div>';
+  } else {
+    /* ===== SECTION 2: AGENT REPORT ===== */
+    var agents=Object.keys(agentMap).sort(function(a,b){return agentMap[b].total-agentMap[a].total;});
+    var amax=1;agents.forEach(function(a){if(agentMap[a].total>amax)amax=agentMap[a].total;});
+    h+='<div class="tcard"><div class="fl" style="font-weight:700;margin-bottom:8px">CALLS PER AGENT</div>';
+    if(!agents.length)h+='<div style="color:var(--text3);padding:8px">No calls in this range</div>';
+    agents.forEach(function(a){var v=agentMap[a].total,w=Math.round(v/amax*100);
+      h+='<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:160px;font-size:12px;font-weight:600">'+esc(a)+'</div>'
+        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:var(--gold)"></div></div>'
+        +'<div style="width:36px;text-align:right;font-weight:700;font-size:12px">'+v+'</div></div>';});
+    h+='</div>';
+    h+='<div class="tcard" style="padding:0;margin-top:12px"><div class="fl" style="font-weight:700;padding:12px 12px 6px">AGENT × ISSUE — who got what issue</div>';
+    h+='<div class="tscroll" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
+    h+='<th style="text-align:left;padding:7px;position:sticky;left:0;background:var(--bg2)">AGENT</th>';
+    CALL_GROUPS.forEach(function(g){h+='<th style="padding:7px;text-align:center;color:'+g.color+'" title="'+esc(g.en)+'">'+g.icon+'</th>';});
+    h+='<th style="padding:7px;text-align:center">TOTAL</th></tr></thead><tbody>';
+    if(!agents.length)h+='<tr><td colspan="8" style="text-align:center;padding:26px;color:var(--text3)">No calls in this range</td></tr>';
+    agents.forEach(function(an){var m=agentMap[an];
+      h+='<tr style="border-bottom:1px solid var(--border)"><td style="padding:7px;font-weight:600;position:sticky;left:0;background:var(--bg2)">'+esc(an)+'</td>';
+      CALL_GROUPS.forEach(function(g){var c=m[g.en]||0;h+='<td style="padding:7px;text-align:center'+(c?'':';color:var(--text3)')+'">'+(c||'·')+'</td>';});
+      h+='<td style="padding:7px;text-align:center;font-weight:700">'+m.total+'</td></tr>';});
+    h+='</tbody></table></div></div>';
   }
   setC(h);
 }
