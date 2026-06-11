@@ -3689,11 +3689,26 @@ function openUserPanel(u){
   var btn=document.getElementById('saveBtn');btn.disabled=false;btn.textContent='Save User';
   btn.onclick=function(){
     var inp=document.querySelectorAll('#pBody [name]');var d={};for(var i=0;i<inp.length;i++)d[inp[i].name]=inp[i].value;
-    btn.disabled=true;btn.textContent='Saving...';
+    var role=(d.role||'').trim(),dept=(d.department||'').trim(),an=(d.agentName||'').trim();
     var ok=function(r){btn.disabled=false;btn.textContent='Save User';if(r&&r.success){showAlert('Saved!','success');closePanel();loadUsers();fbGetAgentNames(function(r){if(r&&r.success)_agents=r.data;});fbGetKAAgents(function(r){if(r&&r.success)_kaAgents=r.data;});}else showAlert(r?r.error:'Failed.','error');};
-    var fail=function(e){btn.disabled=false;btn.textContent='Save User';showAlert(e.message,'error');};
-    if(!u) fbSaveUser(d,true,ok);
-    else{d.userId=u.USER_ID;fbSaveUser(d,false,ok);}
+    if(!u){
+      var uname=(d.username||'').trim(),pwd=(d.password||'').trim();
+      if(!uname||!pwd){showAlert('Username & password required','error');return;}
+      if(!role){showAlert('Role required','error');return;}
+      btn.disabled=true;btn.textContent='Saving...';
+      fbGet('users',function(err,data){
+        data=data||{};var mx=0,dup=false;
+        Object.keys(data).forEach(function(k){var o=data[k]||{};var n=parseInt(o.USER_ID||k.replace(/^u_/,''),10);if(!isNaN(n)&&n>mx)mx=n;if((o.USERNAME||'').trim().toUpperCase()===uname.toUpperCase())dup=true;});
+        if(dup){ok({success:false,error:'Username already exists'});return;}
+        var nid=mx+1;
+        fbSet('users/u_'+nid,{USER_ID:String(nid),USERNAME:uname,PASSWORD:pwd,ROLE:role,DEPARTMENT:dept,CREATED_BY:(_user&&_user.username)||'admin',Agent_Name:an},function(e2){ok(e2?{success:false,error:e2.message}:{success:true});});
+      });
+    } else {
+      btn.disabled=true;btn.textContent='Saving...';
+      var patch={ROLE:role,DEPARTMENT:dept,Agent_Name:an};
+      var np=(d.password||'').trim();if(np)patch.PASSWORD=np; // blank = keep existing
+      fbPatch('users/u_'+u.USER_ID,patch,function(e2){ok(e2?{success:false,error:e2.message}:{success:true});});
+    }
   };
 }
 function delUser(uid){if(!confirm('Delete?'))return;fbDeleteUser(uid,function(r){if(r&&r.success){showAlert('User deleted','success');loadUsers();}else showAlert(r?r.error:'Failed','error');});}
