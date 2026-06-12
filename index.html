@@ -4612,8 +4612,9 @@ function renderCalling(){
    +'.pos-card .hi-sm{font-size:11px;color:var(--text3);font-weight:600;margin-top:4px;line-height:1.25}'
    +'.pos-card .en-big{font-size:16px;font-weight:800;letter-spacing:.3px;margin-top:5px;line-height:1.2}'
    +'.pos-sub{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:8px 0}'
-   +'.pos-chip{border:2px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;background:var(--bg2);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;user-select:none}'
-   +'.pos-chip .bx{width:18px;height:18px;border:2px solid var(--text3);border-radius:5px;flex:0 0 auto;text-align:center;line-height:15px;font-size:12px}'
+   +'.pos-chip{border:2px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;background:var(--bg2);font-size:13px;font-weight:600;display:flex;align-items:center;gap:9px;user-select:none;transition:transform .08s,box-shadow .08s,background .08s,border-color .08s}'
+   +'.pos-chip:hover{transform:translateY(-1px)}'
+   +'.pos-chip .bx{width:20px;height:20px;border:2px solid var(--text3);border-radius:6px;flex:0 0 auto;text-align:center;line-height:17px;font-size:13px;font-weight:800;transition:all .08s}'
    +'.pos-savebar{position:sticky;bottom:0;background:var(--bg);padding:12px 0;margin-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}'
    +'</style>';
   h+='<div class="pg-head"><div><div class="pg-t">📞 <span class="hl">Calling Report</span></div>';
@@ -4640,8 +4641,10 @@ function renderCalling(){
     h+='<div class="pos-sub">';
     g.subs.forEach(function(s,i){
       var on=!!_callSubs[i];
-      h+='<div class="pos-chip" onclick="_callToggleSub('+i+')" style="'+(on?'border-color:'+g.color+';background:'+g.color+'14':'')+'">'
-        +'<span class="bx" style="'+(on?'background:'+g.color+';border-color:'+g.color+';color:#fff':'')+'">'+(on?'✓':'')+'</span>'
+      var chipS=on?('border-color:'+g.color+';background:linear-gradient(160deg,'+g.color+'1f,'+g.color+'38);box-shadow:0 3px 0 '+g.color+'55,0 4px 10px rgba(0,0,0,.08);color:'+g.color+';font-weight:800'):'';
+      var bxS=on?('background:'+g.color+';border-color:'+g.color+';color:#fff;box-shadow:0 0 0 3px '+g.color+'33'):'';
+      h+='<div class="pos-chip" onclick="_callToggleSub('+i+')" style="'+chipS+'">'
+        +'<span class="bx" style="'+bxS+'">'+(on?'✓':'')+'</span>'
         +'<span>'+esc(s.hi)+'</span></div>';
       if(s.type==='text'&&on){
         h+='<textarea id="callTxt'+i+'" placeholder="Type details…" oninput="_callSetText('+i+',this.value)" style="grid-column:1/-1;width:100%;min-height:54px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text)">'+esc(_callText[i]||'')+'</textarea>';
