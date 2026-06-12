@@ -4574,18 +4574,22 @@ var CALL_GROUPS=[
    {hi:'179/299 ACTIVATE NAHI HUA'},
    {hi:'354 RECHARGE KIA MAGAR LIMIT OVER AA RAHA HAI'},
    {hi:'AUTOPAY LAGA HUA HAI RECHARGE NAHI KAR PAA RAHA HU'},
-   {hi:'RECHARGE KA OPTION NAHI AA RAHA HAI'}]},
+   {hi:'RECHARGE KA OPTION NAHI AA RAHA HAI'},
+   {type:'text',hi:'OTHER (TYPE KARE)'}]},
  {id:'app',en:'APP REGARDING',hi:'APPLICATION KI JANKARI',icon:'📱',color:'#0369a1',subs:[
    {hi:'VERIFICATION REGARDING'},
    {hi:'GADI JODNA HAI'},
-   {hi:'ADHAR ADD'}]},
- {id:'veh',en:'VEHICLE ADD',hi:'GADI JODNE K LIYE',icon:'🚖',color:'#7c3aed',subs:[
-   {type:'text',hi:'DETAIL TYPE KARE'}]},
+   {hi:'ADHAR ADD'},
+   {hi:'DRIVER KO JANKARI DI'},
+   {hi:'AGENT KO JANKARI DI'},
+   {hi:'NOTIFICATION ISSUE'},
+   {type:'text',hi:'OTHER (TYPE KARE)'}]},
  {id:'pay',en:'PAYMENTS',hi:'PAYMENTS KI JANKARI',icon:'💰',color:'#b8860b',subs:[
    {hi:'AGENT - MERI PAYMENT KAB MILEGI'},
    {hi:'DRIVER - PAYMENT KAB MILEGI'},
    {hi:'HOLD PAYMENT KI JANKARI'},
-   {hi:'CBD PAYMENT KI JANKARI'}]}
+   {hi:'CBD PAYMENT KI JANKARI'},
+   {type:'text',hi:'OTHER (TYPE KARE)'}]}
 ];
 function _callGrp(id){for(var i=0;i<CALL_GROUPS.length;i++)if(CALL_GROUPS[i].id===id)return CALL_GROUPS[i];return null;}
 function _callMe(){return (typeof _user==='object'&&_user)?_user:{};}
@@ -4602,18 +4606,18 @@ function renderCalling(){
   var h='<style>'
    +'.pos-num{font-size:20px;font-weight:700;letter-spacing:1px;padding:12px 14px;width:100%;max-width:340px;border:2px solid var(--gold);border-radius:10px;background:var(--bg2);color:var(--text)}'
    +'.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0}'
-   +'.pos-card{border:2px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;background:var(--bg2);transition:.12s;text-align:center;user-select:none}'
-   +'.pos-card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.1)}'
-   +'.pos-card .ic{font-size:26px;display:block;margin-bottom:6px}'
+   +'.pos-card{border-radius:14px;padding:16px 12px;cursor:pointer;transition:transform .08s;text-align:center;user-select:none}'
+   +'.pos-card:hover{transform:translateY(-3px)}'
+   +'.pos-card .ic{font-size:30px;display:block;margin-bottom:6px}'
    +'.pos-card .hi-sm{font-size:11px;color:var(--text3);font-weight:600;margin-top:4px;line-height:1.25}'
-   +'.pos-card .en-big{font-size:15px;font-weight:800;letter-spacing:.3px;margin-top:5px;line-height:1.2}'
+   +'.pos-card .en-big{font-size:16px;font-weight:800;letter-spacing:.3px;margin-top:5px;line-height:1.2}'
    +'.pos-sub{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:8px 0}'
    +'.pos-chip{border:2px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;background:var(--bg2);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;user-select:none}'
    +'.pos-chip .bx{width:18px;height:18px;border:2px solid var(--text3);border-radius:5px;flex:0 0 auto;text-align:center;line-height:15px;font-size:12px}'
    +'.pos-savebar{position:sticky;bottom:0;background:var(--bg);padding:12px 0;margin-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}'
    +'</style>';
   h+='<div class="pg-head"><div><div class="pg-t">📞 <span class="hl">Calling Report</span></div>';
-  h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+esc(me.agentName||me.username||'')+'</div></div></div>';
+  h+='<div style="font-size:14px;color:var(--text2);margin-top:3px;font-weight:600">Welcome, '+esc(me.agentName||me.username||'')+' 👋</div></div></div>';
   // caller number
   h+='<div style="margin:4px 0 14px"><label class="fl" style="display:block;margin-bottom:5px">CALLER NUMBER</label>';
   h+='<input class="pos-num" type="tel" inputmode="numeric" placeholder="Caller mobile" value="'+esc(_callNum)+'" oninput="_callSetNum(this.value)"></div>';
@@ -4621,7 +4625,9 @@ function renderCalling(){
   h+='<div class="fl" style="font-weight:700">ISSUE — कौन सी समस्या?</div><div class="pos-grid">';
   CALL_GROUPS.forEach(function(grp){
     var sel=(_callGroup===grp.id);
-    h+='<div class="pos-card" onclick="_callPickGroup(\''+grp.id+'\')" style="'+(sel?'border-color:'+grp.color+';background:'+grp.color+'14;':'')+'">'
+    var base='background:linear-gradient(160deg,#ffffff,'+grp.color+'14);border:2px solid '+grp.color+';box-shadow:0 5px 0 '+grp.color+'66,0 9px 18px rgba(0,0,0,.13);';
+    var selS=sel?('transform:translateY(3px);box-shadow:0 2px 0 '+grp.color+'66,0 4px 10px rgba(0,0,0,.12);background:linear-gradient(160deg,'+grp.color+'26,'+grp.color+'3a);'):'';
+    h+='<div class="pos-card'+(sel?' sel':'')+'" onclick="_callPickGroup(\''+grp.id+'\')" style="'+base+selS+'">'
       +'<span class="ic">'+grp.icon+'</span>'
       +(grp.hi?'<div class="hi-sm">'+esc(grp.hi)+'</div>':'')
       +'<div class="en-big" style="color:'+grp.color+'">'+esc(grp.en)+'</div></div>';
