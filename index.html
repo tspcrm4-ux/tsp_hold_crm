@@ -4630,7 +4630,7 @@ function renderCalling(){
   h+='<div style="margin:4px 0 14px"><label class="fl" style="display:block;margin-bottom:5px">CALLER NUMBER</label>';
   h+='<input class="pos-num" type="tel" inputmode="numeric" placeholder="Caller mobile" value="'+esc(_callNum)+'" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,\'\').slice(0,10);_callSetNum(this.value)"></div>';
   var _rq=_callQuality==='RIGHT',_wq=_callQuality==='WASTE';
-  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY <span style="color:#dc2626;font-weight:700">(required) *</span></label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY '+(g&&g.id==='myop'?'<span style="color:var(--text3);font-weight:500">(N/A for system issue)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
   h+='<button onclick="_callSetQuality(\'RIGHT\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_rq?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">✅ RIGHT CALL</button>';
   h+='<button onclick="_callSetQuality(\'WASTE\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_wq?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">🚫 WASTE CALL</button>';
   h+='</div></div>';
@@ -4650,7 +4650,7 @@ function renderCalling(){
   if(g){
     var cnt=0;Object.keys(_callSubs).forEach(function(k){if(_callSubs[k])cnt++;});
     var _sv=_callStatus==='SOLVED',_uv=_callStatus==='UNSOLVED';
-    h+='<div style="margin:10px 0 4px"><label class="fl" style="display:block;margin-bottom:5px">STATUS <span style="color:#dc2626;font-weight:700">(required) *</span></label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+    h+='<div style="margin:10px 0 4px"><label class="fl" style="display:block;margin-bottom:5px">STATUS '+(g&&g.id==='myop'?'<span style="color:var(--text3);font-weight:500">(optional)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
     h+='<button onclick="_callSetStatus(\'SOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_sv?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">\u2705 SOLVED</button>';
     h+='<button onclick="_callSetStatus(\'UNSOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_uv?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">\u26d4 UNSOLVED</button>';
     h+='</div></div>';
@@ -4700,9 +4700,9 @@ function _callSave(){
   var num=(_callNum||'').trim();
   var digits=num.replace(/\D/g,'');
   if(digits.length!==10||!/^[6-9]/.test(digits)){showAlert('Enter a valid 10-digit mobile number','error');return;}
-  if(!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
+  if(_callGroup!=='myop'&&!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
   if(!_callGroup){showAlert('Select an issue','error');return;}
-  if(!_callStatus){showAlert('Mark the call Solved or Unsolved','error');return;}
+  if(_callGroup!=='myop'&&!_callStatus){showAlert('Mark the call Solved or Unsolved','error');return;}
   var g=_callGrp(_callGroup),remarks=[],any=false;
   g.subs.forEach(function(s,i){
     if(_callSubs[i]){any=true;
@@ -4911,11 +4911,11 @@ function renderCallReports(){
         +'<div style="flex:1;font-size:12px;color:var(--text2)">'+esc(k)+'</div>'
         +'<div style="width:74px;text-align:right;font-size:12px"><b>'+c+'</b> <span style="color:var(--text3)">'+p+'%</span></div></div>';});
     h+='</div>';
-    h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:6px">SUB-ISSUE BREAKDOWN</div>';
+    h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:2px">SUB-ISSUE BREAKDOWN</div><div style="font-size:11px;color:var(--text3);margin-bottom:6px">Per-remark counts (a call can have several). Free-text remarks are in the grouped card below, so these may not sum to the issue total.</div>';
     var anySub=false;
     CALL_GROUPS.forEach(function(g){var subs=subByIssue[g.en]||{},keys=Object.keys(subs);if(!keys.length)return;anySub=true;
       var smax=1;keys.forEach(function(k){if(subs[k]>smax)smax=subs[k];});keys.sort(function(a,b){return subs[b]-subs[a];});
-      h+='<div style="margin:12px 0 4px;font-size:12px;font-weight:800;color:'+g.color+'">'+g.icon+' '+esc(g.en)+' <span style="color:var(--text3);font-weight:600">('+issueCount[g.en]+')</span></div>';
+      h+='<div style="margin:12px 0 4px;font-size:12px;font-weight:800;color:'+g.color+'">'+g.icon+' '+esc(g.en)+' <span style="color:var(--text3);font-weight:600">('+issueCount[g.en]+' calls)</span></div>';
       keys.forEach(function(k){var c=subs[k],w=Math.round(c/smax*100);
         h+='<div onclick="_crDrillTo(\'sub\',\''+_crJs(k)+'\')" title="Click to see entries" style="display:flex;align-items:center;gap:8px;margin:3px 0;cursor:pointer">'
 
