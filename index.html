@@ -4572,6 +4572,7 @@ var CALL_GROUPS=[
  {id:'rech',en:'RECHARGE',hi:'RECHARGE ME DIKKAT',icon:'🔋',color:'#15803d',subs:[
    {hi:'354/999 RECHARGE ACTIVATE NAHI HUA'},
    {hi:'179/299 ACTIVATE NAHI HUA'},
+   {hi:'389 ACTIVATE NAHI HUA'},
    {hi:'354 RECHARGE KIA MAGAR LIMIT OVER AA RAHA HAI'},
    {hi:'AUTOPAY LAGA HUA HAI RECHARGE NAHI KAR PAA RAHA HU'},
    {hi:'RECHARGE KA OPTION NAHI AA RAHA HAI'},
@@ -4589,6 +4590,10 @@ var CALL_GROUPS=[
    {hi:'DRIVER - PAYMENT KAB MILEGI'},
    {hi:'HOLD PAYMENT KI JANKARI'},
    {hi:'CBD PAYMENT KI JANKARI'},
+   {type:'text',hi:'OTHER (TYPE KARE)'}]},
+ {id:'myop',en:'MYOPERATOR ISSUE',hi:'CALL SYSTEM / IVR ISSUE',icon:'📞',color:'#0891b2',subs:[
+   {hi:'AWAJ NAHI AA RAHI HAI'},
+   {hi:'CALL AUTO CUT GYA'},
    {type:'text',hi:'OTHER (TYPE KARE)'}]}
 ];
 function _callGrp(id){for(var i=0;i<CALL_GROUPS.length;i++)if(CALL_GROUPS[i].id===id)return CALL_GROUPS[i];return null;}
@@ -4622,9 +4627,9 @@ function renderCalling(){
   h+='<div style="font-size:14px;color:var(--text2);margin-top:3px;font-weight:600">Welcome, '+esc(me.agentName||me.username||'')+' 👋</div></div></div>';
   // caller number
   h+='<div style="margin:4px 0 14px"><label class="fl" style="display:block;margin-bottom:5px">CALLER NUMBER</label>';
-  h+='<input class="pos-num" type="tel" inputmode="numeric" placeholder="Caller mobile" value="'+esc(_callNum)+'" oninput="_callSetNum(this.value)"></div>';
+  h+='<input class="pos-num" type="tel" inputmode="numeric" placeholder="Caller mobile" value="'+esc(_callNum)+'" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,\'\').slice(0,10);_callSetNum(this.value)"></div>';
   var _rq=_callQuality==='RIGHT',_wq=_callQuality==='WASTE';
-  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY <span style="color:var(--text3);font-weight:500">(optional)</span></label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY <span style="color:#dc2626;font-weight:700">(required) *</span></label><div style="display:flex;gap:10px;flex-wrap:wrap">';
   h+='<button onclick="_callSetQuality(\'RIGHT\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_rq?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">✅ RIGHT CALL</button>';
   h+='<button onclick="_callSetQuality(\'WASTE\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_wq?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">🚫 WASTE CALL</button>';
   h+='</div></div>';
@@ -4687,7 +4692,9 @@ function _callEntriesRows(role){
 function _callReset(){_callNum='';_callGroup=null;_callSubs={};_callText={};_callQuality='';renderCalling();}
 function _callSave(){
   var num=(_callNum||'').trim();
-  if(!num){showAlert('Enter caller number','error');return;}
+  var digits=num.replace(/\D/g,'');
+  if(digits.length!==10||!/^[6-9]/.test(digits)){showAlert('Enter a valid 10-digit mobile number','error');return;}
+  if(!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
   if(!_callGroup){showAlert('Select an issue','error');return;}
   var g=_callGrp(_callGroup),remarks=[],any=false;
   g.subs.forEach(function(s,i){
@@ -4701,7 +4708,7 @@ function _callSave(){
   var m=num.replace(/\D/g,'').match(/([6-9]\d{9})$/);
   var n=new Date();var pad=function(x){return String(x).padStart(2,'0');};
   var id='c_'+Date.now()+'_'+((Math.random()*1e5)|0);
-  var rec={number:num,mobilePhone:(m?m[1]:''),callQuality:_callQuality||'',issue:g.en,issueHi:g.hi,remark:remarks.join(' | '),
+  var rec={number:digits,mobilePhone:digits,callQuality:_callQuality||'',issue:g.en,issueHi:g.hi,remark:remarks.join(' | '),
     agent:(me.username||''),agentName:(me.agentName||me.username||''),
     ts:Date.now(),date:pad(n.getDate())+'/'+pad(n.getMonth()+1)+'/'+n.getFullYear()};
   fbSet('calling_reports/'+id,rec,function(err){
@@ -4715,6 +4722,14 @@ function _callSave(){
 
 /* ═══ CALL REPORTS DASHBOARD (Admin / Manager) ═══ */
 var _crAll=[],_crFrom='',_crTo='',_crTab='report';
+var _crDeptMap={},_crDrill=null,_CR_DEPT_COLORS={};
+var _CR_PALETTE=['#b8860b','#0369a1','#15803d','#be185d','#c2410c','#7c3aed','#0891b2','#9333ea','#0d9488','#db2777','#2563eb','#16a34a'];
+function _crJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function _crDeptColor(d){d=d||'Other';if(!_CR_DEPT_COLORS[d]){var n=Object.keys(_CR_DEPT_COLORS).length;_CR_DEPT_COLORS[d]=_CR_PALETTE[n%_CR_PALETTE.length];}return _CR_DEPT_COLORS[d];}
+function _crAgentDept(a){return _crDeptMap[String(a||'').toUpperCase()]||'Other';}
+function _crDrillTo(t,v){_crDrill={type:t,val:v};_crTab='entries';renderCallReports();try{window.scrollTo(0,0);}catch(e){}}
+function _crDrillClear(){_crDrill=null;renderCallReports();}
+
 function _crYMD(d){var p=function(x){return String(x).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 function _crInitRange(){var n=new Date();_crTo=_crYMD(n);_crFrom=_crYMD(new Date(n.getFullYear(),n.getMonth(),1));}
 function _crEntryTs(e){if(e.ts)return e.ts;if(e.date){var p=String(e.date).split('/');if(p.length===3){var d=new Date(+p[2],(+p[1])-1,+p[0]);if(!isNaN(d))return d.getTime();}}return 0;}
@@ -4726,10 +4741,14 @@ function _crFiltered(){
 function loadCallReports(){
   if(!_crFrom&&!_crTo)_crInitRange();
   setC('<div class="ldr"><span class="sp"></span>Loading call reports…</div>');
-  fbGet('calling_reports',function(err,data){
-    var arr=[];Object.keys(data||{}).forEach(function(k){var o=data[k];if(o&&typeof o==='object'){o._k=k;arr.push(o);}});
-    arr.sort(function(a,b){return _crEntryTs(b)-_crEntryTs(a);});
-    _crAll=arr; renderCallReports();
+  fbGet('users',function(ue,ud){
+    _crDeptMap={};
+    if(ud)Object.keys(ud).forEach(function(k){var u=ud[k];if(!u)return;var dept=u.DEPARTMENT||u.ROLE||'Other';if(u.USERNAME)_crDeptMap[String(u.USERNAME).toUpperCase()]=dept;if(u.Agent_Name)_crDeptMap[String(u.Agent_Name).toUpperCase()]=dept;});
+    fbGet('calling_reports',function(err,data){
+      var arr=[];Object.keys(data||{}).forEach(function(k){var o=data[k];if(o&&typeof o==='object'){o._k=k;arr.push(o);}});
+      arr.sort(function(a,b){return _crEntryTs(b)-_crEntryTs(a);});
+      _crAll=arr; renderCallReports();
+    });
   });
 }
 function _crSetFrom(v){_crFrom=v;renderCallReports();}
@@ -4742,7 +4761,7 @@ function _crPreset(p){
   else if(p==='all'){_crFrom='';_crTo='';}
   renderCallReports();
 }
-function _crSetTab(t){_crTab=t;renderCallReports();}
+function _crSetTab(t){_crTab=t;_crDrill=null;renderCallReports();}
 function _crDonut(segs,total){
   var r=64,cx=82,cy=82,C=2*Math.PI*r,off=0,paths='';
   segs.forEach(function(s){if(!s.value)return;var len=(s.value/(total||1))*C;
@@ -4810,8 +4829,18 @@ function renderCallReports(){
   h+='<button class="btn '+(_crTab==='entries'?'btn-p':'btn-s')+' btn-sm" onclick="_crSetTab(\'entries\')">📋 Entries</button></div>';
   if(_crTab==='entries'){
     var canDel=(R()==='ADMIN');
-    var elist=rows.slice(0,500);
-    h+='<div class="tcard" style="padding:0"><div class="fl" style="font-weight:700;padding:12px 12px 6px">ENTRIES ('+rows.length+(rows.length>500?' — showing 500':'')+')'+(canDel?'':' · <span style="color:var(--text3);font-weight:500">delete is admin-only</span>')+'</div>';
+    var PREDEF_E=_crPredef();
+    var drows=rows;
+    if(_crDrill){drows=rows.filter(function(e){
+      if(_crDrill.type==='issue')return (e.issue||'')===_crDrill.val;
+      if(_crDrill.type==='agent')return (e.agentName||e.agent||'(unknown)')===_crDrill.val;
+      if(_crDrill.type==='quality')return (e.callQuality||'none')===_crDrill.val;
+      if(_crDrill.type==='sub')return String(e.remark||'').split(' | ').map(function(x){return x.trim();}).indexOf(_crDrill.val)>=0;
+      if(_crDrill.type==='theme')return String(e.remark||'').split(' | ').some(function(x){x=x.trim();return x&&!PREDEF_E[x.toUpperCase()]&&_crTheme(x)===_crDrill.val;});
+      return true;});}
+    if(_crDrill){var _dt={issue:'Issue',agent:'Agent',quality:'Call quality',sub:'Sub-issue',theme:'Typed theme'}[_crDrill.type]||'Filter';h+='<div class="tcard" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;border:1.5px solid var(--gold);background:var(--bg3)"><span style="font-weight:800">🔎 '+_dt+': '+esc(_crDrill.val==='none'?'Unmarked':_crDrill.val)+'</span><span style="color:var(--text3);font-size:12px">'+drows.length+' matching entries</span><span style="flex:1"></span><button class="btn btn-s btn-xs" onclick="_crDrillClear()">✕ Clear filter</button></div>';}
+    var elist=drows.slice(0,500);
+    h+='<div class="tcard" style="padding:0"><div class="fl" style="font-weight:700;padding:12px 12px 6px">ENTRIES ('+drows.length+(drows.length>500?' — showing 500':'')+')'+(canDel?'':' · <span style="color:var(--text3);font-weight:500">delete is admin-only</span>')+'</div>';
     h+='<div class="tscroll" style="overflow:auto;max-height:64vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
     h+='<th style="text-align:left;padding:7px">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">ISSUE</th><th style="text-align:left;padding:7px">REMARK</th><th style="text-align:left;padding:7px">AGENT</th><th style="text-align:left;padding:7px">QUALITY</th>'+(canDel?'<th style="padding:7px"></th>':'')+'</tr></thead><tbody>';
     if(!elist.length)h+='<tr><td colspan="7" style="text-align:center;padding:26px;color:var(--text3)">No entries in this range</td></tr>';
@@ -4839,25 +4868,41 @@ function renderCallReports(){
     h+='<div class="tcard"><div class="fl" style="font-weight:700;margin-bottom:8px">CALLS BY ISSUE</div>';
     h+='<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>'+_crDonut(segs,total)+'</div><div style="flex:1;min-width:280px">';
     CALL_GROUPS.forEach(function(g){var c=issueCount[g.en]||0,pct=total?Math.round(c/total*100):0,w=Math.round(c/maxIss*100);
-      h+='<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:150px;font-size:12px;font-weight:700;color:'+g.color+'">'+g.icon+' '+esc(g.en)+'</div>'
+      h+='<div onclick="_crDrillTo(\'issue\',\''+_crJs(g.en)+'\')" title="Click to see entries" style="display:flex;align-items:center;gap:10px;margin:5px 0;cursor:pointer"><div style="width:150px;font-size:12px;font-weight:700;color:'+g.color+'">'+g.icon+' '+esc(g.en)+'</div>'
+
         +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+g.color+'"></div></div>'
         +'<div style="width:74px;text-align:right;font-size:12px"><b>'+c+'</b> <span style="color:var(--text3)">'+pct+'%</span></div></div>';});
     h+='</div></div></div>';
     h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:8px">CALL QUALITY</div><div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">';
     h+='<div>'+_crDonut([{label:'Right',value:qualityCount.RIGHT,color:'#15803d'},{label:'Waste',value:qualityCount.WASTE,color:'#dc2626'},{label:'Unmarked',value:qualityCount.none,color:'#9ca3af'}],total)+'</div>';
     h+='<div style="display:flex;gap:12px;flex-wrap:wrap;flex:1;min-width:280px">';
-    var _qp=function(lbl,cc,col){var p=total?Math.round(cc/total*100):0;return '<div style="flex:1;min-width:130px;border:2px solid '+col+';border-radius:10px;padding:12px;text-align:center;background:'+col+'12"><div style="font-size:24px;font-weight:800;color:'+col+'">'+cc+'</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+'</div><div style="font-size:11px;color:var(--text3)">'+p+'%</div></div>';};
-    h+=_qp('✅ RIGHT CALL',qualityCount.RIGHT,'#15803d')+_qp('🚫 WASTE CALL',qualityCount.WASTE,'#dc2626')+_qp('— UNMARKED',qualityCount.none,'#9ca3af');
+    var _qp=function(lbl,cc,col,qk){var p=total?Math.round(cc/total*100):0;return '<div onclick="_crDrillTo(\'quality\',\''+qk+'\')" title="Click to see entries" style="flex:1;min-width:130px;border:2px solid '+col+';border-radius:10px;padding:12px;text-align:center;background:'+col+'12;cursor:pointer"><div style="font-size:24px;font-weight:800;color:'+col+'">'+cc+'</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+'</div><div style="font-size:11px;color:var(--text3)">'+p+'%</div></div>';};
+    h+=_qp('\u2705 RIGHT CALL',qualityCount.RIGHT,'#15803d','RIGHT')+_qp('\U0001f6ab WASTE CALL',qualityCount.WASTE,'#dc2626','WASTE')+_qp('\u2014 UNMARKED',qualityCount.none,'#9ca3af','none');
     h+='</div></div></div>';
     var dc=_crDayChart(dayCount);
     if(dc)h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:4px">CALLS PER DAY</div>'+dc+'</div>';
+    var ivrEn='MYOPERATOR ISSUE',ivrTot=issueCount[ivrEn]||0,ivrPct=total?Math.round(ivrTot/total*100):0,ivrBreak={};
+    rows.forEach(function(e){if((e.issue||'')!==ivrEn)return;String(e.remark||'').split(' | ').forEach(function(r){r=r.trim();if(!r)return;var key=PREDEF[r.toUpperCase()]?r:'\u270f\ufe0f OTHER (typed)';ivrBreak[key]=(ivrBreak[key]||0)+1;});});
+    h+='<div class="tcard" style="margin-top:12px;border:1.5px solid #0891b2"><div class="fl" style="font-weight:700;margin-bottom:8px;color:#0891b2">\U0001f4de IVR / MYOPERATOR ISSUE REPORT</div>';
+    h+='<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:8px">';
+    h+='<div style="border:2px solid #0891b2;border-radius:10px;padding:10px 18px;text-align:center;background:#0891b212"><div style="font-size:26px;font-weight:800;color:#0891b2">'+ivrPct+'%</div><div style="font-size:11px;color:var(--text2)">of all calls = IVR issue</div></div>';
+    h+='<div style="font-size:13px;color:var(--text2)"><b>'+ivrTot+'</b> IVR / MyOperator-issue calls out of <b>'+total+'</b> total</div></div>';
+    var ik=Object.keys(ivrBreak).sort(function(a,b){return ivrBreak[b]-ivrBreak[a];});
+    if(!ik.length)h+='<div style="color:var(--text3);padding:6px">No IVR / MyOperator issues in this range \U0001f389</div>';
+    var imax=1;ik.forEach(function(k){if(ivrBreak[k]>imax)imax=ivrBreak[k];});
+    ik.forEach(function(k){var c=ivrBreak[k],w=Math.round(c/imax*100),p=ivrTot?Math.round(c/ivrTot*100):0;
+      h+='<div onclick="_crDrillTo(\'issue\',\''+_crJs(ivrEn)+'\')" title="Click to see entries" style="display:flex;align-items:center;gap:10px;margin:4px 0;cursor:pointer"><div style="flex:0 0 42%;background:var(--bg3);border-radius:5px;height:15px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:#0891b2cc"></div></div>'
+        +'<div style="flex:1;font-size:12px;color:var(--text2)">'+esc(k)+'</div>'
+        +'<div style="width:74px;text-align:right;font-size:12px"><b>'+c+'</b> <span style="color:var(--text3)">'+p+'%</span></div></div>';});
+    h+='</div>';
     h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:6px">SUB-ISSUE BREAKDOWN</div>';
     var anySub=false;
     CALL_GROUPS.forEach(function(g){var subs=subByIssue[g.en]||{},keys=Object.keys(subs);if(!keys.length)return;anySub=true;
       var smax=1;keys.forEach(function(k){if(subs[k]>smax)smax=subs[k];});keys.sort(function(a,b){return subs[b]-subs[a];});
       h+='<div style="margin:12px 0 4px;font-size:12px;font-weight:800;color:'+g.color+'">'+g.icon+' '+esc(g.en)+' <span style="color:var(--text3);font-weight:600">('+issueCount[g.en]+')</span></div>';
       keys.forEach(function(k){var c=subs[k],w=Math.round(c/smax*100);
-        h+='<div style="display:flex;align-items:center;gap:8px;margin:3px 0">'
+        h+='<div onclick="_crDrillTo(\'sub\',\''+_crJs(k)+'\')" title="Click to see entries" style="display:flex;align-items:center;gap:8px;margin:3px 0;cursor:pointer">'
+
           +'<div style="flex:0 0 45%;background:var(--bg3);border-radius:5px;height:14px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+g.color+'cc"></div></div>'
           +'<div style="flex:1;font-size:11px;color:var(--text2)">'+esc(k)+'</div>'
           +'<div style="width:36px;text-align:right;font-weight:700;font-size:12px">'+c+'</div></div>';});
@@ -4869,7 +4914,7 @@ function renderCallReports(){
       var tmax=1;tk.forEach(function(k){if(typedThemes[k]>tmax)tmax=typedThemes[k];});
       h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:2px">✏️ TYPED REMARKS — grouped <span style="color:var(--text3);font-weight:500">('+typedTotal+' free-text entries, auto-grouped)</span></div>';
       tk.forEach(function(k){var cc=typedThemes[k],w=Math.round(cc/tmax*100);
-        h+='<div style="margin:10px 0 2px;display:flex;align-items:center;gap:10px"><div style="width:190px;font-size:12px;font-weight:800">'+esc(k)+'</div>'
+        h+='<div onclick="_crDrillTo(\'theme\',\''+_crJs(k)+'\')" title="Click to see entries" style="margin:10px 0 2px;display:flex;align-items:center;gap:10px;cursor:pointer"><div style="width:190px;font-size:12px;font-weight:800">'+esc(k)+'</div>'
           +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:15px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:#6d28d9cc"></div></div>'
           +'<div style="width:36px;text-align:right;font-weight:700;font-size:12px">'+cc+'</div></div>';
         h+='<div style="font-size:11px;color:var(--text3);margin:0 0 4px 6px">e.g. '+esc((typedExamples[k]||[]).slice(0,3).join('  ·  '))+'</div>';
@@ -4882,15 +4927,18 @@ function renderCallReports(){
     var amax=1;agents.forEach(function(a){if(agentMap[a].total>amax)amax=agentMap[a].total;});
     h+='<div class="tcard"><div class="fl" style="font-weight:700;margin-bottom:8px">CALLS PER AGENT</div>';
     if(!agents.length)h+='<div style="color:var(--text3);padding:8px">No calls in this range</div>';
-    agents.forEach(function(a){var v=agentMap[a].total,w=Math.round(v/amax*100);
-      h+='<div style="display:flex;align-items:center;gap:10px;margin:5px 0"><div style="width:160px;font-size:12px;font-weight:600">'+esc(a)+'</div>'
-        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:16px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:var(--gold)"></div></div>'
+    var _depts={};
+    agents.forEach(function(a){var v=agentMap[a].total,w=Math.round(v/amax*100);var dp=_crAgentDept(a),col=_crDeptColor(dp);_depts[dp]=col;
+      h+='<div onclick="_crDrillTo(\'agent\',\''+_crJs(a)+'\')" title="'+esc(dp)+' \u2014 click to see entries" style="display:flex;align-items:center;gap:10px;margin:5px 0;cursor:pointer"><div style="width:160px;font-size:12px;font-weight:600">'+esc(a)+'</div>'
+        +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:18px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+col+';display:flex;align-items:center;justify-content:flex-end"><span style="color:#fff;font-size:10px;font-weight:800;padding-right:6px">'+(w>14?v:'')+'</span></div></div>'
         +'<div style="width:36px;text-align:right;font-weight:700;font-size:12px">'+v+'</div></div>';});
+    var _lk=Object.keys(_depts);
+    if(_lk.length){h+='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">';_lk.forEach(function(d){h+='<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><span style="width:11px;height:11px;border-radius:3px;background:'+_depts[d]+'"></span>'+esc(d)+'</span>';});h+='</div>';}
     h+='</div>';
     h+='<div class="tcard" style="padding:0;margin-top:12px"><div class="fl" style="font-weight:700;padding:12px 12px 6px">AGENT × ISSUE — who got what issue</div>';
     h+='<div class="tscroll" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
     h+='<th style="text-align:left;padding:7px;position:sticky;left:0;background:var(--bg2)">AGENT</th>';
-    CALL_GROUPS.forEach(function(g){h+='<th style="padding:7px;text-align:center;color:'+g.color+'" title="'+esc(g.en)+'">'+g.icon+'</th>';});
+    CALL_GROUPS.forEach(function(g){h+='<th style="padding:7px 5px;text-align:center;color:'+g.color+';min-width:62px;vertical-align:bottom"><div style="font-size:15px">'+g.icon+'</div><div style="font-size:9px;font-weight:700;line-height:1.15;margin-top:3px">'+esc(g.en)+'</div></th>';});
     h+='<th style="padding:7px;text-align:center">TOTAL</th></tr></thead><tbody>';
     if(!agents.length)h+='<tr><td colspan="8" style="text-align:center;padding:26px;color:var(--text3)">No calls in this range</td></tr>';
     agents.forEach(function(an){var m=agentMap[an];
