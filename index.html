@@ -4556,7 +4556,7 @@ function _attRosterDelete(rid){
 /* ─── end attendance ─── */
 
 /* ═══ CALLING REPORT (POS-style, Calling Agent) ═══ */
-var _callNum='',_callGroup=null,_callSubs={},_callText={},_callEntries=[],_callQuality='';
+var _callNum='',_callGroup=null,_callSubs={},_callText={},_callEntries=[],_callQuality='',_callStatus='';
 var CALL_GROUPS=[
  {id:'err',en:'ERROR PAYMENT',hi:'',icon:'💸',color:'#be185d',subs:[
    {hi:'PAYMENT KIA BOOKING NAHI MILI'},
@@ -4602,6 +4602,7 @@ function _callMe(){return (typeof _user==='object'&&_user)?_user:{};}
 function loadCalling(){ renderCalling(); }
 function _callSetNum(v){_callNum=v;}
 function _callSetQuality(v){_callQuality=(_callQuality===v?'':v);renderCalling();}
+function _callSetStatus(v){_callStatus=(_callStatus===v?'':v);renderCalling();}
 function _callSetText(i,v){_callText[i]=v;}
 function _callPickGroup(id){_callGroup=(_callGroup===id?null:id);_callSubs={};_callText={};renderCalling();}
 function _callToggleSub(i){_callSubs[i]=!_callSubs[i];renderCalling();}
@@ -4648,7 +4649,12 @@ function renderCalling(){
   // step 2 subs
   if(g){
     var cnt=0;Object.keys(_callSubs).forEach(function(k){if(_callSubs[k])cnt++;});
-    h+='<div class="fl" style="font-weight:700;margin-top:8px">REMARK — '+esc(g.hi||g.en)+' <span style="color:var(--text3);font-weight:500">(multi-select)</span></div>';
+    var _sv=_callStatus==='SOLVED',_uv=_callStatus==='UNSOLVED';
+    h+='<div style="margin:10px 0 4px"><label class="fl" style="display:block;margin-bottom:5px">STATUS <span style="color:#dc2626;font-weight:700">(required) *</span></label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+    h+='<button onclick="_callSetStatus(\'SOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_sv?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">\u2705 SOLVED</button>';
+    h+='<button onclick="_callSetStatus(\'UNSOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_uv?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">\u26d4 UNSOLVED</button>';
+    h+='</div></div>';
+    h+='<div class="fl" style="font-weight:700;margin-top:8px">REMARK \u2014 '+esc(g.hi||g.en)+' <span style="color:var(--text3);font-weight:500">(multi-select)</span></div>';
     h+='<div class="pos-sub">';
     g.subs.forEach(function(s,i){
       var on=!!_callSubs[i];
@@ -4689,13 +4695,14 @@ function _callEntriesRows(role){
   });
   return rows;
 }
-function _callReset(){_callNum='';_callGroup=null;_callSubs={};_callText={};_callQuality='';renderCalling();}
+function _callReset(){_callNum='';_callGroup=null;_callSubs={};_callText={};_callQuality='';_callStatus='';renderCalling();}
 function _callSave(){
   var num=(_callNum||'').trim();
   var digits=num.replace(/\D/g,'');
   if(digits.length!==10||!/^[6-9]/.test(digits)){showAlert('Enter a valid 10-digit mobile number','error');return;}
   if(!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
   if(!_callGroup){showAlert('Select an issue','error');return;}
+  if(!_callStatus){showAlert('Mark the call Solved or Unsolved','error');return;}
   var g=_callGrp(_callGroup),remarks=[],any=false;
   g.subs.forEach(function(s,i){
     if(_callSubs[i]){any=true;
@@ -4708,7 +4715,7 @@ function _callSave(){
   var m=num.replace(/\D/g,'').match(/([6-9]\d{9})$/);
   var n=new Date();var pad=function(x){return String(x).padStart(2,'0');};
   var id='c_'+Date.now()+'_'+((Math.random()*1e5)|0);
-  var rec={number:digits,mobilePhone:digits,callQuality:_callQuality||'',issue:g.en,issueHi:g.hi,remark:remarks.join(' | '),
+  var rec={number:digits,mobilePhone:digits,callQuality:_callQuality||'',status:_callStatus||'',issue:g.en,issueHi:g.hi,remark:remarks.join(' | '),
     agent:(me.username||''),agentName:(me.agentName||me.username||''),
     ts:Date.now(),date:pad(n.getDate())+'/'+pad(n.getMonth()+1)+'/'+n.getFullYear()};
   fbSet('calling_reports/'+id,rec,function(err){
@@ -4802,11 +4809,12 @@ function _crPredef(){var m={};CALL_GROUPS.forEach(function(g){g.subs.forEach(fun
 
 function renderCallReports(){
   var rows=_crFiltered(),total=rows.length;
-  var issueCount={},agentMap={},remarkCount={},subByIssue={},dayCount={},qualityCount={RIGHT:0,WASTE:0,none:0},typedThemes={},typedExamples={},typedTotal=0,PREDEF=_crPredef();
+  var issueCount={},agentMap={},remarkCount={},subByIssue={},dayCount={},qualityCount={RIGHT:0,WASTE:0,none:0},statusCount={SOLVED:0,UNSOLVED:0,none:0},typedThemes={},typedExamples={},typedTotal=0,PREDEF=_crPredef();
   CALL_GROUPS.forEach(function(g){issueCount[g.en]=0;subByIssue[g.en]={};});
   rows.forEach(function(e){
     var iss=e.issue||'(none)';issueCount[iss]=(issueCount[iss]||0)+1;
     var _q=e.callQuality;if(_q==='RIGHT')qualityCount.RIGHT++;else if(_q==='WASTE')qualityCount.WASTE++;else qualityCount.none++;
+    var _st=e.status;if(_st==='SOLVED')statusCount.SOLVED++;else if(_st==='UNSOLVED')statusCount.UNSOLVED++;else statusCount.none++;
     var an=e.agentName||e.agent||'(unknown)';
     if(!agentMap[an]){agentMap[an]={total:0};CALL_GROUPS.forEach(function(g){agentMap[an][g.en]=0;});}
     agentMap[an].total++;if(agentMap[an][iss]===undefined)agentMap[an][iss]=0;agentMap[an][iss]++;
@@ -4815,7 +4823,7 @@ function renderCallReports(){
     var ts=_crEntryTs(e);if(ts){var dd=_crYMD(new Date(ts));dayCount[dd]=(dayCount[dd]||0)+1;}
   });
   var h='<div class="pg-head"><div><div class="pg-t">📊 <span class="hl">Call Reports</span></div>';
-  h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+total+' calls'+((_crFrom||_crTo)?(' · '+(_crFrom||'…')+' → '+(_crTo||'…')):' · all time')+'</div></div>';
+  h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+total+' calls · ✅ '+statusCount.SOLVED+' solved · ⛔ '+statusCount.UNSOLVED+' unsolved'+((_crFrom||_crTo)?(' · '+(_crFrom||'…')+' → '+(_crTo||'…')):' · all time')+'</div></div>';
   h+='<div style="display:flex;gap:6px"><button class="btn btn-s btn-sm" onclick="_crExportEntries()">⬇ Entries CSV</button><button class="btn btn-s btn-sm" onclick="_crExportSummary()">⬇ Agent CSV</button></div></div>';
   h+='<div class="tcard" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">';
   h+='<label class="fl">From <input type="date" class="fi" style="width:150px" value="'+_crFrom+'" onchange="_crSetFrom(this.value)"></label>';
@@ -4835,15 +4843,16 @@ function renderCallReports(){
       if(_crDrill.type==='issue')return (e.issue||'')===_crDrill.val;
       if(_crDrill.type==='agent')return (e.agentName||e.agent||'(unknown)')===_crDrill.val;
       if(_crDrill.type==='quality')return (e.callQuality||'none')===_crDrill.val;
+      if(_crDrill.type==='status')return (e.status||'none')===_crDrill.val;
       if(_crDrill.type==='sub')return String(e.remark||'').split(' | ').map(function(x){return x.trim();}).indexOf(_crDrill.val)>=0;
       if(_crDrill.type==='theme')return String(e.remark||'').split(' | ').some(function(x){x=x.trim();return x&&!PREDEF_E[x.toUpperCase()]&&_crTheme(x)===_crDrill.val;});
       return true;});}
-    if(_crDrill){var _dt={issue:'Issue',agent:'Agent',quality:'Call quality',sub:'Sub-issue',theme:'Typed theme'}[_crDrill.type]||'Filter';h+='<div class="tcard" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;border:1.5px solid var(--gold);background:var(--bg3)"><span style="font-weight:800">🔎 '+_dt+': '+esc(_crDrill.val==='none'?'Unmarked':_crDrill.val)+'</span><span style="color:var(--text3);font-size:12px">'+drows.length+' matching entries</span><span style="flex:1"></span><button class="btn btn-s btn-xs" onclick="_crDrillClear()">✕ Clear filter</button></div>';}
+    if(_crDrill){var _dt={issue:'Issue',agent:'Agent',quality:'Call quality',status:'Status',sub:'Sub-issue',theme:'Typed theme'}[_crDrill.type]||'Filter';h+='<div class="tcard" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;border:1.5px solid var(--gold);background:var(--bg3)"><span style="font-weight:800">🔎 '+_dt+': '+esc(_crDrill.val==='none'?'Unmarked':_crDrill.val)+'</span><span style="color:var(--text3);font-size:12px">'+drows.length+' matching entries</span><span style="flex:1"></span><button class="btn btn-s btn-xs" onclick="_crDrillClear()">✕ Clear filter</button></div>';}
     var elist=drows.slice(0,500);
     h+='<div class="tcard" style="padding:0"><div class="fl" style="font-weight:700;padding:12px 12px 6px">ENTRIES ('+drows.length+(drows.length>500?' — showing 500':'')+')'+(canDel?'':' · <span style="color:var(--text3);font-weight:500">delete is admin-only</span>')+'</div>';
     h+='<div class="tscroll" style="overflow:auto;max-height:64vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">';
-    h+='<th style="text-align:left;padding:7px">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">ISSUE</th><th style="text-align:left;padding:7px">REMARK</th><th style="text-align:left;padding:7px">AGENT</th><th style="text-align:left;padding:7px">QUALITY</th>'+(canDel?'<th style="padding:7px"></th>':'')+'</tr></thead><tbody>';
-    if(!elist.length)h+='<tr><td colspan="7" style="text-align:center;padding:26px;color:var(--text3)">No entries in this range</td></tr>';
+    h+='<th style="text-align:left;padding:7px">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">ISSUE</th><th style="text-align:left;padding:7px">REMARK</th><th style="text-align:left;padding:7px">AGENT</th><th style="text-align:left;padding:7px">QUALITY</th><th style="text-align:left;padding:7px">STATUS</th>'+(canDel?'<th style="padding:7px"></th>':'')+'</tr></thead><tbody>';
+    if(!elist.length)h+='<tr><td colspan="8" style="text-align:center;padding:26px;color:var(--text3)">No entries in this range</td></tr>';
     elist.forEach(function(e){
       var t=e.ts?new Date(e.ts):null;
       var tl=t?(String(t.getDate()).padStart(2,'0')+'/'+String(t.getMonth()+1).padStart(2,'0')+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):(e.date||'');
@@ -4854,6 +4863,7 @@ function renderCallReports(){
         +'<td style="padding:7px;color:var(--text2)">'+esc(e.remark||'')+'</td>'
         +'<td style="padding:7px;color:var(--text3);white-space:nowrap">'+esc(e.agentName||e.agent||'')+'</td>'
         +'<td style="padding:7px;white-space:nowrap">'+(e.callQuality==='RIGHT'?'<span style="color:#15803d;font-weight:700">✅ Right</span>':(e.callQuality==='WASTE'?'<span style="color:#dc2626;font-weight:700">🚫 Waste</span>':'<span style="color:var(--text3)">—</span>'))+'</td>'
+        +'<td style="padding:7px;white-space:nowrap">'+(e.status==='SOLVED'?'<span style="color:#15803d;font-weight:700">✅ Solved</span>':(e.status==='UNSOLVED'?'<span style="color:#dc2626;font-weight:700">⛔ Unsolved</span>':'<span style="color:var(--text3)">—</span>'))+'</td>'
         +(canDel?('<td style="padding:7px;text-align:right"><button class="btn btn-d btn-xs" onclick="_crDelete(\''+esc(e._k||'')+'\')">🗑</button></td>'):'')
         +'</tr>';
     });
@@ -4878,6 +4888,12 @@ function renderCallReports(){
     h+='<div style="display:flex;gap:12px;flex-wrap:wrap;flex:1;min-width:280px">';
     var _qp=function(lbl,cc,col,qk){var p=total?Math.round(cc/total*100):0;return '<div onclick="_crDrillTo(\'quality\',\''+qk+'\')" title="Click to see entries" style="flex:1;min-width:130px;border:2px solid '+col+';border-radius:10px;padding:12px;text-align:center;background:'+col+'12;cursor:pointer"><div style="font-size:24px;font-weight:800;color:'+col+'">'+cc+'</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+'</div><div style="font-size:11px;color:var(--text3)">'+p+'%</div></div>';};
     h+=_qp('\u2705 RIGHT CALL',qualityCount.RIGHT,'#15803d','RIGHT')+_qp('\U0001f6ab WASTE CALL',qualityCount.WASTE,'#dc2626','WASTE')+_qp('\u2014 UNMARKED',qualityCount.none,'#9ca3af','none');
+    h+='</div></div></div>';
+    h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:8px">SOLVED vs UNSOLVED</div><div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center">';
+    h+='<div>'+_crDonut([{label:'Solved',value:statusCount.SOLVED,color:'#15803d'},{label:'Unsolved',value:statusCount.UNSOLVED,color:'#dc2626'},{label:'Unmarked',value:statusCount.none,color:'#9ca3af'}],total)+'</div>';
+    h+='<div style="display:flex;gap:12px;flex-wrap:wrap;flex:1;min-width:280px">';
+    var _sp=function(lbl,cc,col,sk){var p=total?Math.round(cc/total*100):0;return '<div onclick="_crDrillTo(\'status\',\''+sk+'\')" title="Click to see entries" style="flex:1;min-width:130px;border:2px solid '+col+';border-radius:10px;padding:12px;text-align:center;background:'+col+'12;cursor:pointer"><div style="font-size:24px;font-weight:800;color:'+col+'">'+cc+'</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+lbl+'</div><div style="font-size:11px;color:var(--text3)">'+p+'%</div></div>';};
+    h+=_sp('\u2705 SOLVED',statusCount.SOLVED,'#15803d','SOLVED')+_sp('\u26d4 UNSOLVED',statusCount.UNSOLVED,'#dc2626','UNSOLVED')+_sp('\u2014 UNMARKED',statusCount.none,'#9ca3af','none');
     h+='</div></div></div>';
     var dc=_crDayChart(dayCount);
     if(dc)h+='<div class="tcard" style="margin-top:12px"><div class="fl" style="font-weight:700;margin-bottom:4px">CALLS PER DAY</div>'+dc+'</div>';
@@ -4963,12 +4979,12 @@ function _crCsv(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(
 function _crDownload(name,csv){var b=new Blob([csv],{type:'text/csv;charset=utf-8;'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},120);}
 function _crExportEntries(){
   var rows=_crFiltered();
-  var out=['Date,Time,Number,Issue,Remark,Agent,Quality'];
+  var out=['Date,Time,Number,Issue,Remark,Agent,Quality,Status'];
   rows.forEach(function(e){
     var t=e.ts?new Date(e.ts):null;
     var dt=e.date||(t?_crYMD(t):'');
     var tm=t?(String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):'';
-    out.push([_crCsv(dt),_crCsv(tm),_crCsv(e.number),_crCsv(e.issue),_crCsv(e.remark),_crCsv(e.agentName||e.agent),_crCsv(e.callQuality)].join(','));
+    out.push([_crCsv(dt),_crCsv(tm),_crCsv(e.number),_crCsv(e.issue),_crCsv(e.remark),_crCsv(e.agentName||e.agent),_crCsv(e.callQuality),_crCsv(e.status)].join(','));
   });
   _crDownload('call_entries_'+(_crFrom||'all')+'_'+(_crTo||'all')+'.csv',out.join('\n'));
   showAlert(rows.length+' rows exported','success');
