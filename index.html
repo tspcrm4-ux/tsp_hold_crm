@@ -4594,7 +4594,8 @@ var CALL_GROUPS=[
  {id:'myop',en:'MYOPERATOR ISSUE',hi:'CALL SYSTEM / IVR ISSUE',icon:'📞',color:'#0891b2',subs:[
    {hi:'AWAJ NAHI AA RAHI HAI'},
    {hi:'CALL AUTO CUT GYA'},
-   {type:'text',hi:'OTHER (TYPE KARE)'}]}
+   {type:'text',hi:'OTHER (TYPE KARE)'}]},
+ {id:'cabzy',en:'CABZY REG. CALL',hi:'CABZY REGARDING CALL',icon:'🚕',color:'#7c3aed',subs:[]}
 ];
 function _callGrp(id){for(var i=0;i<CALL_GROUPS.length;i++)if(CALL_GROUPS[i].id===id)return CALL_GROUPS[i];return null;}
 function _callMe(){return (typeof _user==='object'&&_user)?_user:{};}
@@ -4630,7 +4631,7 @@ function renderCalling(){
   h+='<div style="margin:4px 0 14px"><label class="fl" style="display:block;margin-bottom:5px">CALLER NUMBER</label>';
   h+='<input class="pos-num" type="tel" inputmode="numeric" placeholder="Caller mobile" value="'+esc(_callNum)+'" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,\'\').slice(0,10);_callSetNum(this.value)"></div>';
   var _rq=_callQuality==='RIGHT',_wq=_callQuality==='WASTE';
-  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY '+(g&&g.id==='myop'?'<span style="color:var(--text3);font-weight:500">(N/A for system issue)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+  h+='<div style="margin:2px 0 16px"><label class="fl" style="display:block;margin-bottom:5px">CALL QUALITY '+(g&&(g.id==='myop'||g.id==='cabzy')?'<span style="color:var(--text3);font-weight:500">(N/A for system issue)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
   h+='<button onclick="_callSetQuality(\'RIGHT\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_rq?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">✅ RIGHT CALL</button>';
   h+='<button onclick="_callSetQuality(\'WASTE\')" style="padding:11px 22px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_wq?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">🚫 WASTE CALL</button>';
   h+='</div></div>';
@@ -4650,10 +4651,17 @@ function renderCalling(){
   if(g){
     var cnt=0;Object.keys(_callSubs).forEach(function(k){if(_callSubs[k])cnt++;});
     var _sv=_callStatus==='SOLVED',_uv=_callStatus==='UNSOLVED';
-    h+='<div style="margin:10px 0 4px"><label class="fl" style="display:block;margin-bottom:5px">STATUS '+(g&&g.id==='myop'?'<span style="color:var(--text3);font-weight:500">(optional)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
+    h+='<div style="margin:10px 0 4px"><label class="fl" style="display:block;margin-bottom:5px">STATUS '+(g&&(g.id==='myop'||g.id==='cabzy')?'<span style="color:var(--text3);font-weight:500">(optional)</span>':'<span style="color:#dc2626;font-weight:700">(required) *</span>')+'</label><div style="display:flex;gap:10px;flex-wrap:wrap">';
     h+='<button onclick="_callSetStatus(\'SOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #15803d;'+(_sv?'background:#15803d;color:#fff;box-shadow:0 3px 0 #15803d66':'background:#fff;color:#15803d')+'">\u2705 SOLVED</button>';
     h+='<button onclick="_callSetStatus(\'UNSOLVED\')" style="padding:10px 24px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:2px solid #dc2626;'+(_uv?'background:#dc2626;color:#fff;box-shadow:0 3px 0 #dc262666':'background:#fff;color:#dc2626')+'">\u26d4 UNSOLVED</button>';
     h+='</div></div>';
+    if(g.id==='cabzy'){
+      var _ac=!!_callSubs['ac'];
+      h+='<div class="fl" style="font-weight:700;margin-top:8px">CABZY DETAILS</div>';
+      h+='<div class="pos-chip" onclick="_callToggleSub(\'ac\')" style="max-width:260px;margin:8px 0;'+(_ac?'border-color:'+g.color+';background:linear-gradient(160deg,'+g.color+'1f,'+g.color+'38);color:'+g.color+';font-weight:800':'')+'"><span class="bx" style="'+(_ac?'background:'+g.color+';border-color:'+g.color+';color:#fff':'')+'">'+(_ac?'✓':'')+'</span><span>AGENT CALL</span></div>';
+      var _cbox=function(key,lbl,ph){return '<div style="margin:8px 0"><label class="fl" style="display:block;margin-bottom:4px;font-size:12px">'+lbl+'</label><input type="text" value="'+esc(_callText[key]||'')+'" oninput="_callSetText(\''+key+'\',this.value)" placeholder="'+ph+'" style="width:100%;max-width:340px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--text);font-size:14px"></div>';};
+      h+=_cbox('bk','BOOKING ID','Booking ID')+_cbox('pk','PICKUP','Pickup location')+_cbox('dr','DROP','Drop location');
+    } else {
     h+='<div class="fl" style="font-weight:700;margin-top:8px">REMARK \u2014 '+esc(g.hi||g.en)+' <span style="color:var(--text3);font-weight:500">(multi-select)</span></div>';
     h+='<div class="pos-sub">';
     g.subs.forEach(function(s,i){
@@ -4668,6 +4676,7 @@ function renderCalling(){
       }
     });
     h+='</div>';
+    }
     h+='<div class="pos-savebar"><button class="btn btn-p" style="font-size:15px;padding:11px 26px" onclick="_callSave()">💾 SAVE ENTRY</button>';
     h+='<span style="color:var(--text3);font-size:13px">'+cnt+' selected</span>';
     h+='<span style="color:var(--text3);font-size:12px">By: '+esc(me.agentName||me.username||'')+'</span>';
@@ -4700,24 +4709,28 @@ function _callSave(){
   var num=(_callNum||'').trim();
   var digits=num.replace(/\D/g,'');
   if(digits.length!==10||!/^[6-9]/.test(digits)){showAlert('Enter a valid 10-digit mobile number','error');return;}
-  if(_callGroup!=='myop'&&!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
+  var _exempt=(_callGroup==='myop'||_callGroup==='cabzy');
+  if(!_exempt&&!_callQuality){showAlert('Select RIGHT or WASTE call first','error');return;}
   if(!_callGroup){showAlert('Select an issue','error');return;}
-  if(_callGroup!=='myop'&&!_callStatus){showAlert('Mark the call Solved or Unsolved','error');return;}
-  var g=_callGrp(_callGroup),remarks=[],any=false;
-  g.subs.forEach(function(s,i){
-    if(_callSubs[i]){any=true;
-      if(s.type==='text'){var t=(_callText[i]||'').trim();remarks.push(t||'OTHER');}
-      else remarks.push(s.hi);
-    }
-  });
-  if(!any){showAlert('Select at least one remark','error');return;}
+  if(!_exempt&&!_callStatus){showAlert('Mark the call Solved or Unsolved','error');return;}
+  var g=_callGrp(_callGroup);
   var me=_callMe();
-  var m=num.replace(/\D/g,'').match(/([6-9]\d{9})$/);
   var n=new Date();var pad=function(x){return String(x).padStart(2,'0');};
   var id='c_'+Date.now()+'_'+((Math.random()*1e5)|0);
-  var rec={number:digits,mobilePhone:digits,callQuality:_callQuality||'',status:_callStatus||'',issue:g.en,issueHi:g.hi,remark:remarks.join(' | '),
+  var rec={number:digits,mobilePhone:digits,callQuality:_callQuality||'',status:_callStatus||'',issue:g.en,issueHi:g.hi,
     agent:(me.username||''),agentName:(me.agentName||me.username||''),
     ts:Date.now(),date:pad(n.getDate())+'/'+pad(n.getMonth()+1)+'/'+n.getFullYear()};
+  if(_callGroup==='cabzy'){
+    var bk=(_callText['bk']||'').trim(),pk=(_callText['pk']||'').trim(),dr=(_callText['dr']||'').trim(),ac=!!_callSubs['ac'];
+    if(!ac&&!bk&&!pk&&!dr){showAlert('Fill Agent Call or Booking ID / Pickup / Drop','error');return;}
+    var parts=[];if(ac)parts.push('Agent Call');if(bk)parts.push('BkID: '+bk);if(pk)parts.push('Pickup: '+pk);if(dr)parts.push('Drop: '+dr);
+    rec.agentCall=ac;rec.bookingId=bk;rec.pickup=pk;rec.drop=dr;rec.remark=parts.join(' · ');
+  }else{
+    var remarks=[],any=false;
+    g.subs.forEach(function(s,i){if(_callSubs[i]){any=true;if(s.type==='text'){var t=(_callText[i]||'').trim();remarks.push(t||'OTHER');}else remarks.push(s.hi);}});
+    if(!any){showAlert('Select at least one remark','error');return;}
+    rec.remark=remarks.join(' | ');
+  }
   fbSet('calling_reports/'+id,rec,function(err){
     if(err){showAlert('Save failed','error');return;}
     rec._k=id;_callEntries.unshift(rec);if(_callEntries.length>80)_callEntries.pop();
@@ -4819,7 +4832,7 @@ function renderCallReports(){
     if(!agentMap[an]){agentMap[an]={total:0};CALL_GROUPS.forEach(function(g){agentMap[an][g.en]=0;});}
     agentMap[an].total++;if(agentMap[an][iss]===undefined)agentMap[an][iss]=0;agentMap[an][iss]++;
     if(!subByIssue[iss])subByIssue[iss]={};
-    String(e.remark||'').split(' | ').forEach(function(r){r=r.trim();if(!r)return;remarkCount[r]=(remarkCount[r]||0)+1;if(PREDEF[r.toUpperCase()]){subByIssue[iss][r]=(subByIssue[iss][r]||0)+1;}else{var _th=_crTheme(r);typedThemes[_th]=(typedThemes[_th]||0)+1;typedTotal++;if(!typedExamples[_th])typedExamples[_th]=[];if(typedExamples[_th].length<5&&typedExamples[_th].indexOf(r)<0)typedExamples[_th].push(r);}});
+    if(iss!=='CABZY REG. CALL')String(e.remark||'').split(' | ').forEach(function(r){r=r.trim();if(!r)return;remarkCount[r]=(remarkCount[r]||0)+1;if(PREDEF[r.toUpperCase()]){subByIssue[iss][r]=(subByIssue[iss][r]||0)+1;}else{var _th=_crTheme(r);typedThemes[_th]=(typedThemes[_th]||0)+1;typedTotal++;if(!typedExamples[_th])typedExamples[_th]=[];if(typedExamples[_th].length<5&&typedExamples[_th].indexOf(r)<0)typedExamples[_th].push(r);}});
     var ts=_crEntryTs(e);if(ts){var dd=_crYMD(new Date(ts));dayCount[dd]=(dayCount[dd]||0)+1;}
   });
   var h='<div class="pg-head"><div><div class="pg-t">📊 <span class="hl">Call Reports</span></div>';
@@ -4937,6 +4950,24 @@ function renderCallReports(){
       });
       h+='</div>';
     }
+    var cabzyRows=rows.filter(function(e){return (e.issue||'')==='CABZY REG. CALL';});
+    if(cabzyRows.length){
+      h+='<div class="tcard" style="margin-top:12px;border:1.5px solid #7c3aed"><div class="fl" style="font-weight:700;margin-bottom:8px;color:#7c3aed">🚕 CABZY REG. CALL — DETAILS ('+cabzyRows.length+')</div>';
+      h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg3)">'
+        +'<th style="text-align:left;padding:7px;white-space:nowrap">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">AGENT</th><th style="text-align:center;padding:7px">AGENT CALL</th><th style="text-align:left;padding:7px">BOOKING ID</th><th style="text-align:left;padding:7px">PICKUP</th><th style="text-align:left;padding:7px">DROP</th></tr></thead><tbody>';
+      cabzyRows.slice(0,300).forEach(function(e){var t=e.ts?new Date(e.ts):null;var tm=(e.date||'')+' '+(t?(String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):'');
+        h+='<tr style="border-top:1px solid var(--border)">'
+          +'<td style="padding:7px;white-space:nowrap">'+esc(tm)+'</td>'
+          +'<td style="padding:7px;white-space:nowrap">'+esc(e.number||'')+'</td>'
+          +'<td style="padding:7px;white-space:nowrap">'+esc(e.agentName||e.agent||'')+'</td>'
+          +'<td style="padding:7px;text-align:center">'+(e.agentCall?'<span style="color:#15803d;font-weight:800">✓</span>':'<span style="color:var(--text3)">—</span>')+'</td>'
+          +'<td style="padding:7px">'+esc(e.bookingId||'')+'</td>'
+          +'<td style="padding:7px">'+esc(e.pickup||'')+'</td>'
+          +'<td style="padding:7px">'+esc(e.drop||'')+'</td></tr>';});
+      h+='</tbody></table></div>';
+      if(cabzyRows.length>300)h+='<div style="font-size:11px;color:var(--text3);padding:6px">Showing first 300 of '+cabzyRows.length+'</div>';
+      h+='</div>';
+    }
   } else {
     /* ===== SECTION 2: AGENT REPORT ===== */
     var agents=Object.keys(agentMap).sort(function(a,b){return agentMap[b].total-agentMap[a].total;});
@@ -4979,12 +5010,12 @@ function _crCsv(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(
 function _crDownload(name,csv){var b=new Blob([csv],{type:'text/csv;charset=utf-8;'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},120);}
 function _crExportEntries(){
   var rows=_crFiltered();
-  var out=['Date,Time,Number,Issue,Remark,Agent,Quality,Status'];
+  var out=['Date,Time,Number,Issue,Remark,Agent,Quality,Status,AgentCall,BookingID,Pickup,Drop'];
   rows.forEach(function(e){
     var t=e.ts?new Date(e.ts):null;
     var dt=e.date||(t?_crYMD(t):'');
     var tm=t?(String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')):'';
-    out.push([_crCsv(dt),_crCsv(tm),_crCsv(e.number),_crCsv(e.issue),_crCsv(e.remark),_crCsv(e.agentName||e.agent),_crCsv(e.callQuality),_crCsv(e.status)].join(','));
+    out.push([_crCsv(dt),_crCsv(tm),_crCsv(e.number),_crCsv(e.issue),_crCsv(e.remark),_crCsv(e.agentName||e.agent),_crCsv(e.callQuality),_crCsv(e.status),_crCsv(e.agentCall?'YES':''),_crCsv(e.bookingId),_crCsv(e.pickup),_crCsv(e.drop)].join(','));
   });
   _crDownload('call_entries_'+(_crFrom||'all')+'_'+(_crTo||'all')+'.csv',out.join('\n'));
   showAlert(rows.length+' rows exported','success');
