@@ -4961,6 +4961,27 @@ function renderCallReports(){
     }
     var cabzyRows=rows.filter(function(e){return (e.issue||'')==='CABZY REG. CALL';});
     if(cabzyRows.length){
+      var czTot=cabzyRows.length,czPct=total?Math.round(czTot/total*100):0;
+      var czAC=cabzyRows.filter(function(e){return e.agentCall;}).length;
+      var czBk=cabzyRows.filter(function(e){return (e.bookingId||'').trim();}).length;
+      var czPk=cabzyRows.filter(function(e){return (e.pickup||'').trim();}).length;
+      var czDr=cabzyRows.filter(function(e){return (e.drop||'').trim();}).length;
+      var czAg={};cabzyRows.forEach(function(e){var a=e.agentName||e.agent||'(unknown)';czAg[a]=(czAg[a]||0)+1;});
+      var czAk=Object.keys(czAg).sort(function(a,b){return czAg[b]-czAg[a];});
+      var czMax=1;czAk.forEach(function(k){if(czAg[k]>czMax)czMax=czAg[k];});
+      h+='<div class="tcard" style="margin-top:12px;border:1.5px solid #7c3aed"><div class="fl" style="font-weight:700;margin-bottom:8px;color:#7c3aed">🚕 CABZY REG. CALL REPORT</div>';
+      h+='<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
+      h+='<div style="border:2px solid #7c3aed;border-radius:10px;padding:10px 18px;text-align:center;background:#7c3aed12"><div style="font-size:26px;font-weight:800;color:#7c3aed">'+czPct+'%</div><div style="font-size:11px;color:var(--text2)">of all calls</div></div>';
+      h+='<div style="font-size:13px;color:var(--text2);font-weight:600;min-width:150px">'+czTot+' Cabzy calls<br><span style="color:var(--text3);font-weight:400">of '+total+' total</span></div>';
+      var _czchip=function(lbl,v){var p=czTot?Math.round(v/czTot*100):0;return '<div style="border:1px solid var(--border);border-radius:9px;padding:8px 14px;text-align:center;min-width:92px"><div style="font-size:18px;font-weight:800">'+v+'</div><div style="font-size:11px;color:var(--text3)">'+lbl+' ('+p+'%)</div></div>';};
+      h+=_czchip('Agent Call',czAC)+_czchip('Booking ID',czBk)+_czchip('Pickup',czPk)+_czchip('Drop',czDr);
+      h+='</div>';
+      h+='<div class="fl" style="font-weight:700;margin:12px 0 4px;font-size:12px;color:var(--text2)">CABZY CALLS PER AGENT</div>';
+      czAk.forEach(function(a){var v=czAg[a],w=Math.round(v/czMax*100);
+        h+='<div onclick="_crDrillTo(\'agent\',\''+_crJs(a)+'\')" title="Click to see all entries by this agent" style="display:flex;align-items:center;gap:10px;margin:4px 0;cursor:pointer"><div style="width:160px;font-size:12px;font-weight:600">'+esc(a)+'</div>'
+          +'<div style="flex:1;background:var(--bg3);border-radius:6px;height:15px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:#7c3aed"></div></div>'
+          +'<div style="width:34px;text-align:right;font-weight:700;font-size:12px">'+v+'</div></div>';});
+      h+='</div>';
       h+='<div class="tcard" style="margin-top:12px;border:1.5px solid #7c3aed"><div class="fl" style="font-weight:700;margin-bottom:8px;color:#7c3aed">🚕 CABZY REG. CALL — DETAILS ('+cabzyRows.length+')</div>';
       h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg3)">'
         +'<th style="text-align:left;padding:7px;white-space:nowrap">TIME</th><th style="text-align:left;padding:7px">NUMBER</th><th style="text-align:left;padding:7px">AGENT</th><th style="text-align:center;padding:7px">AGENT CALL</th><th style="text-align:left;padding:7px">BOOKING ID</th><th style="text-align:left;padding:7px">PICKUP</th><th style="text-align:left;padding:7px">DROP</th></tr></thead><tbody>';
