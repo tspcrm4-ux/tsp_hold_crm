@@ -4397,11 +4397,13 @@ function openTktUpdate(tktId, curStatus, curNote){
 
 /* ═══ ATTENDANCE (Manager / Admin) — roster + monthly register ═══ */
 var _attMonth=null,_attRoster={},_attPeople={},_attMarks={};
-var ATT_COLOR={P:'#15803d',A:'#be185d',WO:'#c2410c'};
-var ATT_BG={P:'#dcfce7',A:'#fce7f3',WO:'#ffedd5'};
+var ATT_COLOR={P:'#15803d',A:'#be185d',WO:'#c2410c',LWP:'#7c3aed',GL:'#0369a1'};
+var ATT_BG={P:'#dcfce7',A:'#fce7f3',WO:'#ffedd5',LWP:'#ede9fe',GL:'#e0f2fe'};
 var ATT_MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var ATT_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var ATT_DEPTS=['Calling Agent','Manager','TL','Accountant','Key Account','Insurance','Tech Department','Administration'];
+var ATT_DEPT_COLOR={'Calling Agent':'#0369a1','Manager':'#b8860b','TL':'#7c3aed','Accountant':'#15803d','Key Account':'#be185d','Insurance':'#0891b2','Tech Department':'#c2410c','Administration':'#4b5563'};
+function _attDeptColor(d){return ATT_DEPT_COLOR[d]||'#6b7280';}
 function _attYM(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function _attDays(ym){var p=ym.split('-');return new Date(+p[0],+p[1],0).getDate();}
 function _attLabel(ym){var p=ym.split('-');return ATT_MON[(+p[1])-1]+' '+p[0];}
@@ -4438,9 +4440,9 @@ function _attLoadUsers(){
 
 /* ---- register grid ---- */
 function _attSelHTML(rid,day,v,canEdit){
-  if(!canEdit) return '<div style="min-width:30px;height:24px;line-height:24px;border-radius:5px;font-weight:700;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+(v||'·')+'</div>';
-  var o=['','P','A','WO'].map(function(s){return '<option value="'+s+'"'+(s===v?' selected':'')+'>'+(s||'·')+'</option>';}).join('');
-  return '<select class="att-sel" data-rid="'+esc(rid)+'" data-day="'+day+'" onchange="_attMark(this)" style="border:1px solid var(--border);border-radius:5px;width:38px;height:25px;font-weight:700;cursor:pointer;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+o+'</select>';
+  if(!canEdit) return '<div style="min-width:46px;height:24px;line-height:24px;border-radius:5px;font-weight:700;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+(v||'·')+'</div>';
+  var o=['','P','A','WO','LWP','GL'].map(function(s){return '<option value="'+s+'"'+(s===v?' selected':'')+'>'+(s||'·')+'</option>';}).join('');
+  return '<select class="att-sel" data-rid="'+esc(rid)+'" data-day="'+day+'" onchange="_attMark(this)" style="border:1px solid var(--border);border-radius:5px;width:54px;height:25px;font-weight:700;cursor:pointer;background:'+(v?ATT_BG[v]:'var(--bg3)')+';color:'+(v?ATT_COLOR[v]:'var(--text3)')+'">'+o+'</select>';
 }
 function renderAttendance(){
   var ym=_attMonth,days=_attDays(ym),p=ym.split('-'),yr=+p[0],mo=+p[1];
@@ -4456,9 +4458,10 @@ function renderAttendance(){
   h+='<button class="btn btn-s btn-sm" onclick="_attChangeMonth(1)">›</button>';
   if(canEdit){h+='<button class="btn btn-p btn-sm" onclick="_attLoadUsers()">⤓ Load Users</button>';
     h+='<button class="btn btn-s btn-sm" onclick="_attShowRoster()">👥 Manage Roster</button>';}
+  h+='<button class="btn btn-s btn-sm" onclick="_attExport()">📊 Export Excel</button>';
   h+='</div></div>';
   h+='<div style="display:flex;gap:14px;margin:2px 0 10px;font-size:12px;flex-wrap:wrap;align-items:center">';
-  h+='<span><b style="color:'+ATT_COLOR.P+'">●</b> P = Present</span><span><b style="color:'+ATT_COLOR.A+'">●</b> A = Absent</span><span><b style="color:'+ATT_COLOR.WO+'">●</b> WO = Week Off</span></div>';
+  h+='<span><b style="color:'+ATT_COLOR.P+'">●</b> P = Present</span><span><b style="color:'+ATT_COLOR.A+'">●</b> A = Absent</span><span><b style="color:'+ATT_COLOR.WO+'">●</b> WO = Week Off</span><span><b style="color:'+ATT_COLOR.LWP+'">●</b> LWP = Leave W/O Pay</span><span><b style="color:'+ATT_COLOR.GL+'">●</b> GL = Paid Leave</span></div>';
   if(!ids.length){
     h+='<div class="tcard"><div style="text-align:center;padding:48px;color:var(--text3)">'
       +'<div style="font-size:40px;margin-bottom:12px">🗓️</div>'
@@ -4473,16 +4476,21 @@ function renderAttendance(){
   h+='<th class="att-stk" style="left:140px;min-width:110px;text-align:left">DEPARTMENT</th>';
   h+='<th class="att-stk" style="left:250px;min-width:120px;text-align:left">SHIFT</th>';
   for(var d1=1;d1<=days;d1++){var wd=new Date(yr,mo-1,d1).getDay();h+='<th style="text-align:center'+(wd===0?';background:#e0f2fe':'')+'"><div style="font-size:9px;color:var(--text3)">'+ATT_WD[wd]+'</div>'+String(d1).padStart(2,'0')+'</th>';}
-  h+='<th style="color:'+ATT_COLOR.P+'">P</th><th style="color:'+ATT_COLOR.WO+'">WO</th><th style="color:'+ATT_COLOR.A+'">A</th></tr></thead><tbody>';
+  h+='<th style="color:'+ATT_COLOR.P+'">P</th><th style="color:'+ATT_COLOR.A+'">A</th><th style="color:'+ATT_COLOR.WO+'">WO</th><th style="color:'+ATT_COLOR.LWP+'">LWP</th><th style="color:'+ATT_COLOR.GL+'">GL</th><th style="color:var(--gold);background:#fff7e6">PAYABLE</th></tr></thead><tbody>';
   ids.forEach(function(rid){
-    var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0;
-    h+='<tr><td class="att-stk" style="left:0;font-weight:600;text-align:left">'+esc(u.name||'—')+'</td>';
-    h+='<td class="att-stk" style="left:140px;color:var(--text2);text-align:left">'+esc(u.dept||'—')+'</td>';
-    h+='<td class="att-stk" style="left:250px;text-align:left;color:var(--text2)">'+esc(_attShift(u))+'</td>';
-    for(var d2=1;d2<=days;d2++){var v=row[d2]||row[String(d2)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;h+='<td style="text-align:center;padding:1px">'+_attSelHTML(rid,d2,v,canEdit)+'</td>';}
+    var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0,LWP=0,GL=0;
+    var dc=_attDeptColor(u.dept||'');
+    h+='<tr><td class="att-stk" style="left:0;text-align:left;background:#fafbff;border-left:3px solid '+dc+'"><span style="font-weight:700;color:var(--text)">'+esc(u.name||'—')+'</span></td>';
+    h+='<td class="att-stk" style="left:140px;text-align:left;background:#fafbff"><span style="display:inline-block;padding:2px 8px;border-radius:11px;font-size:10px;font-weight:700;background:'+dc+'1f;color:'+dc+'">'+esc(u.dept||'—')+'</span></td>';
+    h+='<td class="att-stk" style="left:250px;text-align:left;background:#fafbff"><span style="font-size:10px;font-weight:600;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px;white-space:nowrap">'+esc(_attShift(u))+'</span></td>';
+    for(var d2=1;d2<=days;d2++){var v=row[d2]||row[String(d2)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;else if(v==='LWP')LWP++;else if(v==='GL')GL++;h+='<td style="text-align:center;padding:1px">'+_attSelHTML(rid,d2,v,canEdit)+'</td>';}
+    var PAY=P+WO+GL;
     h+='<td id="attP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.P+'">'+P+'</td>';
+    h+='<td id="attA-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.A+'">'+A+'</td>';
     h+='<td id="attWO-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.WO+'">'+WO+'</td>';
-    h+='<td id="attA-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.A+'">'+A+'</td></tr>';
+    h+='<td id="attLWP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.LWP+'">'+LWP+'</td>';
+    h+='<td id="attGL-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.GL+'">'+GL+'</td>';
+    h+='<td id="attPay-'+esc(rid)+'" style="text-align:center;font-weight:800;color:var(--gold);background:#fff7e6">'+PAY+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
   setC(h);
@@ -4496,10 +4504,38 @@ function _attMark(el){
   _attRecount(rid);
 }
 function _attRecount(rid){
-  var row=_attMarks[rid]||{},P=0,A=0,WO=0;
-  Object.keys(row).forEach(function(d){var v=row[d];if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;});
-  var a=document.getElementById('attP-'+rid),b=document.getElementById('attWO-'+rid),c=document.getElementById('attA-'+rid);
-  if(a)a.textContent=P;if(b)b.textContent=WO;if(c)c.textContent=A;
+  var row=_attMarks[rid]||{},P=0,A=0,WO=0,LWP=0,GL=0;
+  Object.keys(row).forEach(function(d){var v=row[d];if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;else if(v==='LWP')LWP++;else if(v==='GL')GL++;});
+  var set=function(id,val){var el=document.getElementById(id+'-'+rid);if(el)el.textContent=val;};
+  set('attP',P);set('attA',A);set('attWO',WO);set('attLWP',LWP);set('attGL',GL);set('attPay',P+WO+GL);
+}
+
+function _attExport(){
+  var ym=_attMonth;if(!ym||!Object.keys(_attPeople).length){showAlert('No users loaded to export','error');return;}
+  var days=_attDays(ym),p=ym.split('-'),yr=+p[0],mo=+p[1];
+  var ids=Object.keys(_attPeople);
+  ids.sort(function(a,b){var sa=(_attPeople[a].sf||'~'),sb=(_attPeople[b].sf||'~');if(sa!==sb)return sa<sb?-1:1;return String(_attPeople[a].name||'').localeCompare(String(_attPeople[b].name||''));});
+  var e2=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var H='<table border="1" style="border-collapse:collapse;font-family:Calibri,Arial;font-size:11px">';
+  H+='<tr style="background:#4b5366;color:#ffffff;font-weight:bold"><th>USER</th><th>DEPARTMENT</th><th>SHIFT</th>';
+  for(var d=1;d<=days;d++){var wd=new Date(yr,mo-1,d).getDay();H+='<th style="background:'+(wd===0?'#0369a1':'#4b5366')+';color:#ffffff">'+ATT_WD[wd]+' '+String(d).padStart(2,'0')+'</th>';}
+  H+='<th style="background:#15803d;color:#fff">P</th><th style="background:#be185d;color:#fff">A</th><th style="background:#c2410c;color:#fff">WO</th><th style="background:#7c3aed;color:#fff">LWP</th><th style="background:#0369a1;color:#fff">GL</th><th style="background:#b8860b;color:#fff">PAYABLE</th></tr>';
+  var T={P:0,A:0,WO:0,LWP:0,GL:0,PAY:0};
+  ids.forEach(function(rid){
+    var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0,LWP=0,GL=0;
+    H+='<tr><td style="font-weight:bold">'+e2(u.name||'')+'</td><td>'+e2(u.dept||'')+'</td><td>'+e2(_attShift(u))+'</td>';
+    for(var d=1;d<=days;d++){var v=row[d]||row[String(d)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;else if(v==='LWP')LWP++;else if(v==='GL')GL++;var bg=v?(ATT_BG[v]||'#ffffff'):'#ffffff',cl=v?(ATT_COLOR[v]||'#000000'):'#999999';H+='<td style="text-align:center;font-weight:bold;background:'+bg+';color:'+cl+'">'+e2(v)+'</td>';}
+    var PAY=P+WO+GL;T.P+=P;T.A+=A;T.WO+=WO;T.LWP+=LWP;T.GL+=GL;T.PAY+=PAY;
+    H+='<td style="text-align:center;font-weight:bold;color:#15803d">'+P+'</td><td style="text-align:center;font-weight:bold;color:#be185d">'+A+'</td><td style="text-align:center;font-weight:bold;color:#c2410c">'+WO+'</td><td style="text-align:center;font-weight:bold;color:#7c3aed">'+LWP+'</td><td style="text-align:center;font-weight:bold;color:#0369a1">'+GL+'</td><td style="text-align:center;font-weight:bold;background:#fff7e6;color:#b8860b">'+PAY+'</td></tr>';
+  });
+  H+='<tr style="background:#eef1f6;font-weight:bold"><td colspan="3" style="text-align:right">TOTAL</td>';
+  for(var d=1;d<=days;d++)H+='<td></td>';
+  H+='<td style="text-align:center;color:#15803d">'+T.P+'</td><td style="text-align:center;color:#be185d">'+T.A+'</td><td style="text-align:center;color:#c2410c">'+T.WO+'</td><td style="text-align:center;color:#7c3aed">'+T.LWP+'</td><td style="text-align:center;color:#0369a1">'+T.GL+'</td><td style="text-align:center;background:#fff7e6;color:#b8860b">'+T.PAY+'</td></tr>';
+  H+='</table>';
+  var htmlStr='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><h3>Attendance &mdash; '+e2(_attLabel(ym))+'</h3>'+H+'<p style="font-size:10px;color:#666">PAYABLE = P + WO + GL &nbsp;|&nbsp; P=Present, A=Absent, WO=Week Off, LWP=Leave Without Pay, GL=Paid Leave.</p></body></html>';
+  var blob=new Blob(['\ufeff'+htmlStr],{type:'application/vnd.ms-excel'});
+  var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='Attendance_'+ym+'.xls';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1500);
+  showAlert('Attendance exported to Excel','success');
 }
 
 /* ---- roster management ---- */
