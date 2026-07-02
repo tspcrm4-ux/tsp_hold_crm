@@ -4449,7 +4449,7 @@ function renderAttendance(){
   var canEdit=(R()==='MANAGER'||R()==='ADMIN');
   var ids=Object.keys(_attPeople);
   ids.sort(function(a,b){var sa=(_attPeople[a].sf||'~'),sb=(_attPeople[b].sf||'~');if(sa!==sb)return sa<sb?-1:1;return String(_attPeople[a].name||'').localeCompare(String(_attPeople[b].name||''));});
-  var h='<style>.att-tbl th,.att-tbl td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:4px 6px;white-space:nowrap;font-size:11px}.att-tbl thead th{position:sticky;top:0;background:var(--bg3);z-index:2}.att-stk{position:sticky;background:var(--bg2);z-index:3}.att-tbl thead th.att-stk{z-index:4;background:var(--bg3)}</style>';
+  var h='<style>.att-tbl th,.att-tbl td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:4px 6px;white-space:nowrap;font-size:11px}.att-tbl thead th{position:sticky;top:0;background:#4b5366;color:#fff;font-weight:700;z-index:2}.att-stk{position:sticky;background:var(--bg2);z-index:3}.att-tbl thead th.att-stk{z-index:4;background:#3b424f;color:#fff}.att-tbl tbody tr:nth-child(even) td:not(.att-stk){background:#f6f8fc}</style>';
   h+='<div class="pg-head"><div><div class="pg-t">🗓️ <span class="hl">Attendance</span></div>';
   h+='<div style="font-size:12px;color:var(--text3);margin-top:3px">'+esc(_attLabel(ym))+' · '+ids.length+' users</div></div>';
   h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
@@ -4475,8 +4475,8 @@ function renderAttendance(){
   h+='<th class="att-stk" style="left:0;min-width:140px;text-align:left">USER</th>';
   h+='<th class="att-stk" style="left:140px;min-width:110px;text-align:left">DEPARTMENT</th>';
   h+='<th class="att-stk" style="left:250px;min-width:120px;text-align:left">SHIFT</th>';
-  for(var d1=1;d1<=days;d1++){var wd=new Date(yr,mo-1,d1).getDay();h+='<th style="text-align:center'+(wd===0?';background:#e0f2fe':'')+'"><div style="font-size:9px;color:var(--text3)">'+ATT_WD[wd]+'</div>'+String(d1).padStart(2,'0')+'</th>';}
-  h+='<th style="color:'+ATT_COLOR.P+'">P</th><th style="color:'+ATT_COLOR.A+'">A</th><th style="color:'+ATT_COLOR.WO+'">WO</th><th style="color:'+ATT_COLOR.LWP+'">LWP</th><th style="color:'+ATT_COLOR.GL+'">GL</th><th style="color:var(--gold);background:#fff7e6">PAYABLE</th></tr></thead><tbody>';
+  for(var d1=1;d1<=days;d1++){var wd=new Date(yr,mo-1,d1).getDay();h+='<th style="text-align:center'+(wd===0?';background:#0369a1':'')+'"><div style="font-size:9px;color:rgba(255,255,255,.72)">'+ATT_WD[wd]+'</div>'+String(d1).padStart(2,'0')+'</th>';}
+  h+='<th style="background:'+ATT_COLOR.P+';color:#fff">P</th><th style="background:'+ATT_COLOR.A+';color:#fff">A</th><th style="background:'+ATT_COLOR.WO+';color:#fff">WO</th><th style="background:'+ATT_COLOR.LWP+';color:#fff">LWP</th><th style="background:'+ATT_COLOR.GL+';color:#fff">GL</th><th style="background:#b8860b;color:#fff">PAYABLE</th></tr></thead><tbody>';
   ids.forEach(function(rid){
     var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0,LWP=0,GL=0;
     var dc=_attDeptColor(u.dept||'');
@@ -4485,12 +4485,12 @@ function renderAttendance(){
     h+='<td class="att-stk" style="left:250px;text-align:left;background:#fafbff"><span style="font-size:10px;font-weight:600;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px;white-space:nowrap">'+esc(_attShift(u))+'</span></td>';
     for(var d2=1;d2<=days;d2++){var v=row[d2]||row[String(d2)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;else if(v==='LWP')LWP++;else if(v==='GL')GL++;h+='<td style="text-align:center;padding:1px">'+_attSelHTML(rid,d2,v,canEdit)+'</td>';}
     var PAY=P+WO+GL;
-    h+='<td id="attP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.P+'">'+P+'</td>';
-    h+='<td id="attA-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.A+'">'+A+'</td>';
-    h+='<td id="attWO-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.WO+'">'+WO+'</td>';
-    h+='<td id="attLWP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.LWP+'">'+LWP+'</td>';
-    h+='<td id="attGL-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.GL+'">'+GL+'</td>';
-    h+='<td id="attPay-'+esc(rid)+'" style="text-align:center;font-weight:800;color:var(--gold);background:#fff7e6">'+PAY+'</td></tr>';
+    h+='<td id="attP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.P+';background:'+ATT_BG.P+'">'+P+'</td>';
+    h+='<td id="attA-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.A+';background:'+ATT_BG.A+'">'+A+'</td>';
+    h+='<td id="attWO-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.WO+';background:'+ATT_BG.WO+'">'+WO+'</td>';
+    h+='<td id="attLWP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.LWP+';background:'+ATT_BG.LWP+'">'+LWP+'</td>';
+    h+='<td id="attGL-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.GL+';background:'+ATT_BG.GL+'">'+GL+'</td>';
+    h+='<td id="attPay-'+esc(rid)+'" style="text-align:center;font-weight:800;color:#b8860b;background:#fff7e6">'+PAY+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
   setC(h);
