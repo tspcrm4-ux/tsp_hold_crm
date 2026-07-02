@@ -4404,6 +4404,8 @@ var ATT_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var ATT_DEPTS=['Calling Agent','Manager','TL','Accountant','Key Account','Insurance','Tech Department','Administration'];
 var ATT_DEPT_COLOR={'Calling Agent':'#0369a1','Manager':'#b8860b','TL':'#7c3aed','Accountant':'#15803d','Key Account':'#be185d','Insurance':'#0891b2','Tech Department':'#c2410c','Administration':'#4b5563'};
 function _attDeptColor(d){return ATT_DEPT_COLOR[d]||'#6b7280';}
+var _ATT_SHIFT_COLORS={},_ATT_SHIFT_PAL=['#0891b2','#7c3aed','#b8860b','#0369a1','#15803d','#be185d','#c2410c','#4b5563','#db2777','#0d9488'];
+function _attShiftColor(k){k=k||'—';if(!_ATT_SHIFT_COLORS[k]){var n=Object.keys(_ATT_SHIFT_COLORS).length;_ATT_SHIFT_COLORS[k]=_ATT_SHIFT_PAL[n%_ATT_SHIFT_PAL.length];}return _ATT_SHIFT_COLORS[k];}
 function _attYM(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function _attDays(ym){var p=ym.split('-');return new Date(+p[0],+p[1],0).getDate();}
 function _attLabel(ym){var p=ym.split('-');return ATT_MON[(+p[1])-1]+' '+p[0];}
@@ -4479,10 +4481,10 @@ function renderAttendance(){
   h+='<th style="background:'+ATT_COLOR.P+';color:#fff">P</th><th style="background:'+ATT_COLOR.A+';color:#fff">A</th><th style="background:'+ATT_COLOR.WO+';color:#fff">WO</th><th style="background:'+ATT_COLOR.LWP+';color:#fff">LWP</th><th style="background:'+ATT_COLOR.GL+';color:#fff">GL</th><th style="background:#b8860b;color:#fff">PAYABLE</th></tr></thead><tbody>';
   ids.forEach(function(rid){
     var u=_attPeople[rid]||{},row=_attMarks[rid]||{},P=0,A=0,WO=0,LWP=0,GL=0;
-    var dc=_attDeptColor(u.dept||'');
+    var dc=_attDeptColor(u.dept||''),sc=_attShiftColor(u.sf||_attShift(u));
     h+='<tr><td class="att-stk" style="left:0;text-align:left;background:#fafbff;border-left:3px solid '+dc+'"><span style="font-weight:700;color:var(--text)">'+esc(u.name||'—')+'</span></td>';
     h+='<td class="att-stk" style="left:140px;text-align:left;background:#fafbff"><span style="display:inline-block;padding:2px 8px;border-radius:11px;font-size:10px;font-weight:700;background:'+dc+'1f;color:'+dc+'">'+esc(u.dept||'—')+'</span></td>';
-    h+='<td class="att-stk" style="left:250px;text-align:left;background:#fafbff"><span style="font-size:10px;font-weight:600;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:6px;white-space:nowrap">'+esc(_attShift(u))+'</span></td>';
+    h+='<td class="att-stk" style="left:250px;text-align:left;background:#fafbff"><span style="font-size:10px;font-weight:700;color:'+sc+';background:'+sc+'1f;padding:2px 8px;border-radius:6px;white-space:nowrap">'+esc(_attShift(u))+'</span></td>';
     for(var d2=1;d2<=days;d2++){var v=row[d2]||row[String(d2)]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;else if(v==='LWP')LWP++;else if(v==='GL')GL++;h+='<td style="text-align:center;padding:1px">'+_attSelHTML(rid,d2,v,canEdit)+'</td>';}
     var PAY=P+WO+GL;
     h+='<td id="attP-'+esc(rid)+'" style="text-align:center;font-weight:700;color:'+ATT_COLOR.P+';background:'+ATT_BG.P+'">'+P+'</td>';
