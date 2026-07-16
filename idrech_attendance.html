@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ID &amp; Recharge — Attendance</title>
+<style>
+  :root{--bg:#f0f2f5;--bg2:#fff;--bg3:#f8f9fb;--border:#e2e5ea;--text:#1a1d23;--text2:#4b5563;--text3:#9ca3af;--gold:#b8860b;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  .top{background:#20263a;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px}
+  .top b{color:var(--gold)}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .btn{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.p{background:var(--gold);color:#fff;border-color:var(--gold)}
+  .btn.d{background:#fff;color:#dc2626;border-color:#f3c2c2}
+  .btn:hover{filter:brightness(.97)}
+  input,select{font-family:inherit}
+  .fi{border:1px solid var(--border);border-radius:9px;padding:9px 12px;background:var(--bg2);color:var(--text);font-size:14px}
+  /* pin */
+  .pinwrap{max-width:340px;margin:12vh auto;text-align:center}
+  .pinwrap .card{padding:26px}
+  .pinwrap h2{margin:6px 0 4px}
+  .pinwrap p{color:var(--text3);margin:0 0 16px;font-size:13px}
+  /* table */
+  .scroll{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:10px}
+  table{border-collapse:collapse;width:100%}
+  th,td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:5px 7px;white-space:nowrap;font-size:12px;text-align:center}
+  thead th{position:sticky;top:0;background:#4b5366;color:#fff;font-weight:700;z-index:2}
+  thead th.sun{background:#0369a1}
+  th .wd{font-size:9px;color:rgba(255,255,255,.72)}
+  .stk{position:sticky;background:#fafbff;z-index:3;text-align:left}
+  thead th.stk{z-index:4;background:#3b424f}
+  .nm{left:0;min-width:150px}
+  .dp{left:150px;min-width:120px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:11px;font-size:10px;font-weight:700;color:#fff}
+  .cell{padding:1px}
+  .cell select{border:1px solid var(--border);border-radius:5px;width:46px;height:25px;font-weight:700;cursor:pointer}
+  .sumh{color:#fff}
+  .sum{font-weight:800}
+  .empty{padding:26px;color:var(--text3);text-align:center}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sp{flex:1}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:10px;color:#fff;font-weight:600;z-index:99;opacity:0;transition:.2s}
+  .toast.show{opacity:1}
+  .legend{font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}
+  .legend b{font-size:14px}
+  .urow{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="top"><span style="font-size:18px">🪪</span> <b>ID &amp; RECHARGE</b> · Attendance <span class="sp"></span><span id="lockbtn"></span></div>
+<div id="app" class="wrap"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+var FB_URL='https://taxisanchalak-official-crm-default-rtdb.asia-southeast1.firebasedatabase.app';
+var PIN='admin@123';
+var DEPTS=['ID VERIFICATION','RECHARGE'];
+var ATT_COLOR={P:'#15803d',A:'#be185d',WO:'#c2410c'};
+var ATT_BG={P:'#dcfce7',A:'#fce7f3',WO:'#ffedd5'};
+var WD=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+var _users={}, _att={}, _month='', _pinOk=false, _view='grid';
+
+/* ---- firebase REST (with real error detection) ---- */
+function fbGet(path,cb){fetch(FB_URL+'/'+path+'.json').then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});}
+function fbPut(path,data,cb){fetch(FB_URL+'/'+path+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t);});return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+function fbDel(path,cb){fetch(FB_URL+'/'+path+'.json',{method:'DELETE'}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t);});return r.json();}).then(function(d){if(cb)cb(null,d);}).catch(function(e){if(cb)cb(e,null);});}
+
+/* ---- helpers ---- */
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function pad(x){return String(x).padStart(2,'0');}
+function daysIn(ym){var p=ym.split('-');return new Date(+p[0],+p[1],0).getDate();}
+function ymNow(){var n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1);}
+function monLabel(ym){var p=ym.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});}
+function deptColor(d){return d==='RECHARGE'?'#15803d':'#0369a1';}
+function toast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.style.background=(type==='error'?'#dc2626':'#15803d');t.className='toast show';setTimeout(function(){t.className='toast';},2200);}
+
+/* ---- router ---- */
+function render(){document.getElementById('lockbtn').innerHTML=_pinOk?'<button class="btn" onclick="_lock()">🔒 Lock</button>':'';if(!_pinOk){renderPin();return;}if(_view==='users')renderUsers();else renderGrid();}
+
+/* ---- pin ---- */
+function renderPin(){
+  document.getElementById('app').innerHTML=
+    '<div class="pinwrap"><div class="card">'+
+    '<div style="font-size:34px">🪪</div><h2>Attendance Access</h2><p>ID &amp; Recharge department</p>'+
+    '<input id="pinIn" class="fi" type="password" placeholder="Enter PIN" style="width:100%;text-align:center;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')_tryPin()">'+
+    '<button class="btn p" style="width:100%;margin-top:12px" onclick="_tryPin()">Unlock</button>'+
+    '</div></div>';
+  setTimeout(function(){var el=document.getElementById('pinIn');if(el)el.focus();},60);
+}
+function _tryPin(){var v=(document.getElementById('pinIn').value||'');if(v===PIN){_pinOk=true;sessionStorage.setItem('idrech_ok','1');loadAll();}else{toast('Wrong PIN','error');}}
+function _lock(){_pinOk=false;sessionStorage.removeItem('idrech_ok');render();}
+
+/* ---- load ---- */
+function loadAll(){
+  if(!_month)_month=ymNow();
+  document.getElementById('app').innerHTML='<div class="card">Loading…</div>';
+  fbGet('idrech_users',function(e,d){_users=d||{};fbGet('idrech_attendance',function(e2,d2){_att=d2||{};render();});});
+}
+
+/* ---- grid ---- */
+function toolbar(){
+  return '<div class="row" style="margin-bottom:12px">'+
+    '<div style="font-size:20px;font-weight:800">📋 '+esc(monLabel(_month))+'</div>'+
+    '<button class="btn" onclick="_nav(-1)">‹</button>'+
+    '<input class="fi" type="month" value="'+_month+'" onchange="_setMonth(this.value)">'+
+    '<button class="btn" onclick="_nav(1)">›</button>'+
+    '<span class="sp"></span>'+
+    '<button class="btn p" onclick="_go(\'users\')">➕ Add / Manage Users</button>'+
+    '<button class="btn" onclick="_export()">📊 Export sheet</button>'+
+    '</div>';
+}
+function renderGrid(){
+  var uids=Object.keys(_users).sort(function(a,b){return String(_users[a].name||'').localeCompare(String(_users[b].name||''));});
+  var days=daysIn(_month),p=_month.split('-'),yr=+p[0],mo=+p[1];
+  var h=toolbar();
+  h+='<div class="legend"><span><b style="color:'+ATT_COLOR.P+'">●</b> P = Present</span><span><b style="color:'+ATT_COLOR.A+'">●</b> A = Absent</span><span><b style="color:'+ATT_COLOR.WO+'">●</b> WO = Week Off</span></div>';
+  h+='<div class="scroll"><table><thead><tr><th class="stk nm">NAME</th><th class="stk dp">DEPARTMENT</th>';
+  for(var d=1;d<=days;d++){var w=new Date(yr,mo-1,d).getDay();h+='<th'+(w===0?' class="sun"':'')+'><div class="wd">'+WD[w]+'</div>'+pad(d)+'</th>';}
+  h+='<th class="sumh" style="background:'+ATT_COLOR.P+'">P</th><th class="sumh" style="background:'+ATT_COLOR.A+'">A</th><th class="sumh" style="background:'+ATT_COLOR.WO+'">WO</th></tr></thead><tbody>';
+  if(!uids.length){h+='<tr><td colspan="'+(days+5)+'" class="empty">No users yet — click “➕ Add / Manage Users”.</td></tr>';}
+  uids.forEach(function(uid){
+    var u=_users[uid],a=_att[uid]||{},P=0,A=0,WO=0,dc=deptColor(u.dept);
+    h+='<tr><td class="stk nm"><b style="color:'+dc+'">'+esc(u.name||'')+'</b></td><td class="stk dp"><span class="pill" style="background:'+dc+'">'+esc(u.dept||'')+'</span></td>';
+    for(var d=1;d<=days;d++){var dk=_month+'-'+pad(d),v=a[dk]||'';if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;h+='<td class="cell">'+selHTML(uid,dk,v)+'</td>';}
+    h+='<td id="cP-'+uid+'" class="sum" style="color:'+ATT_COLOR.P+';background:'+ATT_BG.P+'">'+P+'</td><td id="cA-'+uid+'" class="sum" style="color:'+ATT_COLOR.A+';background:'+ATT_BG.A+'">'+A+'</td><td id="cWO-'+uid+'" class="sum" style="color:'+ATT_COLOR.WO+';background:'+ATT_BG.WO+'">'+WO+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('app').innerHTML=h;
+}
+function selHTML(uid,dk,v){
+  var o=['','P','A','WO'].map(function(s){return '<option value="'+s+'"'+(s===v?' selected':'')+'>'+(s||'·')+'</option>';}).join('');
+  return '<select onchange="_mark(\''+uid+'\',\''+dk+'\',this.value)" style="background:'+(v?ATT_BG[v]:'#f8f9fb')+';color:'+(v?ATT_COLOR[v]:'#9ca3af')+'">'+o+'</select>';
+}
+function _mark(uid,dk,val){
+  if(!_att[uid])_att[uid]={};
+  if(val){_att[uid][dk]=val;fbPut('idrech_attendance/'+uid+'/'+dk,val,function(e){if(e)toast('Save failed — check connection/rules','error');});}
+  else{delete _att[uid][dk];fbDel('idrech_attendance/'+uid+'/'+dk,function(e){if(e)toast('Delete failed','error');});}
+  recount(uid);
+}
+function recount(uid){
+  var a=_att[uid]||{},P=0,A=0,WO=0,pre=_month+'-';
+  Object.keys(a).forEach(function(k){if(k.indexOf(pre)!==0)return;var v=a[k];if(v==='P')P++;else if(v==='A')A++;else if(v==='WO')WO++;});
+  var s=function(id,val){var el=document.getElementById(id+'-'+uid);if(el)el.textContent=val;};
+  s('cP',P);s('cA',A);s('cWO',WO);
+}
+
+/* ---- users ---- */
+function _go(v){_view=v;render();}
+function renderUsers(){
+  var uids=Object.keys(_users).sort(function(a,b){return String(_users[a].name||'').localeCompare(String(_users[b].name||''));});
+  var h='<div class="row" style="margin-bottom:12px"><div style="font-size:20px;font-weight:800">👥 Users ('+uids.length+')</div><span class="sp"></span><button class="btn" onclick="_go(\'grid\')">← Back to Attendance</button></div>';
+  h+='<div class="card" style="margin-bottom:14px"><div style="font-weight:700;margin-bottom:8px">Add user</div><div class="row">'+
+     '<input id="nuName" class="fi" placeholder="Full name" style="min-width:220px">'+
+     '<select id="nuDept" class="fi">'+DEPTS.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join('')+'</select>'+
+     '<button class="btn p" onclick="_addUser()">➕ Add</button></div></div>';
+  h+='<div class="card"><input class="fi" placeholder="🔎 Search name…" style="width:100%;max-width:340px;margin-bottom:10px" oninput="_filterUsers(this.value)">';
+  if(!uids.length)h+='<div class="empty">No users yet.</div>';
+  uids.forEach(function(uid){var u=_users[uid],dc=deptColor(u.dept);
+    h+='<div class="urow" data-nm="'+esc((u.name||'').toLowerCase())+'"><b style="color:'+dc+';min-width:200px">'+esc(u.name||'')+'</b>'+
+       '<span class="pill" style="background:'+dc+'">'+esc(u.dept||'')+'</span><span class="sp"></span>'+
+       '<button class="btn d" onclick="_delUser(\''+uid+'\')">🗑 Delete</button></div>';
+  });
+  h+='</div>';
+  document.getElementById('app').innerHTML=h;
+}
+function _filterUsers(q){q=(q||'').trim().toLowerCase();var rows=document.querySelectorAll('.urow');for(var i=0;i<rows.length;i++){var nm=rows[i].getAttribute('data-nm')||'';rows[i].style.display=(!q||nm.indexOf(q)>=0)?'':'none';}}
+function _addUser(){
+  var nm=(document.getElementById('nuName').value||'').trim(),dp=document.getElementById('nuDept').value;
+  if(!nm){toast('Enter a name','error');return;}
+  var uid='u_'+Date.now()+'_'+((Math.random()*1e5)|0);
+  _users[uid]={name:nm,dept:dp,created:Date.now()};
+  fbPut('idrech_users/'+uid,_users[uid],function(e){if(e){toast('Add failed','error');delete _users[uid];render();}else{toast('User added','success');}});
+  render();
+}
+function _delUser(uid){
+  var u=_users[uid]||{};
+  if(!confirm('Delete '+(u.name||'this user')+'? (Their past attendance records are kept.)'))return;
+  delete _users[uid];
+  fbDel('idrech_users/'+uid,function(e){if(e)toast('Delete failed','error');});
+  render();
+}
+
+/* ---- month nav ---- */
+function _setMonth(v){if(v){_month=v;render();}}
+function _nav(delta){var p=_month.split('-'),d=new Date(+p[0],+p[1]-1+delta,1);_month=d.getFullYear()+'-'+pad(d.getMonth()+1);render();}
+
+/* ---- export: NAME | DATE | ATTENDANCE (real dates) ---- */
+function _loadXlsx(cb){if(window.XLSX)return cb();var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=function(){cb();};s.onerror=function(){toast('Could not load Excel library (check internet)','error');};document.head.appendChild(s);}
+function _export(){
+  _loadXlsx(function(){
+    var list=[];
+    Object.keys(_users).forEach(function(uid){
+      var u=_users[uid],a=_att[uid]||{};
+      Object.keys(a).forEach(function(dk){var v=a[dk];if(!v)return;var p=dk.split('-');list.push({name:u.name||'',dept:u.dept||'',d:new Date(+p[0],+p[1]-1,+p[2]),dk:dk,mark:v});});
+    });
+    if(!list.length){toast('No attendance marked yet','error');return;}
+    list.sort(function(x,y){if(x.name!==y.name)return x.name<y.name?-1:1;return x.dk<y.dk?-1:1;});
+    var rows=[['NAME','DATE','ATTENDANCE']];
+    list.forEach(function(r){rows.push([r.name,r.d,r.mark]);});
+    var wb=XLSX.utils.book_new();
+    var ws=XLSX.utils.aoa_to_sheet(rows,{cellDates:true});
+    for(var i=1;i<rows.length;i++){var ad=XLSX.utils.encode_cell({c:1,r:i});if(ws[ad]){ws[ad].t='d';ws[ad].z='dd-mm-yyyy';}}
+    ws['!cols']=[{wch:26},{wch:14},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws,'Attendance');
+    XLSX.writeFile(wb,'IDRecharge_Attendance_'+_month+'.xlsx');
+    toast('Exported ('+list.length+' rows)','success');
+  });
+}
+
+/* ---- boot ---- */
+if(sessionStorage.getItem('idrech_ok')==='1')_pinOk=true;
+if(_pinOk){loadAll();}else{render();}
+</script>
+</body>
+</html>
